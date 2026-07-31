@@ -1,0 +1,9 @@
+WorkOrder,ProcessStep,MaterialNumber,Production Line,Notes,ReleaseDate,TargetQty,Base,PrepTime,CycleTime,CrewSize
+WO-9001,10,MAT-909-A,Line North,Frame welding,2026-06-01,500,10,120,4.5,2
+WO-9001,20,MAT-909-A,Line South,Epoxy coating,2026-06-01,500,1,60,1.2,1
+WO-9002,10,MAT-123-B,Line East,Board stuffing,2026-06-02,125,1,180,5.0,3
+WO-9002,20,MAT-123-B,Line West,Final audit,2026-06-02,125,5,30,0.8,1
+WO-9003,10,MAT-444-C,Line North,Metal stamp,2026-06-03,1000,100,240,15.5,4
+WO-9003,20,MAT-444-C,Line South,Hardware install,2026-06-03,1000,10,90,3.2,2
+WO-9004,10,MAT-909-A,Line West,Frame welding,2026-06-04,300,10,120,4.5,2
+WO-9004,20,MAT-909-A,Line East,Epoxy coating,2026-06-04,300,1,60,1.2,1

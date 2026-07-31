@@ -1,0 +1,30 @@
+Job ID,Operation,Part ID,Work Center,Dept,Operation Name,Date SOP,Volume,Base,Setup Duration,Processing Duration,Manpower
+JOB-600,10,COMP-101,Cell A,FAB,"Laser Cut Sheet Steel 4mm",2026-06-01,500,1,60,2.2,2
+JOB-600,20,COMP-101,Cell B,FAB,"CNC Press Brake Bending",2026-06-01,500,1,45,1.5,1
+JOB-600,30,COMP-101,Cell C,WELD,"Robotic MIG Seam Welding",2026-06-01,500,1,90,3.0,2
+JOB-601,10,COMP-102,Cell D,ASSY,"Insert Hardware Fasteners",2026-06-01,300,5,30,0.8,1
+JOB-601,20,COMP-102,Cell E,QA,"Optical Dimensions Inspection",2026-06-01,300,10,15,0.4,1
+JOB-602,10,COMP-103,Cell A,FAB,"Plasma Arc Heavy Cut 12mm",2026-06-02,200,1,90,4.5,2
+JOB-602,20,COMP-103,Cell B,FAB,"Bevel Edge Preparation",2026-06-02,200,1,30,1.2,1
+JOB-602,30,COMP-103,Cell C,WELD,"Submerged Arc Weld Joint",2026-06-02,200,1,120,6.0,3
+JOB-603,10,COMP-104,Cell D,ASSY,"Hydraulic Seal Pressing",2026-06-02,450,1,60,2.0,1
+JOB-603,20,COMP-104,Cell E,QA,"Hydrostatic Leak Test 300PSI",2026-06-02,450,5,45,1.5,2
+JOB-604,10,COMP-105,Cell A,FAB,"Waterjet Precision Cut Titanium",2026-06-03,80,1,150,8.5,2
+JOB-604,20,COMP-105,Cell B,FAB,"5-Axis Contour Milling",2026-06-03,80,1,120,15.0,2
+JOB-604,30,COMP-105,Cell E,QA,"CMM 3D Coordinate Inspection",2026-06-03,80,1,60,4.0,1
+JOB-605,10,COMP-106,Cell C,WELD,"Manual TIG Weld Stainless 316",2026-06-03,150,1,45,5.2,1
+JOB-605,20,COMP-106,Cell D,ASSY,"Polishing & Grain Finish #4",2026-06-03,150,1,30,3.0,1
+JOB-606,10,COMP-107,Cell A,FAB,"Punching & Nibbling Operation",2026-06-04,650,10,60,0.9,1
+JOB-606,20,COMP-107,Cell B,FAB,"Corner Notch & Radius Bending",2026-06-04,650,10,40,1.1,1
+JOB-607,10,COMP-108,Cell C,WELD,"Spot Weld Assembly Grid",2026-06-04,900,20,60,0.6,2
+JOB-607,20,COMP-108,Cell D,ASSY,"Pop Rivet Fastening Line",2026-06-04,900,20,30,0.4,1
+JOB-608,10,COMP-109,Cell E,QA,"Ultrasonic Weld Inspection",2026-06-05,250,5,30,1.2,1
+JOB-608,20,COMP-109,Cell D,ASSY,"Kitting & Polybag Packaging",2026-06-05,250,10,15,0.5,1
+JOB-609,10,COMP-110,Cell A,FAB,"Laser Marking Part Numbers",2026-06-05,1200,50,20,0.1,1
+JOB-609,20,COMP-110,Cell B,FAB,"Countersinking 6x Holes",2026-06-05,1200,10,30,0.3,1
+JOB-610,10,COMP-111,Cell C,WELD,"Robotic Laser Weld Battery Pack",2026-06-06,400,2,120,2.5,2
+JOB-610,20,COMP-111,Cell E,QA,"Helium Leak Detection Test",2026-06-06,400,5,60,1.5,1
+JOB-611,10,COMP-112,Cell A,FAB,"CNC Tube Bending 42mm O.D.",2026-06-06,350,1,75,1.8,1
+JOB-611,20,COMP-112,Cell B,FAB,"Tube End Flaring & Swaging",2026-06-06,350,1,30,0.9,1
+JOB-612,10,COMP-113,Cell D,ASSY,"Final Harness Wire Routing",2026-06-08,180,1,45,4.0,2
+JOB-612,20,COMP-113,Cell E,QA,"Functional Burn-in Test 24Hr",2026-06-08,180,10,30,1.0,1

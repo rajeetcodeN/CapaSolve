@@ -1,0 +1,7 @@
+Job ID,Operation,Part ID,Work Center,Dept,Operation Name,Date SOP,Volume,Base,Setup Duration,Processing Duration,Manpower
+JOB-500,10,COMP-001,Cell A,FAB,Laser cut,2026-06-10,350,1,60,1.8,2
+JOB-500,20,COMP-001,Cell B,FAB,Deburr,2026-06-10,350,1,15,0.4,1
+JOB-501,10,COMP-002,Cell C,ASSY,Solder components,2026-06-11,80,10,90,15.0,2
+JOB-501,20,COMP-002,Cell D,QA,Inspection,2026-06-11,80,1,45,2.5,1
+JOB-502,10,COMP-001,Cell A,FAB,Laser cut,2026-06-12,200,1,60,1.8,2
+JOB-502,20,COMP-001,Cell B,FAB,Deburr,2026-06-12,200,1,15,0.4,1

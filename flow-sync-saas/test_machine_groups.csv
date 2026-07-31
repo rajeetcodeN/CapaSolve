@@ -1,0 +1,7 @@
+Auftrag,Vorgang,Materialnr,Maschine,Maschine-Gruppe,Vorgangstext,Startdatum,Menge,Basis,Rustzeit,Bearbeitungszeit,Bediener
+700201,10,PART-44-O,Milling Alpha,G-MILL,"FRAESEN: -Hoehe 12",05-06-2026,250,5,45,3.5,1
+700201,20,PART-44-O,Drill Beta,G-DRIL,"BOHREN: Kernloch",05-06-2026,250,1,30,1.25,1
+700202,10,PART-55-O,Milling Beta,G-MILL,"FRAESEN: Nut 5",06-06-2026,120,1,60,4.8,2
+700202,20,PART-55-O,Assembly Gamma,G-ASSY,"KOMPLETTBEARBEITUNG:",06-06-2026,120,10,120,10.5,3
+700203,10,PART-44-O,Milling Alpha,G-MILL,"FRAESEN: -Hoehe 12",07-06-2026,500,5,45,3.5,1
+700203,20,PART-44-O,Drill Beta,G-DRIL,"BOHREN: Kernloch",07-06-2026,500,1,30,1.25,1

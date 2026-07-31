@@ -1,0 +1,10 @@
+Order No,Step No,Product Code,Assembly Line,Section,Description,Start Date,Quantity,Base Qty,Setup (mins),Unit,Process Time (mins),Unit,Sum total time,Manpower,Unit,Sum Manpower,Manpower %,Start Time
+100501,10,PROD-ABC-01,Assy Line Alpha,A1,Mounting brackets,01-06-2026,150,1,30,MIN,2.5,MIN,405,1,MIN,405,50%,08:00:00
+100501,20,PROD-ABC-01,Assy Line Beta,B2,Soldering joints,01-06-2026,150,1,45,MIN,4.0,MIN,645,1,MIN,645,70%,10:30:00
+100502,10,PROD-XYZ-99,Assy Line Gamma,C1,Wiring harness,02-06-2026,200,5,60,MIN,12.0,MIN,540,2,MIN,1080,30%,09:00:00
+100502,20,PROD-XYZ-99,Assy Line Alpha,A1,Final casing,02-06-2026,200,1,20,MIN,1.5,MIN,320,1,MIN,320,50%,14:00:00
+100503,10,PROD-DEF-02,Assy Line Beta,B2,Calibration,03-06-2026,80,1,90,MIN,8.5,MIN,770,1.5,MIN,1155,40%,07:30:00
+100503,20,PROD-DEF-02,Assy Line Gamma,C1,Packaging,03-06-2026,80,10,15,MIN,3.0,MIN,39,0.5,MIN,19.5,20%,16:00:00
+100504,10,PROD-ABC-01,Assy Line Alpha,A1,Mounting brackets,04-06-2026,300,1,30,MIN,2.5,MIN,780,1,MIN,780,50%,08:00:00
+100504,20,PROD-ABC-01,Assy Line Beta,B2,Soldering joints,04-06-2026,300,1,45,MIN,4.0,MIN,1245,1,MIN,1245,70%,14:30:00
+100505,10,PROD-XYZ-99,Assy Line Gamma,C1,Wiring harness,05-06-2026,120,5,60,MIN,12.0,MIN,348,2,MIN,696,30%,09:00:00
