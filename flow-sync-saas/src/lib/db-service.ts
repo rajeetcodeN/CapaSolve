@@ -322,3 +322,79 @@ export async function logExecutionToSupabaseDB(
     console.warn("logExecutionToSupabaseDB error:", err);
   }
 }
+
+/**
+ * 5. SETUP MATRIX & SCENARIOS CONNECTORS
+ */
+export async function syncSetupMatrixToSupabaseDB(orgId: string, rules: any[]) {
+  try {
+    if (!orgId || rules.length === 0) return { success: true };
+    const rows = rules.map((r) => ({
+      org_id: orgId,
+      from_material: r.fromMaterial,
+      to_material: r.toMaterial,
+      machine_group_id: r.machineGroupId || null,
+      changeover_mins: r.changeoverMins || 0,
+    }));
+
+    const { error } = await supabase.from("setup_changeover_matrices").upsert(rows, {
+      onConflict: "org_id,from_material,to_material,machine_group_id",
+    });
+
+    return { success: !error, error: error?.message };
+  } catch (err: any) {
+    console.error("syncSetupMatrixToSupabaseDB error:", err);
+    return { success: false, error: err.message };
+  }
+}
+
+export async function loadSetupMatrixFromSupabaseDB(orgId: string) {
+  try {
+    const { data, error } = await supabase
+      .from("setup_changeover_matrices")
+      .select("*")
+      .eq("org_id", orgId);
+
+    if (error) return [];
+    return data.map((r: any) => ({
+      id: r.id,
+      fromMaterial: r.from_material,
+      toMaterial: r.to_material,
+      machineGroupId: r.machine_group_id,
+      changeoverMins: Number(r.changeover_mins),
+    }));
+  } catch (err) {
+    console.error("loadSetupMatrixFromSupabaseDB error:", err);
+    return [];
+  }
+}
+
+export async function saveProcessExecutionLogToSupabaseDB(
+  orgId: string,
+  processId: string,
+  completedQty: number,
+  scrapQty: number,
+  actualSetupMins?: number,
+  actualProcessMins?: number,
+  notes?: string
+) {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase.from("process_execution_logs").insert({
+      org_id: orgId,
+      process_id: processId,
+      completed_qty: completedQty,
+      scrap_qty: scrapQty,
+      actual_setup_mins: actualSetupMins || null,
+      actual_process_mins: actualProcessMins || null,
+      logged_by: user?.id || null,
+      notes: notes || null,
+    });
+
+    return { success: !error, error: error?.message };
+  } catch (err: any) {
+    console.error("saveProcessExecutionLogToSupabaseDB error:", err);
+    return { success: false, error: err.message };
+  }
+}
+

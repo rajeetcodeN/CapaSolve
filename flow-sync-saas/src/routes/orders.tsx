@@ -16,7 +16,9 @@ import {
 } from "@/components/ui/table";
 import { useAppStore } from "@/lib/store";
 import { useTranslations } from "@/lib/translations";
-import { Upload, RotateCcw, Factory, Layers, Calendar, Clock, Search, FileSpreadsheet, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { CreateOrderModal } from "@/components/modals/CreateOrderModal";
+import { CreateStepModal } from "@/components/modals/CreateStepModal";
+import { Upload, RotateCcw, Factory, Layers, Calendar, Clock, Search, FileSpreadsheet, ArrowUpDown, ArrowUp, ArrowDown, PlusCircle, Wrench, Copy } from "lucide-react";
 import { parseSOPDate } from "@/lib/scheduler";
 import { ExportButton } from "@/components/ExportButton";
 
@@ -48,6 +50,10 @@ function OrdersPage() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [sortField, setSortField] = useState<"orderId" | "material" | "orderQty" | "sopDate" | null>("sopDate");
   const [sortAsc, setSortAsc] = useState<boolean>(true);
+
+  // Modal States
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+  const [isStepModalOpen, setIsStepModalOpen] = useState(false);
 
   // Sorting Handler
   const handleSort = (field: "orderId" | "material" | "orderQty" | "sopDate") => {
@@ -189,6 +195,12 @@ function OrdersPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
+          <Button size="sm" onClick={() => setIsOrderModalOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold">
+            <PlusCircle className="mr-1.5 h-4 w-4" /> New Order
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setIsStepModalOpen(true)} className="font-semibold border-primary/40 text-primary hover:bg-primary/10">
+            <Wrench className="mr-1.5 h-4 w-4" /> Add Step
+          </Button>
           <ExportButton size="sm" />
           <Button variant="outline" size="sm" onClick={handleReset} disabled={importing}>
             <RotateCcw className="mr-1.5 h-4 w-4" /> {t("common.reset")}
@@ -205,9 +217,9 @@ function OrdersPage() {
           />
           <Button
             size="sm"
+            variant="outline"
             onClick={() => fileRef.current?.click()}
             disabled={importing}
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
             <Upload className="mr-1.5 h-4 w-4" />
             {importing ? t("common.importing") : t("common.uploadCSV")}
@@ -501,6 +513,16 @@ function OrdersPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Manual Order & Step Creation Modals */}
+      <CreateOrderModal
+        isOpen={isOrderModalOpen}
+        onClose={() => setIsOrderModalOpen(false)}
+      />
+      <CreateStepModal
+        isOpen={isStepModalOpen}
+        onClose={() => setIsStepModalOpen(false)}
+      />
     </div>
   );
 }

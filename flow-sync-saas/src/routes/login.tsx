@@ -182,9 +182,9 @@ function LoginPage() {
                 <Label htmlFor="password" className="text-xs">
                   {language === "de" ? "Passwort" : "Password"}
                 </Label>
-                <span className="text-[10px] text-primary hover:underline cursor-pointer">
+                <Link to="/forgot-password" search={{}} className="text-[10px] text-primary hover:underline font-medium">
                   {language === "de" ? "Passwort vergessen?" : "Forgot password?"}
-                </span>
+                </Link>
               </div>
               <div className="relative">
                 <Input
@@ -271,10 +271,13 @@ function LoginPage() {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <Button variant="outline" size="sm" type="button" className="text-[11px] h-9 cursor-pointer gap-2" onClick={() => {
-              setRole(simulatedRole);
-              toast.success(`Google OAuth login simulated as ${simulatedRole}`);
-              navigate({ to: "/dashboard" });
+            <Button variant="outline" size="sm" type="button" className="text-[11px] h-9 cursor-pointer gap-2" onClick={async () => {
+              try {
+                const { signInWithOAuthProvider } = await import("@/lib/auth-service");
+                await signInWithOAuthProvider("google");
+              } catch (err: any) {
+                toast.error(err.message || "Google OAuth initialization failed.");
+              }
             }}>
               <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -284,10 +287,13 @@ function LoginPage() {
               </svg>
               Google
             </Button>
-            <Button variant="outline" size="sm" type="button" className="text-[11px] h-9 cursor-pointer gap-2" onClick={() => {
-              setRole(simulatedRole);
-              toast.success(`Microsoft login simulated as ${simulatedRole}`);
-              navigate({ to: "/dashboard" });
+            <Button variant="outline" size="sm" type="button" className="text-[11px] h-9 cursor-pointer gap-2" onClick={async () => {
+              try {
+                const { signInWithOAuthProvider } = await import("@/lib/auth-service");
+                await signInWithOAuthProvider("azure");
+              } catch (err: any) {
+                toast.error(err.message || "Microsoft OAuth initialization failed.");
+              }
             }}>
               <svg className="h-4 w-4" viewBox="0 0 23 23" fill="currentColor">
                 <rect x="0" y="0" width="11" height="11" fill="#f25022" />

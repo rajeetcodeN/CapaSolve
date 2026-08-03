@@ -29,6 +29,8 @@ export const PUBLIC_ROUTES = [
   "/pricing",
   "/login",
   "/signup",
+  "/forgot-password",
+  "/reset-password",
   "/about",
   "/contact",
   "/privacy",

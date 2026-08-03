@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
 import { useAppStore } from "@/lib/store";
 import { useTranslations } from "@/lib/translations";
@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   Activity,
+  Sparkles,
   Plus,
   Play,
   CheckCircle2,
@@ -48,7 +49,6 @@ import {
   Download,
   List,
   Grid,
-  Sparkles,
   Maximize2,
   RefreshCw,
   ZoomIn,
@@ -341,15 +341,15 @@ function ShopFloorStatusPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto py-4 animate-in fade-in duration-300">
+    <div className="space-y-6 animate-in fade-in duration-300">
       {/* Header & Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4 border-border/60">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-2.5">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
             <Activity className="h-7 w-7 text-primary" />
             Production Schedule & Shop Floor Status
           </h1>
-          <p className="text-xs md:text-sm text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             MRPeasy-style multi-day production calendar, Workstation Gantt Timeline, and daily work dispatch tracking.
           </p>
         </div>

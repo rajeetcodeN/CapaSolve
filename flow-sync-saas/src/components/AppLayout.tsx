@@ -28,6 +28,9 @@ import {
   HelpCircle,
   Pin,
   Activity,
+  QrCode,
+  GitBranch,
+  Wrench,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "@/lib/translations";
@@ -63,6 +66,8 @@ const nav: NavItem[] = [
   { to: "/orders", labelKey: "nav.orders", icon: ListOrdered },
   { to: "/status", labelKey: "nav.orders", icon: Activity, customLabel: "Shop Status", badge: "DAILY" },
   { to: "/gantt", labelKey: "nav.gantt", icon: BarChart3, badge: "LIVE" },
+  { to: "/sandbox", labelKey: "nav.gantt", icon: GitBranch, customLabel: "What-If Sandbox", badge: "AI" },
+  { to: "/shifts", labelKey: "nav.settings", icon: Wrench, customLabel: "Shifts & Maint" },
   { to: "/machines", labelKey: "nav.settings", icon: Factory, customLabel: "Machines" },
   { to: "/analytics", labelKey: "nav.analytics", icon: TrendingUp },
   { to: "/pivot", labelKey: "nav.pivot", icon: Factory },

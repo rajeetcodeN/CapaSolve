@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { DataCleaningHub } from "@/components/DataCleaningHub";
 import { SAMPLE_DATASETS } from "@/lib/sampleCsvDatasets";
+import { ExampleDatasetsModal } from "@/components/modals/ExampleDatasetsModal";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -61,6 +62,7 @@ function Dashboard() {
     loadDefaultCSV
   } = useAppStore();
   const { t } = useTranslations();
+  const [isExampleModalOpen, setIsExampleModalOpen] = useState(false);
 
   const scheduledCount = processes.filter((p) => p.status === "SCHEDULED").length;
 
@@ -286,23 +288,22 @@ function Dashboard() {
               Select CSV File
             </Button>
             <Button
-              onClick={handleDownloadBlankTemplate}
+              onClick={() => setIsExampleModalOpen(true)}
               variant="outline"
               size="lg"
-              className="border-primary/40 text-primary hover:bg-primary/10 font-semibold px-5 shadow-sm cursor-pointer text-xs gap-1.5"
+              className="border-primary/40 text-primary hover:bg-primary/10 font-bold px-5 shadow-sm cursor-pointer text-xs gap-1.5"
             >
-              <Download className="h-4 w-4" />
-              Download Empty CSV Template (.csv)
+              <Sparkles className="h-4 w-4" />
+              Load Factory Example Datasets
             </Button>
             <Button
-              onClick={handleReset}
-              disabled={importing}
+              onClick={handleDownloadBlankTemplate}
               variant="ghost"
               size="lg"
               className="text-muted-foreground hover:text-foreground text-xs gap-1.5"
             >
-              <RotateCcw className="h-4 w-4" />
-              Load Default Factory Seed
+              <Download className="h-4 w-4" />
+              Download Blank Template (.csv)
             </Button>
           </div>
         </Card>
@@ -586,6 +587,9 @@ function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Example Datasets Modal */}
+      <ExampleDatasetsModal open={isExampleModalOpen} onOpenChange={setIsExampleModalOpen} />
     </div>
   );
 }

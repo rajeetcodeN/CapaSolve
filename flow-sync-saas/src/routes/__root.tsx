@@ -82,6 +82,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       "/pricing",
       "/login",
       "/signup",
+      "/forgot-password",
+      "/reset-password",
       "/about",
       "/contact",
       "/privacy",
@@ -122,6 +124,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
       {
+        rel: "manifest",
+        href: "/manifest.json",
+      },
+      {
         rel: "icon",
         type: "image/svg+xml",
         href: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233b82f6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Cline x1='16' y1='2' x2='16' y2='6'%3E%3C/line%3E%3Cline x1='8' y1='2' x2='8' y2='6'%3E%3C/line%3E%3Cline x1='3' y1='10' x2='21' y2='10'%3E%3C/line%3E%3C/svg%3E",
@@ -154,14 +160,25 @@ function RootComponent() {
 
   useEffect(() => {
     const cleanup = setupAuthListener();
+    
+    // Register PWA Service Worker for offline tablet access
+    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch((err) => {
+        console.warn("PWA ServiceWorker registration failed:", err);
+      });
+    }
+
     return () => cleanup?.();
   }, []);
 
+  const isKiosk = location.pathname === "/kiosk";
   const isMarketing = [
     "/",
     "/pricing",
     "/login",
     "/signup",
+    "/forgot-password",
+    "/reset-password",
     "/about",
     "/contact",
     "/privacy",
@@ -173,7 +190,9 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {isMarketing ? (
+      {isKiosk ? (
+        <Outlet />
+      ) : isMarketing ? (
         <MarketingLayout>
           <Outlet />
         </MarketingLayout>

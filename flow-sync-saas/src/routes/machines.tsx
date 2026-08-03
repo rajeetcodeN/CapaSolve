@@ -119,15 +119,15 @@ function MachineManagementPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto py-4 animate-in fade-in duration-300">
+    <div className="space-y-6 animate-in fade-in duration-300">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4 border-border/60">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-2.5">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
             <Factory className="h-7 w-7 text-primary" />
             Workstation & Machine Group Management
           </h1>
-          <p className="text-xs md:text-sm text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Configure manufacturing lines, assigned machine groups, and scheduled preventive maintenance blocks.
           </p>
         </div>

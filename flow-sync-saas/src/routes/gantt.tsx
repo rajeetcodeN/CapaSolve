@@ -26,8 +26,10 @@ import {
   CalendarDays,
   Pin,
   Unlock,
+  Package,
 } from "lucide-react";
 import { ExportButton } from "@/components/ExportButton";
+import { MaterialInventoryModal } from "@/components/modals/MaterialInventoryModal";
 
 export const Route = createFileRoute("/gantt")({
   head: () => ({
@@ -138,6 +140,7 @@ function GanttPage() {
   const [selectedProcessId, setSelectedProcessId] = useState<string | null>(null);
   const [filterGroup, setFilterGroup] = useState<string>("ALL");
   const [viewMode, setViewMode] = useState<"workstation" | "group">("workstation");
+  const [isMaterialModalOpen, setIsMaterialModalOpen] = useState(false);
 
   const filteredGroups = useMemo(() => {
     const groups = machineGroups || [
@@ -431,6 +434,10 @@ function GanttPage() {
             />
           </div>
           <Legend />
+          <Button variant="outline" size="sm" onClick={() => setIsMaterialModalOpen(true)} className="gap-1.5 h-8 text-xs font-bold border-border/80 cursor-pointer">
+            <Package className="h-3.5 w-3.5 text-primary" />
+            Material Stock
+          </Button>
           <ExportButton size="sm" />
           <Button onClick={onGenerate} disabled={isOptimizing} size="sm" className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 min-w-[150px]">
             <RotateCcw className={cn("h-4 w-4", isOptimizing && "animate-spin")} />
@@ -488,20 +495,34 @@ function GanttPage() {
                   Fully-Optimized
                 </Button>
               </div>
-              
-              <div className="text-xs leading-snug max-w-sm">
+                        <div className="text-xs leading-snug max-w-sm">
                 {activeOptimizationMode === "pre" ? (
-                  <span className="text-red-500 font-semibold flex items-center gap-1">
-                    ⚠ Warning: active machine overlaps and employee conflicts displayed.
-                  </span>
+                  <div className="p-2 bg-red-500/10 border border-red-500/30 rounded-lg space-y-1">
+                    <span className="text-red-600 dark:text-red-400 font-bold flex items-center gap-1">
+                      ⚠ Pre-Optimization Mode
+                    </span>
+                    <p className="text-[11px] text-muted-foreground">
+                      Shows raw SAP/ERP SOP start dates with un-sequenced machine overlaps and staffing conflicts to highlight shop floor bottlenecks.
+                    </p>
+                  </div>
                 ) : activeOptimizationMode === "workstation" ? (
-                  <span className="text-sky-600 font-semibold flex items-center gap-1">
-                    ℹ Workstation overlaps resolved. Stacking manpower spikes may remain.
-                  </span>
+                  <div className="p-2 bg-sky-500/10 border border-sky-500/30 rounded-lg space-y-1">
+                    <span className="text-sky-600 dark:text-sky-400 font-bold flex items-center gap-1">
+                      ℹ Workstation-Optimized Mode
+                    </span>
+                    <p className="text-[11px] text-muted-foreground">
+                      Resolves workstation machine collisions per line. Machining operations are chronologically queued on each machine.
+                    </p>
+                  </div>
                 ) : (
-                  <span className="text-emerald-600 font-semibold flex items-center gap-1">
-                    ✔ Fully Optimized: both machine overlaps and staffing overloads resolved!
-                  </span>
+                  <div className="p-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg space-y-1">
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                      ✔ Fully-Optimized Mode
+                    </span>
+                    <p className="text-[11px] text-muted-foreground">
+                      Resolves both machine overlaps AND setter/operator staffing limits simultaneously across all shifts.
+                    </p>
+                  </div>
                 )}
               </div>
             </div>
@@ -594,16 +615,16 @@ function GanttPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 pb-3">
-            <Tabs defaultValue="daily" className="w-full">
+            <Tabs defaultValue="global" className="w-full">
               <TabsList className="grid grid-cols-2 h-7 p-0.5 bg-muted">
                 <TabsTrigger value="global" className="text-[10px] py-1 h-6">Global Defaults</TabsTrigger>
                 <TabsTrigger value="daily" className="text-[10px] py-1 h-6">Daily Overrides</TabsTrigger>
               </TabsList>
               
-              <TabsContent value="global" className="space-y-2 mt-2">
+              <TabsContent value="global" className="space-y-2.5 mt-2">
                 <div className="space-y-1">
                   <div className="flex justify-between items-center text-[10.5px]">
-                    <Label htmlFor="global-setter-cap" className="font-semibold text-muted-foreground uppercase">Global Setter Cap</Label>
+                    <Label htmlFor="global-setter-cap" className="font-semibold text-muted-foreground uppercase">Setter (Setup) Cap</Label>
                     <span className="font-mono font-bold text-primary">{globalSetterCapacity}%</span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -619,10 +640,36 @@ function GanttPage() {
                     />
                     <span className="text-xs font-bold text-muted-foreground font-mono">%</span>
                   </div>
+                  {/* Presets */}
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    {[
+                      { label: "0% (No Setter)", val: 0 },
+                      { label: "100% (1 Staff)", val: 100 },
+                      { label: "300% (3 Staff)", val: 300 },
+                      { label: "500% (5 Staff)", val: 500 },
+                    ].map((p) => (
+                      <button
+                        key={p.val}
+                        type="button"
+                        onClick={() => {
+                          setGlobalSetterCapacity(p.val);
+                          toast.success(`Setter capacity set to ${p.label}`);
+                        }}
+                        className={cn(
+                          "px-2 py-0.5 text-[9.5px] font-bold rounded-md border transition-all cursor-pointer",
+                          globalSetterCapacity === p.val
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-muted/50 hover:bg-muted text-muted-foreground border-border/60"
+                        )}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-1 pt-1 border-t border-border/30">
                   <div className="flex justify-between items-center text-[10.5px]">
-                    <Label htmlFor="global-operator-cap" className="font-semibold text-muted-foreground uppercase">Global Worker Cap</Label>
+                    <Label htmlFor="global-operator-cap" className="font-semibold text-muted-foreground uppercase">Operator (Worker) Cap</Label>
                     <span className="font-mono font-bold text-primary">{globalOperatorCapacity}%</span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1540,6 +1587,9 @@ function GanttPage() {
           </Button>
         </div>
       )}
+
+      {/* Raw Material Inventory & Shortage Engine Modal */}
+      <MaterialInventoryModal open={isMaterialModalOpen} onOpenChange={setIsMaterialModalOpen} />
     </div>
   );
 }

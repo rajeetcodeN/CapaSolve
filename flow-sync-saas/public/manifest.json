@@ -1,0 +1,22 @@
+{
+  "short_name": "CapaSolve",
+  "name": "CapaSolve SaaS — Production Scheduler & Shop Floor MES",
+  "icons": [
+    {
+      "src": "/digitalbiz_Logo.jpg",
+      "type": "image/jpeg",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/digitalbiz_Logo.jpg",
+      "type": "image/jpeg",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0f172a",
+  "theme_color": "#2563eb",
+  "display": "standalone",
+  "orientation": "any",
+  "description": "Finite Capacity Production Scheduling and Shop Floor Execution System."
+}

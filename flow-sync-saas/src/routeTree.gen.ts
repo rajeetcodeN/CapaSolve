@@ -12,8 +12,11 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as StatusRouteImport } from './routes/status'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as ShiftsRouteImport } from './routes/shifts'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SecurityRouteImport } from './routes/security'
+import { Route as SandboxRouteImport } from './routes/sandbox'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as PivotRouteImport } from './routes/pivot'
@@ -22,6 +25,7 @@ import { Route as MonthlyRouteImport } from './routes/monthly'
 import { Route as MachinesRouteImport } from './routes/machines'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as GanttRouteImport } from './routes/gantt'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as DocumentationRouteImport } from './routes/documentation'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ContactRouteImport } from './routes/contact'
@@ -46,6 +50,11 @@ const SignupRoute = SignupRouteImport.update({
   path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ShiftsRoute = ShiftsRouteImport.update({
+  id: '/shifts',
+  path: '/shifts',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -54,6 +63,16 @@ const SettingsRoute = SettingsRouteImport.update({
 const SecurityRoute = SecurityRouteImport.update({
   id: '/security',
   path: '/security',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SandboxRoute = SandboxRouteImport.update({
+  id: '/sandbox',
+  path: '/sandbox',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyRoute = PrivacyRouteImport.update({
@@ -94,6 +113,11 @@ const LoginRoute = LoginRouteImport.update({
 const GanttRoute = GanttRouteImport.update({
   id: '/gantt',
   path: '/gantt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DocumentationRoute = DocumentationRouteImport.update({
@@ -146,6 +170,7 @@ export interface FileRoutesByFullPath {
   '/contact': typeof ContactRoute
   '/dashboard': typeof DashboardRoute
   '/documentation': typeof DocumentationRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/gantt': typeof GanttRoute
   '/login': typeof LoginRoute
   '/machines': typeof MachinesRoute
@@ -154,8 +179,11 @@ export interface FileRoutesByFullPath {
   '/pivot': typeof PivotRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/sandbox': typeof SandboxRoute
   '/security': typeof SecurityRoute
   '/settings': typeof SettingsRoute
+  '/shifts': typeof ShiftsRoute
   '/signup': typeof SignupRoute
   '/status': typeof StatusRoute
   '/support': typeof SupportRoute
@@ -169,6 +197,7 @@ export interface FileRoutesByTo {
   '/contact': typeof ContactRoute
   '/dashboard': typeof DashboardRoute
   '/documentation': typeof DocumentationRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/gantt': typeof GanttRoute
   '/login': typeof LoginRoute
   '/machines': typeof MachinesRoute
@@ -177,8 +206,11 @@ export interface FileRoutesByTo {
   '/pivot': typeof PivotRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/sandbox': typeof SandboxRoute
   '/security': typeof SecurityRoute
   '/settings': typeof SettingsRoute
+  '/shifts': typeof ShiftsRoute
   '/signup': typeof SignupRoute
   '/status': typeof StatusRoute
   '/support': typeof SupportRoute
@@ -193,6 +225,7 @@ export interface FileRoutesById {
   '/contact': typeof ContactRoute
   '/dashboard': typeof DashboardRoute
   '/documentation': typeof DocumentationRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/gantt': typeof GanttRoute
   '/login': typeof LoginRoute
   '/machines': typeof MachinesRoute
@@ -201,8 +234,11 @@ export interface FileRoutesById {
   '/pivot': typeof PivotRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/sandbox': typeof SandboxRoute
   '/security': typeof SecurityRoute
   '/settings': typeof SettingsRoute
+  '/shifts': typeof ShiftsRoute
   '/signup': typeof SignupRoute
   '/status': typeof StatusRoute
   '/support': typeof SupportRoute
@@ -218,6 +254,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/dashboard'
     | '/documentation'
+    | '/forgot-password'
     | '/gantt'
     | '/login'
     | '/machines'
@@ -226,8 +263,11 @@ export interface FileRouteTypes {
     | '/pivot'
     | '/pricing'
     | '/privacy'
+    | '/reset-password'
+    | '/sandbox'
     | '/security'
     | '/settings'
+    | '/shifts'
     | '/signup'
     | '/status'
     | '/support'
@@ -241,6 +281,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/dashboard'
     | '/documentation'
+    | '/forgot-password'
     | '/gantt'
     | '/login'
     | '/machines'
@@ -249,8 +290,11 @@ export interface FileRouteTypes {
     | '/pivot'
     | '/pricing'
     | '/privacy'
+    | '/reset-password'
+    | '/sandbox'
     | '/security'
     | '/settings'
+    | '/shifts'
     | '/signup'
     | '/status'
     | '/support'
@@ -264,6 +308,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/dashboard'
     | '/documentation'
+    | '/forgot-password'
     | '/gantt'
     | '/login'
     | '/machines'
@@ -272,8 +317,11 @@ export interface FileRouteTypes {
     | '/pivot'
     | '/pricing'
     | '/privacy'
+    | '/reset-password'
+    | '/sandbox'
     | '/security'
     | '/settings'
+    | '/shifts'
     | '/signup'
     | '/status'
     | '/support'
@@ -288,6 +336,7 @@ export interface RootRouteChildren {
   ContactRoute: typeof ContactRoute
   DashboardRoute: typeof DashboardRoute
   DocumentationRoute: typeof DocumentationRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   GanttRoute: typeof GanttRoute
   LoginRoute: typeof LoginRoute
   MachinesRoute: typeof MachinesRoute
@@ -296,8 +345,11 @@ export interface RootRouteChildren {
   PivotRoute: typeof PivotRoute
   PricingRoute: typeof PricingRoute
   PrivacyRoute: typeof PrivacyRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
+  SandboxRoute: typeof SandboxRoute
   SecurityRoute: typeof SecurityRoute
   SettingsRoute: typeof SettingsRoute
+  ShiftsRoute: typeof ShiftsRoute
   SignupRoute: typeof SignupRoute
   StatusRoute: typeof StatusRoute
   SupportRoute: typeof SupportRoute
@@ -326,6 +378,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/shifts': {
+      id: '/shifts'
+      path: '/shifts'
+      fullPath: '/shifts'
+      preLoaderRoute: typeof ShiftsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -338,6 +397,20 @@ declare module '@tanstack/react-router' {
       path: '/security'
       fullPath: '/security'
       preLoaderRoute: typeof SecurityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sandbox': {
+      id: '/sandbox'
+      path: '/sandbox'
+      fullPath: '/sandbox'
+      preLoaderRoute: typeof SandboxRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy': {
@@ -394,6 +467,13 @@ declare module '@tanstack/react-router' {
       path: '/gantt'
       fullPath: '/gantt'
       preLoaderRoute: typeof GanttRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/documentation': {
@@ -464,6 +544,7 @@ const rootRouteChildren: RootRouteChildren = {
   ContactRoute: ContactRoute,
   DashboardRoute: DashboardRoute,
   DocumentationRoute: DocumentationRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   GanttRoute: GanttRoute,
   LoginRoute: LoginRoute,
   MachinesRoute: MachinesRoute,
@@ -472,8 +553,11 @@ const rootRouteChildren: RootRouteChildren = {
   PivotRoute: PivotRoute,
   PricingRoute: PricingRoute,
   PrivacyRoute: PrivacyRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
+  SandboxRoute: SandboxRoute,
   SecurityRoute: SecurityRoute,
   SettingsRoute: SettingsRoute,
+  ShiftsRoute: ShiftsRoute,
   SignupRoute: SignupRoute,
   StatusRoute: StatusRoute,
   SupportRoute: SupportRoute,

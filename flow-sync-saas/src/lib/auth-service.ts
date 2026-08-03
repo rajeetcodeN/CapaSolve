@@ -90,9 +90,54 @@ export function setupAuthListener() {
   };
 }
 
+export async function sendPasswordResetEmail(email: string) {
+  const redirectUrl = typeof window !== "undefined" 
+    ? `${window.location.origin}/reset-password`
+    : "http://localhost:3000/reset-password";
+
+  const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: redirectUrl,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+  return data;
+}
+
+export async function updateUserPassword(newPassword: string) {
+  const { data, error } = await supabase.auth.updateUser({
+    password: newPassword,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+  return data;
+}
+
+export async function signInWithOAuthProvider(provider: "google" | "azure") {
+  const redirectUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/dashboard`
+    : "http://localhost:3000/dashboard";
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider,
+    options: {
+      redirectTo: redirectUrl,
+    },
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+  return data;
+}
+
 export async function signOutUser() {
   await supabase.auth.signOut();
   useAppStore.getState().setUser(null);
   useAppStore.getState().setOrganization(null);
   useAppStore.getState().setRole("GUEST");
 }
+

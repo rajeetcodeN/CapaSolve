@@ -451,10 +451,20 @@ export function generateSchedule(
             // Setup capacity check (Global pool: max setterCapMin minutes of setups running globally)
             if (setupUsedInSlot > 0) {
               const globalKey = `${dateStr}_${hour}`;
-              const existingSetup = globalHourSetupMinutes.get(globalKey) || 0;
-              if (existingSetup + setupUsedInSlot > setterCapMin + 0.01) {
-                conflict = true;
-                break;
+              if (setterCapMin > 0) {
+                const existingSetup = globalHourSetupMinutes.get(globalKey) || 0;
+                if (existingSetup + setupUsedInSlot > setterCapMin + 0.01) {
+                  conflict = true;
+                  break;
+                }
+              } else {
+                // 0% Setter mode (No Dedicated Setter / Self-Setup): Setup is routed directly to operator capacity
+                const globalOperatorKey = `${dateStr}_${hour}`;
+                const existingOperator = globalHourMachiningOperatorMinutes.get(globalOperatorKey) || 0;
+                if (existingOperator + setupUsedInSlot > processCapMin + 0.01) {
+                  conflict = true;
+                  break;
+                }
               }
             }
 

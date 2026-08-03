@@ -7,6 +7,7 @@ import { useAppStore } from "@/lib/store";
 import { useTranslations } from "@/lib/translations";
 import { toast } from "sonner";
 import { Globe, Building2, MapPin, Phone, Mail, ShieldCheck, CloudUpload, CloudDownload, Send, User, UserCheck, Sliders, Plus, Trash2, Clock, Layers } from "lucide-react";
+import { SetupMatrixConfig } from "@/components/SetupMatrixConfig";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -92,13 +93,13 @@ function ManagePage() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto py-4">
+    <div className="space-y-6 animate-in fade-in duration-300">
       {/* Title Header */}
       <div className="text-left space-y-1">
-        <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-foreground">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">
           {language === "de" ? "Organisation verwalten" : "Manage Organization"}
         </h1>
-        <p className="text-xs md:text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground mt-1">
           {language === "de"
             ? "Verwalten Sie Ihr Firmenprofil, Ihr Benutzerkonto und Ihre Cloud-Synchronisation an einem Ort."
             : "Manage your company profile, user account details, database synchronization, and support channels."}
@@ -107,6 +108,9 @@ function ManagePage() {
 
       {/* Stacked Cards Section — One Below The Other */}
       <div className="space-y-6 flex flex-col w-full">
+        
+        {/* Sequence-Dependent Setup Matrix Config */}
+        <SetupMatrixConfig />
         
         {/* Block 1: User Profile Management */}
         <div className="bg-card border border-border/70 rounded-2xl p-6 shadow-sm space-y-4">
@@ -153,7 +157,30 @@ function ManagePage() {
               />
             </div>
 
-            <div className="sm:col-span-3 flex justify-end pt-2">
+            <div className="sm:col-span-3 flex items-center justify-between pt-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm" 
+                onClick={async () => {
+                  if (!user?.email) {
+                    toast.error("No email associated with current user.");
+                    return;
+                  }
+                  try {
+                    const { sendPasswordResetEmail } = await import("@/lib/auth-service");
+                    await sendPasswordResetEmail(user.email);
+                    toast.success(language === "de" ? "Passwort-Zurücksetzungs-E-Mail gesendet!" : "Password reset email sent!");
+                  } catch (err: any) {
+                    toast.error(err.message || "Failed to send reset email.");
+                  }
+                }}
+                className="text-xs h-9 px-4 gap-1.5 cursor-pointer rounded-xl border-border hover:bg-accent"
+              >
+                <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+                <span>{language === "de" ? "Passwort-Zurücksetzungs-E-Mail senden" : "Send Password Reset Link"}</span>
+              </Button>
+
               <Button type="submit" size="sm" className="text-xs h-9 px-6 gap-1.5 cursor-pointer shadow-sm rounded-xl bg-primary text-primary-foreground hover:bg-primary/95">
                 <UserCheck className="h-3.5 w-3.5" />
                 <span>{language === "de" ? "Profil speichern" : "Save Profile"}</span>
