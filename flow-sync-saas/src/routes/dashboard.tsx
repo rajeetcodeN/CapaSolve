@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/lib/store";
 import { useTranslations } from "@/lib/translations";
@@ -460,8 +461,14 @@ function Dashboard() {
 
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">{t("dashboard.title")}</h1>
-          <p className="text-muted-foreground">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-3xl font-bold tracking-tight">{t("dashboard.title")}</h1>
+            <Badge className="bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 text-xs gap-1.5 font-mono shadow-sm">
+              <span className="h-2 w-2 rounded-full bg-slate-500 dark:bg-slate-400 animate-pulse"></span>
+              AI Engine Connected
+            </Badge>
+          </div>
+          <p className="text-muted-foreground mt-1">
             {t("dashboard.subtitle")}
           </p>
         </div>

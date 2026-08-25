@@ -359,7 +359,7 @@ export function DataCleaningHub({
     setAiSuggestions(prev => prev.filter(s => s.id !== sugg.id));
     setAiTerminalLogs(prev => [
       ...prev,
-      `[AI CO-PILOT] Accepted suggestion on row ${sugg.rowIdx + 1}: changed ${sugg.column} from "${sugg.originalValue}" to "${sugg.suggestedValue}".`
+      `[AI ENGINE] Accepted suggestion on row ${sugg.rowIdx + 1}: changed ${sugg.column} from "${sugg.originalValue}" to "${sugg.suggestedValue}".`
     ]);
 
     // Rescan issues
@@ -1153,7 +1153,7 @@ export function DataCleaningHub({
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg flex items-center gap-1.5 text-foreground">
                       <Sparkles className="h-5 w-5 text-indigo-500 animate-pulse" />
-                      AI Cleaning Assistant & Co-pilot
+                      AI Data Cleaning Assistant
                     </CardTitle>
                     <span className="text-[9px] bg-indigo-500/10 text-indigo-600 border border-indigo-500/20 px-2.5 py-0.5 rounded-full font-bold">
                       Simulation Engine Ready
@@ -1208,7 +1208,7 @@ export function DataCleaningHub({
                   {/* Console Input for Custom Prompts */}
                   <div className="space-y-2">
                     <Label htmlFor="ai-instructions" className="text-xs font-bold text-muted-foreground flex items-center justify-between">
-                      <span>Instruct AI Co-pilot to clean or edit dataset:</span>
+                      <span>Instruct AI Assistant to clean or edit dataset:</span>
                       <span className="text-[9px] font-normal text-muted-foreground/80 italic">Natural Language Engine</span>
                     </Label>
                     <div className="flex gap-2">
@@ -1266,7 +1266,7 @@ export function DataCleaningHub({
                   {/* AI Terminal Log Output */}
                   <div className="rounded-lg bg-slate-50 dark:bg-zinc-950 border border-border text-slate-700 dark:text-zinc-350 p-3 font-mono text-[10px] space-y-1 relative shadow-inner">
                     <div className="flex items-center justify-between border-b border-slate-200 dark:border-zinc-800/80 pb-1.5 mb-1.5 text-slate-500 font-bold text-[8px] uppercase tracking-wider">
-                      <span className="flex items-center gap-1"><Terminal className="h-3 w-3" /> AI Co-pilot Reasoning Console</span>
+                      <span className="flex items-center gap-1"><Terminal className="h-3 w-3" /> AI Reasoning Console</span>
                       <span className="text-emerald-600 dark:text-emerald-450 font-bold">online</span>
                     </div>
                     <div className="max-h-[120px] overflow-y-auto space-y-1 scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-800 scrollbar-track-transparent">
@@ -1274,7 +1274,7 @@ export function DataCleaningHub({
                         <div key={idx} className="leading-relaxed">
                           {log.startsWith("[SYSTEM]") && <span className="text-sky-600 dark:text-sky-400">{log}</span>}
                           {log.startsWith("[CLEANER]") && <span className="text-amber-600 dark:text-amber-400">{log}</span>}
-                          {log.startsWith("[AI CO-PILOT]") && <span className="text-indigo-600 dark:text-indigo-400">{log}</span>}
+                          {(log.startsWith("[AI CO-PILOT]") || log.startsWith("[AI ENGINE]")) && <span className="text-indigo-600 dark:text-indigo-400">{log}</span>}
                           {log.startsWith("[AI CONSULT]") && <span className="text-pink-600 dark:text-pink-400">{log}</span>}
                           {log.startsWith("[AI HEAL]") && <span className="text-emerald-600 dark:text-emerald-400">{log}</span>}
                           {!log.startsWith("[") && <span className="text-slate-600 dark:text-zinc-400">{log}</span>}

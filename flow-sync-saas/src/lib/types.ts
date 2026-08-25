@@ -81,3 +81,53 @@ export const SHIFT_1_END = 13;
 export const SHIFT_2_START = 13;
 export const SHIFT_2_END = 20;
 export const WORKING_HOURS_PER_DAY = 14; // 6am - 8pm
+
+export type ScenarioType = 
+  | "machine_group_delay"
+  | "machine_stopped"
+  | "resource_unavailable"
+  | "shift_change"
+  | "rush_order";
+
+export interface ScenarioConfig {
+  type: ScenarioType;
+  machineGroupId?: string;    // e.g. "M1" or "M2"
+  groupDelayHours?: number;   // e.g. 8, 16, 24, 48
+  machineId?: string;         // e.g. "603012", "605001"
+  machineStopped?: boolean;
+  downtimeHours?: number;     // e.g. 8, 12, 24, 48
+  resourceType?: "setter" | "operator" | "both";
+  capacityReductionPct?: number; // e.g. 50 (50% reduction)
+  shiftOption?: "no_shift_2" | "weekend_overtime";
+  rushOrderId?: string;       // e.g. "ord-1019015_10"
+  startDate?: string;         // YYYY-MM-DD
+}
+
+export interface ShiftedOrderImpact {
+  orderId: string;
+  material: string;
+  originalStart: string;
+  newStart: string;
+  originalEnd: string;
+  newEnd: string;
+  shiftHours: number;
+  reason: string;
+  affectedMachineId?: string;
+  impactType?: "delayed" | "expedited";
+}
+
+export interface ScenarioBranch {
+  id: string;
+  name: string;
+  description: string;
+  createdAt: string;
+  config: ScenarioConfig;
+  makespanDays: number;
+  totalSetupHours: number;
+  utilizationPct: number;
+  otdPct: number;
+  active: boolean;
+  shiftedOrders: ShiftedOrderImpact[];
+  aiAdaptationAdvice?: string[];
+}
+
