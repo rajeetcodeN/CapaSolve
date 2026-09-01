@@ -14,7 +14,11 @@ const rateLimitWindowMs = 60 * 1000;
 const maxRequestsPerWindow = 100;
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 
-export function apiKeyAuthMiddleware(apiKey?: string): { authenticated: boolean; tenantId?: string; error?: string } {
+export function apiKeyAuthMiddleware(apiKey?: string): {
+  authenticated: boolean;
+  tenantId?: string;
+  error?: string;
+} {
   if (!apiKey || apiKey.trim() === "") {
     return { authenticated: false, error: "Missing X-API-Key header." };
   }
@@ -25,7 +29,11 @@ export function apiKeyAuthMiddleware(apiKey?: string): { authenticated: boolean;
   return { authenticated: false, error: "Invalid X-API-Key provided." };
 }
 
-export function rateLimiterMiddleware(identifier: string): { allowed: boolean; remaining: number; resetInSec: number } {
+export function rateLimiterMiddleware(identifier: string): {
+  allowed: boolean;
+  remaining: number;
+  resetInSec: number;
+} {
   const now = Date.now();
   let record = rateLimitMap.get(identifier);
 
@@ -60,7 +68,7 @@ export function formatApiError(code: string, message: string, details?: any) {
 
 export async function handleApiRouteRequest(opts: ApiRequestOptions) {
   const apiKey = opts.headers["x-api-key"] || opts.headers["X-API-Key"];
-  
+
   // 1. Auth Check
   const auth = apiKeyAuthMiddleware(apiKey);
   if (!auth.authenticated) {
@@ -81,7 +89,10 @@ export async function handleApiRouteRequest(opts: ApiRequestOptions) {
         "X-RateLimit-Remaining": "0",
         "X-RateLimit-Reset": String(rateLimit.resetInSec),
       },
-      body: formatApiError("RATE_LIMIT_EXCEEDED", `Rate limit exceeded. Try again in ${rateLimit.resetInSec}s.`),
+      body: formatApiError(
+        "RATE_LIMIT_EXCEEDED",
+        `Rate limit exceeded. Try again in ${rateLimit.resetInSec}s.`,
+      ),
     };
   }
 

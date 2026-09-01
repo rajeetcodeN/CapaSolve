@@ -66,7 +66,7 @@ export function CommandPalette() {
       <CommandInput placeholder="Type a command or search workspace..." />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
-        
+
         {/* Navigation Group */}
         <CommandGroup heading="Navigation">
           <CommandItem onSelect={() => handleSelectNav("/dashboard")}>
@@ -125,7 +125,7 @@ export function CommandPalette() {
             <span>Run Constraint Scheduler</span>
             <CommandShortcut>⌘R</CommandShortcut>
           </CommandItem>
-          
+
           <CommandItem
             onSelect={() => {
               setCommandPaletteOpen(false);
@@ -209,7 +209,8 @@ export function CommandPalette() {
                 >
                   <ListOrdered className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
                   <span>
-                    Order #{ord.orderId} - <span className="font-mono text-xs">{ord.material}</span> ({ord.orderQty} pcs)
+                    Order #{ord.orderId} - <span className="font-mono text-xs">{ord.material}</span>{" "}
+                    ({ord.orderQty} pcs)
                   </span>
                 </CommandItem>
               ))}

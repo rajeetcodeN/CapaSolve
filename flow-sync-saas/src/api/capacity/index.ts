@@ -61,7 +61,14 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { profileId, date, setterCapacityPct, operatorCapacityPct, isHoliday = false, note = "" } = body;
+    const {
+      profileId,
+      date,
+      setterCapacityPct,
+      operatorCapacityPct,
+      isHoliday = false,
+      note = "",
+    } = body;
 
     if (!profileId || !date) {
       return new Response(JSON.stringify({ error: "Missing required fields: profileId, date" }), {
@@ -81,7 +88,7 @@ export async function POST(request: Request) {
           is_holiday: isHoliday,
           note,
         },
-        { onConflict: "profile_id,date" }
+        { onConflict: "profile_id,date" },
       )
       .select()
       .single();

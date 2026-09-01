@@ -23,7 +23,9 @@ function SupportPage() {
           <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-foreground">
             Support Portal
           </h1>
-          <p className="text-muted-foreground text-xs">Need help setting up constraints or troubleshooting uploads?</p>
+          <p className="text-muted-foreground text-xs">
+            Need help setting up constraints or troubleshooting uploads?
+          </p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-6">
@@ -34,9 +36,13 @@ function SupportPage() {
               </div>
               <h3 className="font-bold text-sm text-foreground">Email Support</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                If you encounter bugs, spreadsheet parsing errors, or layout issues, email us directly.
+                If you encounter bugs, spreadsheet parsing errors, or layout issues, email us
+                directly.
               </p>
-              <a href="mailto:info@digitalbiz.tech" className="text-xs text-primary font-bold hover:underline block pt-2">
+              <a
+                href="mailto:info@digitalbiz.tech"
+                className="text-xs text-primary font-bold hover:underline block pt-2"
+              >
                 info@digitalbiz.tech &rarr;
               </a>
             </CardContent>

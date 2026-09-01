@@ -6,15 +6,15 @@ import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/lib/store";
 import { useTranslations } from "@/lib/translations";
 import { toast } from "sonner";
-import { 
-  Play, 
-  ListOrdered, 
-  BarChart3, 
-  Cloud, 
-  CloudUpload, 
-  CloudDownload, 
-  ShieldAlert, 
-  Upload, 
+import {
+  Play,
+  ListOrdered,
+  BarChart3,
+  Cloud,
+  CloudUpload,
+  CloudDownload,
+  ShieldAlert,
+  Upload,
   RotateCcw,
   FileSpreadsheet,
   Download,
@@ -22,7 +22,7 @@ import {
   Sparkles,
   Layers,
   FileCheck,
-  Check
+  Check,
 } from "lucide-react";
 import { DataCleaningHub } from "@/components/DataCleaningHub";
 import { SAMPLE_DATASETS } from "@/lib/sampleCsvDatasets";
@@ -45,22 +45,22 @@ function Dashboard() {
   const [uploadedRawCsvText, setUploadedRawCsvText] = useState<string>("");
   const [isDragOver, setIsDragOver] = useState(false);
 
-  const { 
-    orders, 
-    processes, 
-    machines, 
-    slots, 
-    warnings, 
-    runScheduler, 
-    saveToCloud, 
-    loadFromCloud, 
-    isCloudSaving, 
+  const {
+    orders,
+    processes,
+    machines,
+    slots,
+    warnings,
+    runScheduler,
+    saveToCloud,
+    loadFromCloud,
+    isCloudSaving,
     isCloudLoading,
     role,
     plan,
     clearAll,
     loadFromCSVText,
-    loadDefaultCSV
+    loadDefaultCSV,
   } = useAppStore();
   const { t } = useTranslations();
   const [isExampleModalOpen, setIsExampleModalOpen] = useState(false);
@@ -69,7 +69,9 @@ function Dashboard() {
 
   const processFile = (file: File) => {
     if (role !== "DEVELOPER" && role !== "ADMIN") {
-      toast.error("Access Denied: Only users with the Developer or Admin role can upload or change production datasets.");
+      toast.error(
+        "Access Denied: Only users with the Developer or Admin role can upload or change production datasets.",
+      );
       return;
     }
     const fileName = file.name.toLowerCase();
@@ -84,7 +86,9 @@ function Dashboard() {
       try {
         const text = event.target?.result as string;
         setUploadedRawCsvText(text);
-        toast.success(`File "${file.name}" uploaded successfully! Opening Data Cleaning Assistant...`);
+        toast.success(
+          `File "${file.name}" uploaded successfully! Opening Data Cleaning Assistant...`,
+        );
       } catch (err) {
         toast.error("Failed to read CSV file.");
         console.error(err);
@@ -127,7 +131,9 @@ function Dashboard() {
 
   const onRun = () => {
     if (role !== "DEVELOPER" && role !== "ADMIN") {
-      toast.error("Access Denied: Guests have view-only access. Only Developers or Admins can run the scheduler.");
+      toast.error(
+        "Access Denied: Guests have view-only access. Only Developers or Admins can run the scheduler.",
+      );
       return;
     }
     runScheduler();
@@ -137,7 +143,9 @@ function Dashboard() {
 
   const onSaveToCloud = () => {
     if (role !== "DEVELOPER" && role !== "ADMIN") {
-      toast.error("Access Denied: Only Developers or Admins can modify or save schedules to the cloud.");
+      toast.error(
+        "Access Denied: Only Developers or Admins can modify or save schedules to the cloud.",
+      );
       return;
     }
     saveToCloud();
@@ -153,7 +161,9 @@ function Dashboard() {
 
   const handleReset = async () => {
     if (role !== "DEVELOPER" && role !== "ADMIN") {
-      toast.error("Access Denied: Only users with the Developer or Admin role can reset the scheduler to factory seeding.");
+      toast.error(
+        "Access Denied: Only users with the Developer or Admin role can reset the scheduler to factory seeding.",
+      );
       return;
     }
     setImporting(true);
@@ -170,7 +180,8 @@ function Dashboard() {
 
   const handleDownloadBlankTemplate = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const blankCsvContent = "Order,Order Process ID,Material,Machine,Maschine-Group,Process Text,SOP Start Date,Order QTY,Base-Qty each process,Set up Time (Not related to any qty),Unit,Process time (related to qty),Unit,Manpower Utilization,Unit,SOP Start time\n100101,10,MAT-PART-01,603011,M1,\"OPERATION DESC SAMPLE\",01-06-2026,100,1,60,MIN,5.0,MIN,1.0,MIN,08:00:00\n100101,20,MAT-PART-01,603012,M2,\"OPERATION STEP 20\",01-06-2026,100,1,30,MIN,2.5,MIN,1.0,MIN,10:30:00\n";
+    const blankCsvContent =
+      'Order,Order Process ID,Material,Machine,Maschine-Group,Process Text,SOP Start Date,Order QTY,Base-Qty each process,Set up Time (Not related to any qty),Unit,Process time (related to qty),Unit,Manpower Utilization,Unit,SOP Start time\n100101,10,MAT-PART-01,603011,M1,"OPERATION DESC SAMPLE",01-06-2026,100,1,60,MIN,5.0,MIN,1.0,MIN,08:00:00\n100101,20,MAT-PART-01,603012,M2,"OPERATION STEP 20",01-06-2026,100,1,30,MIN,2.5,MIN,1.0,MIN,10:30:00\n';
     const blob = new Blob([blankCsvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -189,7 +200,9 @@ function Dashboard() {
 
   const handleClearAll = () => {
     if (role !== "DEVELOPER" && role !== "ADMIN") {
-      toast.error("Access Denied: Only users with the Developer or Admin role can clear the scheduler data.");
+      toast.error(
+        "Access Denied: Only users with the Developer or Admin role can clear the scheduler data.",
+      );
       return;
     }
     clearAll();
@@ -204,13 +217,20 @@ function Dashboard() {
         <div className="flex items-center justify-between border-b pb-4 border-border/60">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">AI Data Cleaning Wizard</h1>
-            <p className="text-xs text-muted-foreground">Confirm column mappings and resolve file anomalies before loading.</p>
+            <p className="text-xs text-muted-foreground">
+              Confirm column mappings and resolve file anomalies before loading.
+            </p>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => setUploadedRawCsvText("")} className="cursor-pointer">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setUploadedRawCsvText("")}
+            className="cursor-pointer"
+          >
             Cancel
           </Button>
         </div>
-        <DataCleaningHub 
+        <DataCleaningHub
           initialCsvText={uploadedRawCsvText}
           onSaved={() => {
             setUploadedRawCsvText("");
@@ -228,46 +248,58 @@ function Dashboard() {
       <div className="space-y-8 max-w-5xl mx-auto animate-in fade-in duration-300 pb-12">
         {/* Role-based Information Banner */}
         {role === "GUEST" && (
-          <div className="flex items-center gap-3 bg-blue-500/15 border border-blue-500/30 text-blue-600 dark:text-blue-400 p-4 rounded-lg shadow-sm">
-            <ShieldAlert className="h-5 w-5 shrink-0" />
+          <div className="flex items-center gap-3 bg-slate-100 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 p-4 rounded-xl shadow-2xs">
+            <ShieldAlert className="h-5 w-5 shrink-0 text-slate-500" />
             <div className="text-sm">
-              <span className="font-bold">Guest Mode Active:</span> You have view-only rights. Use the role switcher in the header to change roles and inspect different permissions.
+              <span className="font-semibold text-slate-900 dark:text-white">
+                Guest Mode Active:
+              </span>{" "}
+              You have view-only rights. Use the role switcher in the header to change roles and
+              inspect different permissions.
             </div>
           </div>
         )}
 
         <div className="text-center space-y-2 py-4">
-          <h1 className="text-4xl font-extrabold tracking-tight text-foreground">{t("dashboard.title")}</h1>
+          <h1 className="text-4xl font-extrabold tracking-tight text-foreground">
+            {t("dashboard.title")}
+          </h1>
           <p className="text-sm text-muted-foreground max-w-xl mx-auto leading-relaxed">
-            Configure your manufacturing timeline by uploading a production orders spreadsheet, downloading our blank template, or exploring pre-filled industry sample datasets.
+            Configure your manufacturing timeline by uploading a production orders spreadsheet,
+            downloading our blank template, or exploring pre-filled industry sample datasets.
           </p>
         </div>
 
         {/* Primary Upload Dropzone */}
-        <Card 
+        <Card
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={() => fileRef.current?.click()}
           className={`border-2 border-dashed transition-all p-10 text-center rounded-2xl bg-card/50 backdrop-blur-sm shadow-xl flex flex-col items-center justify-center relative overflow-hidden group cursor-pointer ${
-            isDragOver 
-              ? "border-primary bg-primary/10 scale-[1.01] shadow-2xl ring-2 ring-primary/40 text-primary" 
+            isDragOver
+              ? "border-primary bg-primary/10 scale-[1.01] shadow-2xl ring-2 ring-primary/40 text-primary"
               : "border-border/80 hover:border-primary/50 hover:bg-card/80"
           }`}
         >
           <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-colors" />
-          
-          <div className={`p-4 rounded-full mb-4 transition-all duration-300 ${
-            isDragOver ? "bg-primary text-primary-foreground scale-110 animate-bounce" : "bg-primary/10 text-primary group-hover:scale-110"
-          }`}>
+
+          <div
+            className={`p-4 rounded-full mb-4 transition-all duration-300 ${
+              isDragOver
+                ? "bg-primary text-primary-foreground scale-110 animate-bounce"
+                : "bg-primary/10 text-primary group-hover:scale-110"
+            }`}
+          >
             <Upload className="h-9 w-9" />
           </div>
-          
+
           <h3 className="text-lg font-bold text-foreground">
             {isDragOver ? "Drop your CSV file here to upload" : "Upload Production Orders"}
           </h3>
           <p className="text-xs text-muted-foreground max-w-md mt-1 mb-6 leading-relaxed">
-            Drag and drop or select your scheduling CSV spreadsheet containing columns for Order code, Material details, Process ID steps, Quantities, and target SOP Dates.
+            Drag and drop or select your scheduling CSV spreadsheet containing columns for Order
+            code, Material details, Process ID steps, Quantities, and target SOP Dates.
           </p>
 
           <input
@@ -278,7 +310,10 @@ function Dashboard() {
             onChange={handleFileUpload}
           />
 
-          <div className="flex flex-wrap justify-center items-center gap-3 relative z-10" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="flex flex-wrap justify-center items-center gap-3 relative z-10"
+            onClick={(e) => e.stopPropagation()}
+          >
             <Button
               onClick={() => fileRef.current?.click()}
               disabled={importing}
@@ -321,36 +356,74 @@ function Dashboard() {
             </CardHeader>
             <CardContent className="pt-4 space-y-3 text-xs">
               <p className="text-muted-foreground text-[11.5px] leading-relaxed">
-                Our smart CSV parser automatically recognizes English, German, and custom ERP header names. Make sure your file includes these columns:
+                Our smart CSV parser automatically recognizes English, German, and custom ERP header
+                names. Make sure your file includes these columns:
               </p>
               <div className="space-y-2">
                 <div className="p-2 bg-muted/40 rounded-lg border border-border/50 flex justify-between items-center text-[11px]">
-                  <span className="font-bold text-foreground">Order ID <span className="text-red-500 text-[9px] font-mono ml-1">REQUIRED</span></span>
-                  <span className="font-mono text-muted-foreground text-[10px]">Order, WorkOrder, Auftrag, JobID</span>
+                  <span className="font-bold text-foreground">
+                    Order ID{" "}
+                    <span className="text-red-500 text-[9px] font-mono ml-1">REQUIRED</span>
+                  </span>
+                  <span className="font-mono text-muted-foreground text-[10px]">
+                    Order, WorkOrder, Auftrag, JobID
+                  </span>
                 </div>
                 <div className="p-2 bg-muted/40 rounded-lg border border-border/50 flex justify-between items-center text-[11px]">
-                  <span className="font-bold text-foreground">Step / Process ID <span className="text-red-500 text-[9px] font-mono ml-1">REQUIRED</span></span>
-                  <span className="font-mono text-muted-foreground text-[10px]">Order Process ID, Step No, Vorgang</span>
+                  <span className="font-bold text-foreground">
+                    Step / Process ID{" "}
+                    <span className="text-red-500 text-[9px] font-mono ml-1">REQUIRED</span>
+                  </span>
+                  <span className="font-mono text-muted-foreground text-[10px]">
+                    Order Process ID, Step No, Vorgang
+                  </span>
                 </div>
                 <div className="p-2 bg-muted/40 rounded-lg border border-border/50 flex justify-between items-center text-[11px]">
-                  <span className="font-bold text-foreground">Material / SKU <span className="text-red-500 text-[9px] font-mono ml-1">REQUIRED</span></span>
-                  <span className="font-mono text-muted-foreground text-[10px]">Material, Product Code, SKU, PartNo</span>
+                  <span className="font-bold text-foreground">
+                    Material / SKU{" "}
+                    <span className="text-red-500 text-[9px] font-mono ml-1">REQUIRED</span>
+                  </span>
+                  <span className="font-mono text-muted-foreground text-[10px]">
+                    Material, Product Code, SKU, PartNo
+                  </span>
                 </div>
                 <div className="p-2 bg-muted/40 rounded-lg border border-border/50 flex justify-between items-center text-[11px]">
-                  <span className="font-bold text-foreground">Machine / Line <span className="text-red-500 text-[9px] font-mono ml-1">REQUIRED</span></span>
-                  <span className="font-mono text-muted-foreground text-[10px]">Machine, Assembly Line, Workstation</span>
+                  <span className="font-bold text-foreground">
+                    Machine / Line{" "}
+                    <span className="text-red-500 text-[9px] font-mono ml-1">REQUIRED</span>
+                  </span>
+                  <span className="font-mono text-muted-foreground text-[10px]">
+                    Machine, Assembly Line, Workstation
+                  </span>
                 </div>
                 <div className="p-2 bg-muted/40 rounded-lg border border-border/50 flex justify-between items-center text-[11px]">
-                  <span className="font-bold text-foreground">SOP Start Date <span className="text-red-500 text-[9px] font-mono ml-1">REQUIRED</span></span>
-                  <span className="font-mono text-muted-foreground text-[10px]">SOP Start Date, ScheduledDate, Startdatum</span>
+                  <span className="font-bold text-foreground">
+                    SOP Start Date{" "}
+                    <span className="text-red-500 text-[9px] font-mono ml-1">REQUIRED</span>
+                  </span>
+                  <span className="font-mono text-muted-foreground text-[10px]">
+                    SOP Start Date, ScheduledDate, Startdatum
+                  </span>
                 </div>
                 <div className="p-2 bg-muted/40 rounded-lg border border-border/50 flex justify-between items-center text-[11px]">
-                  <span className="font-bold text-foreground">Order Quantity <span className="text-red-500 text-[9px] font-mono ml-1">REQUIRED</span></span>
-                  <span className="font-mono text-muted-foreground text-[10px]">Order QTY, Quantity, Menge, BatchQty</span>
+                  <span className="font-bold text-foreground">
+                    Order Quantity{" "}
+                    <span className="text-red-500 text-[9px] font-mono ml-1">REQUIRED</span>
+                  </span>
+                  <span className="font-mono text-muted-foreground text-[10px]">
+                    Order QTY, Quantity, Menge, BatchQty
+                  </span>
                 </div>
                 <div className="p-2 bg-muted/40 rounded-lg border border-border/50 flex justify-between items-center text-[11px]">
-                  <span className="font-bold text-foreground">Setup & Process Times <span className="text-muted-foreground text-[9px] font-mono ml-1">OPTIONAL</span></span>
-                  <span className="font-mono text-muted-foreground text-[10px]">Set up Time, Process time, RunMins</span>
+                  <span className="font-bold text-foreground">
+                    Setup & Process Times{" "}
+                    <span className="text-muted-foreground text-[9px] font-mono ml-1">
+                      OPTIONAL
+                    </span>
+                  </span>
+                  <span className="font-mono text-muted-foreground text-[10px]">
+                    Set up Time, Process time, RunMins
+                  </span>
                 </div>
               </div>
             </CardContent>
@@ -367,31 +440,40 @@ function Dashboard() {
             <CardContent className="pt-4 space-y-3 text-xs">
               <div className="p-2.5 bg-muted/40 rounded-lg border border-border/50 space-y-1">
                 <span className="font-bold text-foreground flex items-center gap-1.5">
-                  <span className="font-mono text-[9px] bg-blue-500/10 text-blue-500 px-1 py-0.5 rounded">JOB SHOP</span>
+                  <span className="font-mono text-[9px] bg-blue-500/10 text-blue-500 px-1 py-0.5 rounded">
+                    JOB SHOP
+                  </span>
                   Precision CNC & Machining Workshops
                 </span>
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  Sequence multi-operation parts (Milling, Drilling, Grinding) across machine groups (M1, M2) while respecting setup times and operator capacity.
+                  Sequence multi-operation parts (Milling, Drilling, Grinding) across machine groups
+                  (M1, M2) while respecting setup times and operator capacity.
                 </p>
               </div>
 
               <div className="p-2.5 bg-muted/40 rounded-lg border border-border/50 space-y-1">
                 <span className="font-bold text-foreground flex items-center gap-1.5">
-                  <span className="font-mono text-[9px] bg-emerald-500/10 text-emerald-500 px-1 py-0.5 rounded">ASSEMBLY</span>
+                  <span className="font-mono text-[9px] bg-emerald-500/10 text-emerald-500 px-1 py-0.5 rounded">
+                    ASSEMBLY
+                  </span>
                   Assembly Lines & Sequential Workstations
                 </span>
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  Manage assembly lines (Line Alpha, Line Beta) with station section codes, line setup, and crew headcount constraints.
+                  Manage assembly lines (Line Alpha, Line Beta) with station section codes, line
+                  setup, and crew headcount constraints.
                 </p>
               </div>
 
               <div className="p-2.5 bg-muted/40 rounded-lg border border-border/50 space-y-1">
                 <span className="font-bold text-foreground flex items-center gap-1.5">
-                  <span className="font-mono text-[9px] bg-purple-500/10 text-purple-500 px-1 py-0.5 rounded">HIGH VOLUME</span>
+                  <span className="font-mono text-[9px] bg-purple-500/10 text-purple-500 px-1 py-0.5 rounded">
+                    HIGH VOLUME
+                  </span>
                   Injection Molding & Electronics SMT
                 </span>
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  Optimize multi-cavity mold changeovers, SMT placement rates, reflow oven zones, and automated optical inspection routines.
+                  Optimize multi-cavity mold changeovers, SMT placement rates, reflow oven zones,
+                  and automated optical inspection routines.
                 </p>
               </div>
             </CardContent>
@@ -406,7 +488,10 @@ function Dashboard() {
                 <Sparkles className="h-4 w-4 text-amber-500" />
                 Pre-Filled Industry Sample Datasets
               </CardTitle>
-              <p className="text-xs text-muted-foreground">Click any dataset to instantly load 30 rows of realistic factory data into the Gantt & Capacity solver.</p>
+              <p className="text-xs text-muted-foreground">
+                Click any dataset to instantly load 30 rows of realistic factory data into the Gantt
+                & Capacity solver.
+              </p>
             </div>
           </CardHeader>
           <CardContent className="pt-4">
@@ -419,10 +504,16 @@ function Dashboard() {
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-extrabold text-primary font-mono bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">{sample.icon}</span>
-                      <span className="text-xs font-bold text-foreground group-hover:text-primary transition-colors line-clamp-1">{sample.name}</span>
+                      <span className="text-[10px] font-extrabold text-primary font-mono bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">
+                        {sample.icon}
+                      </span>
+                      <span className="text-xs font-bold text-foreground group-hover:text-primary transition-colors line-clamp-1">
+                        {sample.name}
+                      </span>
                     </div>
-                    <p className="text-[10px] text-muted-foreground line-clamp-2 leading-relaxed">{sample.description}</p>
+                    <p className="text-[10px] text-muted-foreground line-clamp-2 leading-relaxed">
+                      {sample.description}
+                    </p>
                   </div>
                   <div className="mt-3 flex items-center justify-between text-[10px]">
                     <span className="font-semibold text-muted-foreground">{sample.industry}</span>
@@ -451,26 +542,32 @@ function Dashboard() {
 
       {/* Role-based Information Banner */}
       {role === "GUEST" && (
-        <div className="flex items-center gap-3 bg-blue-500/15 border border-blue-500/30 text-blue-600 dark:text-blue-400 p-4 rounded-lg shadow-sm">
-          <ShieldAlert className="h-5 w-5 shrink-0" />
+        <div className="flex items-center gap-3 bg-slate-100 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 p-4 rounded-xl shadow-2xs">
+          <ShieldAlert className="h-5 w-5 shrink-0 text-slate-500" />
           <div className="text-sm">
-            <span className="font-bold">Guest Mode Active:</span> You have view-only rights. Use the role switcher in the header to change roles and inspect different permissions.
+            <span className="font-semibold text-slate-900 dark:text-white">Guest Mode Active:</span>{" "}
+            You have view-only rights. Use the role switcher in the header to change roles and
+            inspect different permissions.
           </div>
         </div>
       )}
 
-      <div className="flex items-end justify-between gap-4 flex-wrap">
+      {/* 1. Streamlined Header */}
+      <div className="flex items-center justify-between gap-4 flex-wrap border-b border-border/60 pb-3">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-3xl font-bold tracking-tight">{t("dashboard.title")}</h1>
-            <Badge className="bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 text-xs gap-1.5 font-mono shadow-sm">
-              <span className="h-2 w-2 rounded-full bg-slate-500 dark:bg-slate-400 animate-pulse"></span>
+            <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+              <div className="h-7.5 w-7.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/80 dark:border-emerald-800/80 flex items-center justify-center text-emerald-800 dark:text-emerald-300 shrink-0">
+                <BarChart3 className="h-4 w-4" />
+              </div>
+              {t("dashboard.title")}
+            </h1>
+            <Badge className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 border border-emerald-200/80 dark:border-emerald-800/80 text-[11px] gap-1.5 font-mono shadow-2xs">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
               AI Engine Connected
             </Badge>
           </div>
-          <p className="text-muted-foreground mt-1">
-            {t("dashboard.subtitle")}
-          </p>
+          <p className="text-muted-foreground text-xs mt-0.5">{t("dashboard.subtitle")}</p>
         </div>
         <div className="flex items-center gap-2">
           {role !== "DEVELOPER" && role !== "ADMIN" && (
@@ -478,39 +575,59 @@ function Dashboard() {
               Developer/Admin role required to modify
             </span>
           )}
-          <Button 
+          <Button
             variant="outline"
-            size="lg"
+            size="sm"
             onClick={() => fileRef.current?.click()}
             disabled={importing}
-            className="cursor-pointer font-semibold text-xs h-10 px-4 gap-1.5"
+            className="cursor-pointer font-medium text-xs h-8.5 px-3.5 gap-1.5 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-850 shadow-2xs rounded-lg"
           >
-            <Upload className="h-4 w-4" /> Upload CSV
+            <Upload className="h-3.5 w-3.5 text-slate-500" /> Upload CSV
           </Button>
-          <Button 
+          <Button
             variant="outline"
-            size="lg"
+            size="sm"
             onClick={handleClearAll}
             disabled={importing}
-            className="text-destructive hover:bg-destructive/10 hover:text-destructive cursor-pointer font-semibold text-xs h-10 px-4"
+            className="text-rose-600 border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer font-medium text-xs h-8.5 px-3.5 rounded-lg shadow-2xs"
           >
             Clear Active Data
           </Button>
-          <Button onClick={onRun} size="lg" className={`gap-2 cursor-pointer font-semibold text-xs h-10 px-5 ${role !== "DEVELOPER" && role !== "ADMIN" ? "opacity-70" : ""}`}>
-            <Play className="h-4 w-4" /> {t("dashboard.generate")}
+          <Button
+            onClick={onRun}
+            size="sm"
+            className={`gap-1.5 cursor-pointer font-semibold text-xs h-8.5 px-4 bg-[#1e3f2e] hover:bg-[#27533d] text-white shadow-xs border border-[#27533d] rounded-lg ${role !== "DEVELOPER" && role !== "ADMIN" ? "opacity-70" : ""}`}
+          >
+            <Play className="h-3.5 w-3.5" /> {t("dashboard.generate")}
           </Button>
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label={t("dashboard.orders")} value={orders.length} icon={<ListOrdered className="h-5 w-5 text-blue-500" />} />
-        <Stat label={t("dashboard.processes")} value={processes.length} icon={<Play className="h-5 w-5 text-indigo-500" />} />
-        <Stat label={t("dashboard.machines")} value={machines.length} icon={<BarChart3 className="h-5 w-5 text-purple-500" />} />
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Stat
+          label={t("dashboard.orders")}
+          value={orders.length}
+          icon={<ListOrdered className="h-4 w-4 text-slate-400" />}
+        />
+        <Stat
+          label={t("dashboard.processes")}
+          value={processes.length}
+          icon={<Play className="h-4 w-4 text-slate-400" />}
+        />
+        <Stat
+          label={t("dashboard.machines")}
+          value={machines.length}
+          icon={<BarChart3 className="h-4 w-4 text-slate-400" />}
+        />
         <Stat
           label={t("dashboard.scheduledProcesses")}
           value={scheduledCount}
-          icon={<ShieldAlert className="h-5 w-5 text-emerald-500" />}
-          hint={slots.length > 0 ? `${warnings.length} ${t("dashboard.activeWarnings")}` : t("dashboard.notGenerated")}
+          icon={<ShieldAlert className="h-4 w-4 text-slate-400" />}
+          hint={
+            slots.length > 0
+              ? `${warnings.length} ${t("dashboard.activeWarnings")}`
+              : t("dashboard.notGenerated")
+          }
         />
       </div>
 
@@ -522,18 +639,16 @@ function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground flex flex-col justify-between flex-grow">
-            <span>
-              {t("dashboard.ordersCardDesc")}
-            </span>
+            <span>{t("dashboard.ordersCardDesc")}</span>
             <div className="mt-4 flex gap-2">
               <Button asChild variant="outline" size="sm" className="cursor-pointer">
                 <Link to="/orders">{t("dashboard.ordersCardButton")}</Link>
               </Button>
-              <Button 
-                onClick={() => fileRef.current?.click()} 
+              <Button
+                onClick={() => fileRef.current?.click()}
                 disabled={importing}
-                variant="outline" 
-                size="sm" 
+                variant="outline"
+                size="sm"
                 className="cursor-pointer gap-1.5"
               >
                 <Upload className="h-3.5 w-3.5" /> Upload CSV
@@ -541,7 +656,7 @@ function Dashboard() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card className="border border-border/80 shadow-sm flex flex-col justify-between hover:border-primary/40 transition-colors">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
@@ -549,9 +664,7 @@ function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground flex flex-col justify-between flex-grow">
-            <span>
-              {t("dashboard.ganttCardDesc")}
-            </span>
+            <span>{t("dashboard.ganttCardDesc")}</span>
             <div className="mt-4">
               <Button asChild variant="outline" size="sm" className="cursor-pointer">
                 <Link to="/gantt">{t("dashboard.ganttCardButton")}</Link>
@@ -568,23 +681,24 @@ function Dashboard() {
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground flex flex-col justify-between flex-grow">
             <span className="block mb-4">
-              Backup and synchronize your active orders, process steps, manual overrides, and planner settings directly to Supabase storage.
+              Backup and synchronize your active orders, process steps, manual overrides, and
+              planner settings directly to Supabase storage.
             </span>
             <div className="flex gap-2">
-              <Button 
-                onClick={onSaveToCloud} 
-                disabled={isCloudSaving || isCloudLoading} 
-                size="sm" 
+              <Button
+                onClick={onSaveToCloud}
+                disabled={isCloudSaving || isCloudLoading}
+                size="sm"
                 className="gap-1 cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 <CloudUpload className="h-3.5 w-3.5" />
                 {isCloudSaving ? t("common.savingToCloud") : t("common.saveToCloud")}
               </Button>
-              <Button 
-                onClick={onLoadFromCloud} 
-                disabled={isCloudSaving || isCloudLoading} 
-                variant="outline" 
-                size="sm" 
+              <Button
+                onClick={onLoadFromCloud}
+                disabled={isCloudSaving || isCloudLoading}
+                variant="outline"
+                size="sm"
                 className="gap-1 cursor-pointer"
               >
                 <CloudDownload className="h-3.5 w-3.5" />
@@ -616,7 +730,9 @@ function Stat({
     <Card className="border border-border/80 shadow-sm hover:border-primary/40 transition-all">
       <CardContent className="pt-6">
         <div className="flex items-center justify-between">
-          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</div>
+          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            {label}
+          </div>
           {icon && <div className="p-2 rounded-lg bg-muted/60">{icon}</div>}
         </div>
         <div className="mt-2 text-3xl font-extrabold font-mono tracking-tight">{value}</div>
@@ -625,4 +741,3 @@ function Stat({
     </Card>
   );
 }
-

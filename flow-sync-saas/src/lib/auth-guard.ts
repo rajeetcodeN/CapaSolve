@@ -5,7 +5,9 @@ export async function checkAuthSession() {
   if (typeof window === "undefined") return { authenticated: true, user: null };
 
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (session?.user) {
       return { authenticated: true, user: session.user };
     }
@@ -13,12 +15,11 @@ export async function checkAuthSession() {
     console.error("Auth session check error:", err);
   }
 
-  // Fallback check on Zustand store user or guest role
+  // Fallback check on Zustand store user
   const storeUser = useAppStore.getState().user;
-  const storeRole = useAppStore.getState().role;
 
-  if (storeUser || storeRole) {
-    return { authenticated: true, user: storeUser || { email: "guest@capasolve.com", role: storeRole } };
+  if (storeUser) {
+    return { authenticated: true, user: storeUser };
   }
 
   return { authenticated: false, user: null };
@@ -37,7 +38,7 @@ export const PUBLIC_ROUTES = [
   "/security",
   "/documentation",
   "/api-reference",
-  "/support"
+  "/support",
 ];
 
 export function isPublicRoute(pathname: string): boolean {

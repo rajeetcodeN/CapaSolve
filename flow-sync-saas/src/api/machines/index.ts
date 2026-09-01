@@ -63,10 +63,13 @@ export async function POST(request: Request) {
     const { machineGroupId, code, name, isActive = true } = body;
 
     if (!machineGroupId || !code || !name) {
-      return new Response(JSON.stringify({ error: "Missing required fields: machineGroupId, code, name" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ error: "Missing required fields: machineGroupId, code, name" }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
     }
 
     const { data: machine, error } = await supabase

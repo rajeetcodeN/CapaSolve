@@ -24,10 +24,12 @@ export interface SupabaseScheduleData {
 export async function syncScheduleToSupabaseDB(
   orgId: string,
   scheduleName: string = "Primary Production Plan",
-  data: SupabaseScheduleData
+  data: SupabaseScheduleData,
 ) {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     // 1. Find or create default schedule record for org
     let { data: schedule, error: schedError } = await supabase
@@ -68,13 +70,11 @@ export async function syncScheduleToSupabaseDB(
     }
 
     // 2. Upsert JSON payload into schedule_data table
-    const { error: dataError } = await supabase
-      .from("schedule_data")
-      .upsert({
-        schedule_id: scheduleId,
-        data: data as any,
-        updated_at: new Date().toISOString(),
-      });
+    const { error: dataError } = await supabase.from("schedule_data").upsert({
+      schedule_id: scheduleId,
+      data: data as any,
+      updated_at: new Date().toISOString(),
+    });
 
     if (dataError) {
       console.warn("Supabase schedule_data upsert error:", dataError.message);
@@ -137,15 +137,9 @@ export async function fetchScheduleFromSupabaseDB(orgId: string) {
  */
 export async function fetchMachinesFromSupabaseDB(orgId: string) {
   try {
-    const { data: groups } = await supabase
-      .from("machine_groups")
-      .select("*")
-      .eq("org_id", orgId);
+    const { data: groups } = await supabase.from("machine_groups").select("*").eq("org_id", orgId);
 
-    const { data: machines } = await supabase
-      .from("machines")
-      .select("*")
-      .eq("org_id", orgId);
+    const { data: machines } = await supabase.from("machines").select("*").eq("org_id", orgId);
 
     return {
       success: true,
@@ -158,7 +152,10 @@ export async function fetchMachinesFromSupabaseDB(orgId: string) {
   }
 }
 
-export async function saveMachineToSupabaseDB(orgId: string, machine: { code: string; name: string; machineGroupId: string; isActive?: boolean }) {
+export async function saveMachineToSupabaseDB(
+  orgId: string,
+  machine: { code: string; name: string; machineGroupId: string; isActive?: boolean },
+) {
   try {
     // Ensure machine group exists
     const { data: group } = await supabase
@@ -235,7 +232,7 @@ export async function saveDailyOverrideToSupabaseDB(
   setter: number,
   process: number,
   isHoliday: boolean = false,
-  note?: string
+  note?: string,
 ) {
   try {
     // 1. Get default capacity profile for org
@@ -285,7 +282,9 @@ export async function saveDailyOverrideToSupabaseDB(
  */
 export async function logAuditActionToSupabaseDB(orgId: string, action: string, details?: string) {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     await supabase.from("audit_logs").insert({
       org_id: orgId,
       user_id: user?.id || null,
@@ -304,10 +303,12 @@ export async function logExecutionToSupabaseDB(
   processCount: number,
   durationMs: number,
   status: "SUCCESS" | "WARNING" | "FAILED",
-  warningCount: number = 0
+  warningCount: number = 0,
 ) {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     await supabase.from("schedule_execution_logs").insert({
       schedule_id: scheduleId,
       org_id: orgId,
@@ -376,10 +377,12 @@ export async function saveProcessExecutionLogToSupabaseDB(
   scrapQty: number,
   actualSetupMins?: number,
   actualProcessMins?: number,
-  notes?: string
+  notes?: string,
 ) {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     const { error } = await supabase.from("process_execution_logs").insert({
       org_id: orgId,
       process_id: processId,
@@ -397,4 +400,3 @@ export async function saveProcessExecutionLogToSupabaseDB(
     return { success: false, error: err.message };
   }
 }
-

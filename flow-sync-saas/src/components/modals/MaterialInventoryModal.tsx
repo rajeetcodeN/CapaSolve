@@ -1,9 +1,22 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Package, AlertTriangle, Plus, CheckCircle2, Truck } from "lucide-react";
 import { toast } from "sonner";
@@ -18,9 +31,30 @@ export interface MaterialItem {
 }
 
 const defaultMaterials: MaterialItem[] = [
-  { sku: "RAW-STEE-01", description: "Stainless Steel Rod 50mm", availableQty: 1200, reservedQty: 850, leadTimeDays: 3, expectedArrivalDate: "2026-08-05" },
-  { sku: "RAW-ALUM-02", description: "Aluminum Extrusion Bar 20mm", availableQty: 400, reservedQty: 600, leadTimeDays: 7, expectedArrivalDate: "2026-08-12" },
-  { sku: "RAW-PLAS-03", description: "ABS Polymer Resin Beads 25kg", availableQty: 2500, reservedQty: 1000, leadTimeDays: 2, expectedArrivalDate: "2026-08-04" },
+  {
+    sku: "RAW-STEE-01",
+    description: "Stainless Steel Rod 50mm",
+    availableQty: 1200,
+    reservedQty: 850,
+    leadTimeDays: 3,
+    expectedArrivalDate: "2026-08-05",
+  },
+  {
+    sku: "RAW-ALUM-02",
+    description: "Aluminum Extrusion Bar 20mm",
+    availableQty: 400,
+    reservedQty: 600,
+    leadTimeDays: 7,
+    expectedArrivalDate: "2026-08-12",
+  },
+  {
+    sku: "RAW-PLAS-03",
+    description: "ABS Polymer Resin Beads 25kg",
+    availableQty: 2500,
+    reservedQty: 1000,
+    leadTimeDays: 2,
+    expectedArrivalDate: "2026-08-04",
+  },
 ];
 
 interface MaterialInventoryModalProps {
@@ -66,7 +100,10 @@ export function MaterialInventoryModal({ open, onOpenChange }: MaterialInventory
 
         <div className="space-y-4 pt-2 text-xs">
           {/* Add Material Form */}
-          <form onSubmit={handleAddMaterial} className="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-muted/40 p-3 rounded-xl border border-border/60">
+          <form
+            onSubmit={handleAddMaterial}
+            className="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-muted/40 p-3 rounded-xl border border-border/60"
+          >
             <div className="space-y-1">
               <Label className="text-xs font-semibold">SKU Code *</Label>
               <Input
@@ -98,7 +135,11 @@ export function MaterialInventoryModal({ open, onOpenChange }: MaterialInventory
               />
             </div>
             <div className="flex items-end">
-              <Button type="submit" size="sm" className="w-full bg-primary text-primary-foreground font-bold h-8 text-xs gap-1">
+              <Button
+                type="submit"
+                size="sm"
+                className="w-full bg-primary text-primary-foreground font-bold h-8 text-xs gap-1"
+              >
                 <Plus className="h-3.5 w-3.5" />
                 Add Component
               </Button>
@@ -122,8 +163,12 @@ export function MaterialInventoryModal({ open, onOpenChange }: MaterialInventory
                   const isShortage = m.availableQty < m.reservedQty;
                   return (
                     <TableRow key={m.sku}>
-                      <TableCell className="font-mono text-xs font-bold text-primary">{m.sku}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{m.description}</TableCell>
+                      <TableCell className="font-mono text-xs font-bold text-primary">
+                        {m.sku}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {m.description}
+                      </TableCell>
                       <TableCell className="text-xs font-bold">{m.availableQty} units</TableCell>
                       <TableCell className="text-xs font-bold">{m.reservedQty} units</TableCell>
                       <TableCell>

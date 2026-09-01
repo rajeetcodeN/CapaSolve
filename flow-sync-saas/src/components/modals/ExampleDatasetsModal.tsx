@@ -26,7 +26,7 @@ interface ExampleDatasetsModalProps {
 }
 
 export function ExampleDatasetsModal({ open, onOpenChange }: ExampleDatasetsModalProps) {
-  const { loadDefaultCSV, runScheduler, parseAndSetCSVData } = useAppStore();
+  const { loadDefaultCSV, runScheduler, loadFromCSVText } = useAppStore();
   const [loadingPreset, setLoadingPreset] = useState<string | null>(null);
 
   const presets = [
@@ -34,9 +34,11 @@ export function ExampleDatasetsModal({ open, onOpenChange }: ExampleDatasetsModa
       id: "preset-sap-cnc",
       title: "German SAP PP COOIS CNC Milling & Drilling",
       subtitle: "Baseline Industrial Dataset",
-      description: "100+ operations across Workstations 603010, 603011, 603012 & 605001. Realistic setup changeovers (60–240 min) and manpower utilization ratios.",
+      description:
+        "100+ operations across Workstations 603010, 603011, 603012 & 605001. Realistic setup changeovers (60–240 min) and manpower utilization ratios.",
       badge: "DEFAULT SAP",
-      badgeColor: "bg-blue-500/10 text-blue-600 border-blue-500/30",
+      badgeColor:
+        "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700",
       icon: Factory,
       action: async () => {
         await loadDefaultCSV();
@@ -46,9 +48,11 @@ export function ExampleDatasetsModal({ open, onOpenChange }: ExampleDatasetsModa
       id: "preset-auto-stamping",
       title: "Automotive High-Volume Stamping & Machining",
       subtitle: "Peak Bottleneck & 0% Setter Testing",
-      description: "High-volume batch runs (1,000–5,000 pcs) with peak load on Group M1. Ideal for testing 0% Setter (Operator Self-Setup) mode and preponement limits.",
+      description:
+        "High-volume batch runs (1,000–5,000 pcs) with peak load on Group M1. Ideal for testing 0% Setter (Operator Self-Setup) mode and preponement limits.",
       badge: "HIGH VOLUME",
-      badgeColor: "bg-amber-500/10 text-amber-600 border-amber-500/30",
+      badgeColor:
+        "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700",
       icon: Zap,
       action: async () => {
         // High-volume automotive dataset
@@ -60,16 +64,18 @@ export function ExampleDatasetsModal({ open, onOpenChange }: ExampleDatasetsModa
 200103,10,AUTO-SHAFT-STEEL,603011,M1,TURNING & GRINDING,02-06-2026,3000,100,180,MIN,3.2,MIN,276,2.5,MIN,80%,08:00:00
 200104,10,AUTO-VALVE-BODY,605001,M2,5-AXIS CONTOUR MILLING,02-06-2026,800,20,150,MIN,8.0,MIN,470,3.0,MIN,90%,09:00:00
 200104,20,AUTO-VALVE-BODY,603012,M1,HONING & QUALITY INSPECTION,02-06-2026,800,20,30,MIN,2.5,MIN,130,1.0,MIN,40%,15:30:00`;
-        parseAndSetCSVData(autoCsv);
+        loadFromCSVText(autoCsv);
       },
     },
     {
       id: "preset-aero-tooling",
       title: "Aerospace 5-Axis Precision Batch Production",
       subtitle: "Complex Material BOM & Setup Matrix",
-      description: "Titanium and Inconel aerospace components with frequent sequence-dependent setup changeovers, strict SOP due dates, and low tolerances.",
+      description:
+        "Titanium and Inconel aerospace components with frequent sequence-dependent setup changeovers, strict SOP due dates, and low tolerances.",
       badge: "AEROSPACE 5-AXIS",
-      badgeColor: "bg-purple-500/10 text-purple-600 border-purple-500/30",
+      badgeColor:
+        "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700",
       icon: Layers,
       action: async () => {
         // Aerospace precision dataset
@@ -79,7 +85,7 @@ export function ExampleDatasetsModal({ open, onOpenChange }: ExampleDatasetsModa
 300102,10,INCONEL-FLANGE,603011,M2,HEAVY TURNING & GROOVING,01-06-2026,120,5,150,MIN,18.0,MIN,582,2.5,MIN,90%,08:00:00
 300102,20,INCONEL-FLANGE,603010,M2,PRECISION BORE REAMING,01-06-2026,120,5,90,MIN,12.0,MIN,378,1.5,MIN,60%,13:30:00
 300103,10,ALU-7075-BRACKET,603012,M1,HIGH-SPEED POCKETING,02-06-2026,350,10,60,MIN,3.5,MIN,182.5,1.0,MIN,50%,09:00:00`;
-        parseAndSetCSVData(aeroCsv);
+        loadFromCSVText(aeroCsv);
       },
     },
   ];
@@ -108,7 +114,8 @@ export function ExampleDatasetsModal({ open, onOpenChange }: ExampleDatasetsModa
             Factory Seed Datasets & Scenario Presets
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
-            Choose a pre-configured factory production dataset to benchmark solver performance, test 0% setter modes, or demonstrate machine group allocations.
+            Choose a pre-configured factory production dataset to benchmark solver performance, test
+            0% setter modes, or demonstrate machine group allocations.
           </DialogDescription>
         </DialogHeader>
 
@@ -164,7 +171,12 @@ export function ExampleDatasetsModal({ open, onOpenChange }: ExampleDatasetsModa
         </div>
 
         <DialogFooter>
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} className="text-xs">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onOpenChange(false)}
+            className="text-xs"
+          >
             Close
           </Button>
         </DialogFooter>

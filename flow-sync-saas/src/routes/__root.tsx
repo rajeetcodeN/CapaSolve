@@ -13,6 +13,8 @@ import {
 import { useAppStore } from "@/lib/store";
 import { setupAuthListener } from "@/lib/auth-service";
 
+import { supabase } from "@/lib/supabase";
+
 import appCss from "../styles.css?url";
 import AppLayout from "@/components/AppLayout";
 import MarketingLayout from "@/components/MarketingLayout";
@@ -76,7 +78,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  beforeLoad: ({ location }) => {
+  beforeLoad: async ({ location }) => {
     const isPublic = [
       "/",
       "/pricing",
@@ -90,10 +92,26 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       "/security",
       "/documentation",
       "/api-reference",
-      "/support"
+      "/support",
     ].includes(location.pathname);
-    const user = useAppStore.getState().user;
-    
+
+    let user = useAppStore.getState().user;
+
+    // Check active session on client refresh if store is not yet populated
+    if (!user && typeof window !== "undefined") {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (session?.user) {
+          user = session.user;
+          useAppStore.getState().setUser(user);
+        }
+      } catch {
+        // Fall back to public check
+      }
+    }
+
     if (!isPublic && !user) {
       throw redirect({
         to: "/login",
@@ -160,7 +178,7 @@ function RootComponent() {
 
   useEffect(() => {
     const cleanup = setupAuthListener();
-    
+
     // Register PWA Service Worker for offline tablet access
     if (typeof window !== "undefined" && "serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js").catch((err) => {
@@ -185,7 +203,7 @@ function RootComponent() {
     "/security",
     "/documentation",
     "/api-reference",
-    "/support"
+    "/support",
   ].includes(location.pathname);
 
   return (

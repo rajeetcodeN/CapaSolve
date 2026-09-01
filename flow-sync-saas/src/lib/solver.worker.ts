@@ -3,6 +3,7 @@ import { generateSchedule } from "./scheduler";
 export interface SolverWorkerInput {
   orders: any[];
   processes: any[];
+  machines?: any[];
   optimizationMode: "full" | "workstation" | "pre-optimization";
   groupSerialization: boolean;
   allowProcessOverlap: boolean;
@@ -18,24 +19,28 @@ export interface SolverWorkerInput {
 self.onmessage = (event: MessageEvent<SolverWorkerInput>) => {
   try {
     const data = event.data;
-    
+
     // Post initial progress message
-    self.postMessage({ type: "PROGRESS", progress: 10, message: "Initializing solver worker thread..." });
+    self.postMessage({
+      type: "PROGRESS",
+      progress: 10,
+      message: "Initializing solver worker thread...",
+    });
 
     const startTime = performance.now();
     const result = generateSchedule(
       data.orders,
       data.processes,
-      data.optimizationMode,
+      data.machines || [],
+      (data.optimizationMode as any) || "full",
       data.groupSerialization,
       data.allowProcessOverlap,
       data.allowSopOverride,
       data.maxUtilizeResources,
-      data.language,
-      data.maxPreponeWeeks,
-      data.globalSetterCapacity,
-      data.globalOperatorCapacity,
-      data.dailyCapacities
+      data.dailyCapacities || {},
+      data.globalSetterCapacity ?? 100,
+      data.globalOperatorCapacity ?? 200,
+      data.maxPreponeWeeks ?? 0,
     );
     const solveTimeMs = Math.round(performance.now() - startTime);
 

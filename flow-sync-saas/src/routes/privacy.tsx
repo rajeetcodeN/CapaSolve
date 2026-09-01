@@ -33,7 +33,10 @@ function PrivacyPage() {
                 1. Overview
               </h3>
               <p>
-                This Privacy Policy describes how CapaSolve ("we", "us", or "our"), owned and operated by **Digital Biz Tech**, collects, uses, and discloses information when you use our manufacturing scheduling platform. We are committed to protecting the privacy of your factory data and your users.
+                This Privacy Policy describes how CapaSolve ("we", "us", or "our"), owned and
+                operated by **Digital Biz Tech**, collects, uses, and discloses information when you
+                use our manufacturing scheduling platform. We are committed to protecting the
+                privacy of your factory data and your users.
               </p>
             </section>
 
@@ -43,9 +46,18 @@ function PrivacyPage() {
                 2. Information We Collect
               </h3>
               <ul className="list-disc pl-5 space-y-1">
-                <li><strong>Account Metadata:</strong> Email addresses, user roles, passwords, name details, and company designations.</li>
-                <li><strong>Manufacturing Data:</strong> Workstation specifications, capacity rules, machine groups, order quantities, and custom timelines imported via CSV sheets.</li>
-                <li><strong>Log Data:</strong> System optimization events, error logs, and audit records of cloud saving/loading transactions.</li>
+                <li>
+                  <strong>Account Metadata:</strong> Email addresses, user roles, passwords, name
+                  details, and company designations.
+                </li>
+                <li>
+                  <strong>Manufacturing Data:</strong> Workstation specifications, capacity rules,
+                  machine groups, order quantities, and custom timelines imported via CSV sheets.
+                </li>
+                <li>
+                  <strong>Log Data:</strong> System optimization events, error logs, and audit
+                  records of cloud saving/loading transactions.
+                </li>
               </ul>
             </section>
 
@@ -55,7 +67,11 @@ function PrivacyPage() {
                 3. How We Secure and Isolate Data
               </h3>
               <p>
-                All imported CSV sheets, workstation configs, and schedules are stored securely inside Supabase PostgreSQL database tables and S3-compatible cloud storage buckets. We utilize Row-Level Security (RLS) policies to ensure that your factory data is strictly isolated and can only be accessed by authenticated users within your organization tenant.
+                All imported CSV sheets, workstation configs, and schedules are stored securely
+                inside Supabase PostgreSQL database tables and S3-compatible cloud storage buckets.
+                We utilize Row-Level Security (RLS) policies to ensure that your factory data is
+                strictly isolated and can only be accessed by authenticated users within your
+                organization tenant.
               </p>
             </section>
           </CardContent>

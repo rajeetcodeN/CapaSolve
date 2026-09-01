@@ -1,6 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useTranslations } from "@/lib/translations";
 import { Check, HelpCircle, ChevronDown, MessageSquare } from "lucide-react";
@@ -10,7 +17,10 @@ export const Route = createFileRoute("/pricing")({
   head: () => ({
     meta: [
       { title: "Pricing Tiers — CapaSolve" },
-      { name: "description", content: "Select a plan tailored to your factory capacity and optimization needs." },
+      {
+        name: "description",
+        content: "Select a plan tailored to your factory capacity and optimization needs.",
+      },
     ],
   }),
   component: PricingPage,
@@ -19,7 +29,7 @@ export const Route = createFileRoute("/pricing")({
 function PricingPage() {
   const { language } = useTranslations();
   const [billingInterval, setBillingInterval] = useState<"monthly" | "annually">("monthly");
-  
+
   // FAQ toggle state
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
@@ -31,7 +41,8 @@ function PricingPage() {
   const text = {
     en: {
       title: "Simple, Tailored Pricing",
-      subtitle: "Flexible subscription plans designed to scale with your production capacity and team size.",
+      subtitle:
+        "Flexible subscription plans designed to scale with your production capacity and team size.",
       monthly: "Monthly Billing",
       annually: "Annual Billing (Save 20%)",
       freeTitle: "Free Trial",
@@ -50,7 +61,7 @@ function PricingPage() {
       entPeriod: "dedicated agreement",
       entCTA: "Contact Sales",
       popular: "Most Popular",
-      
+
       // Features
       features: "Included Features",
       fHorizon: "1-Month optimization horizon",
@@ -76,11 +87,12 @@ function PricingPage() {
       q2: "How is the Growth Pro plan priced?",
       a2: "Our pricing is flexible and scales based on the number of active machines and production lines in your facility. This ensures small machine shops pay a fraction of what large industrial assembly plants pay. Contact us to receive a custom proposal.",
       q3: "Can we test the role access system during the trial?",
-      a3: "Yes! The free trial includes full access to the role simulation. You can switch between Admin, Developer, and Guest roles at any time in the sidebar of the workspace to experience the access control system first-hand."
+      a3: "Yes! The free trial includes full access to the role simulation. You can switch between Admin, Developer, and Guest roles at any time in the sidebar of the workspace to experience the access control system first-hand.",
     },
     de: {
       title: "Einfache, maßgeschneiderte Tarife",
-      subtitle: "Flexible Abonnements, die sich an Ihre Produktionskapazität und Teamgröße anpassen.",
+      subtitle:
+        "Flexible Abonnements, die sich an Ihre Produktionskapazität und Teamgröße anpassen.",
       monthly: "Monatliche Abrechnung",
       annually: "Jährliche Abrechnung (20% Jährlich Sparen)",
       freeTitle: "Kostenloser Test",
@@ -89,7 +101,8 @@ function PricingPage() {
       freePeriod: "für 30 Tage",
       freeCTA: "Kostenlos testen",
       proTitle: "Wachstum Pro",
-      proDesc: "Für wachsende Fabriken, die eine vollständige Integration und Zusammenarbeit benötigen.",
+      proDesc:
+        "Für wachsende Fabriken, die eine vollständige Integration und Zusammenarbeit benötigen.",
       proPrice: "Flexibel",
       proPeriod: "an Ihre Größe angepasst",
       proCTA: "Angebot anfordern",
@@ -99,7 +112,7 @@ function PricingPage() {
       entPeriod: "eigener Vertrag",
       entCTA: "Vertrieb kontaktieren",
       popular: "Beliebtest",
-      
+
       // Features
       features: "Enthaltene Funktionen",
       fHorizon: "1 Monat Optimierungsfenster",
@@ -125,8 +138,8 @@ function PricingPage() {
       q2: "Wie berechnet sich der Preis für den Wachstum Pro Tarif?",
       a2: "Unsere Preise sind flexibel und richten sich nach der Anzahl der aktiven Maschinen und Produktionslinien in Ihrem Werk. So zahlen kleine Werkstätten nur einen Bruchteil dessen, was große Montagewerke zahlen. Kontaktieren Sie uns für ein Angebot.",
       q3: "Können wir das Rollen-Zugriffssystem während des Tests ausprobieren?",
-      a3: "Ja! Der kostenlose Test beinhaltet den vollen Zugriff auf die Rollensimulation. Sie können in der Sidebar des Arbeitsbereichs jederzeit zwischen Admin, Entwickler und Gast wechseln, um die Berechtigungen live zu testen."
-    }
+      a3: "Ja! Der kostenlose Test beinhaltet den vollen Zugriff auf die Rollensimulation. Sie können in der Sidebar des Arbeitsbereichs jederzeit zwischen Admin, Entwickler und Gast wechseln, um die Berechtigungen live zu testen.",
+    },
   };
 
   const str = language === "de" ? text.de : text.en;
@@ -134,23 +147,23 @@ function PricingPage() {
   const faqItems = [
     { q: str.q1, a: str.a1 },
     { q: str.q2, a: str.a2 },
-    { q: str.q3, a: str.a3 }
+    { q: str.q3, a: str.a3 },
   ];
 
   return (
     <div className="space-y-16 max-w-6xl mx-auto py-12 px-6">
-      
       {/* Page Header */}
       <div className="text-center space-y-4">
-        <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-foreground">{str.title}</h1>
-        <p className="text-muted-foreground max-w-2xl mx-auto text-sm md:text-base">{str.subtitle}</p>
-
-
+        <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-foreground">
+          {str.title}
+        </h1>
+        <p className="text-muted-foreground max-w-2xl mx-auto text-sm md:text-base">
+          {str.subtitle}
+        </p>
       </div>
 
       {/* Cards Grid */}
       <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-        
         {/* Free Plan */}
         <Card className="border border-border/60 flex flex-col justify-between shadow-sm hover:shadow-md transition-shadow relative bg-card/60">
           <CardHeader className="space-y-1">
@@ -162,10 +175,16 @@ function PricingPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4 flex-grow border-t border-border/40 pt-6">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{str.features}</h4>
+            <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              {str.features}
+            </h4>
             <ul className="space-y-2 text-xs">
-              <li className="flex items-center gap-2 text-foreground/80"><Check className="h-3.5 w-3.5 text-primary shrink-0" /> {str.fHorizon}</li>
-              <li className="flex items-center gap-2 text-foreground/80"><Check className="h-3.5 w-3.5 text-primary shrink-0" /> {str.fConstraints}</li>
+              <li className="flex items-center gap-2 text-foreground/80">
+                <Check className="h-3.5 w-3.5 text-primary shrink-0" /> {str.fHorizon}
+              </li>
+              <li className="flex items-center gap-2 text-foreground/80">
+                <Check className="h-3.5 w-3.5 text-primary shrink-0" /> {str.fConstraints}
+              </li>
             </ul>
           </CardContent>
           <CardFooter className="pt-2">
@@ -186,13 +205,25 @@ function PricingPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4 flex-grow border-t border-border/40 pt-6">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{str.features}</h4>
+            <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              {str.features}
+            </h4>
             <ul className="space-y-2 text-xs">
-              <li className="flex items-center gap-2 text-foreground/80"><Check className="h-3.5 w-3.5 text-primary shrink-0" /> {str.fHorizonUn}</li>
-              <li className="flex items-center gap-2 text-foreground/80"><Check className="h-3.5 w-3.5 text-primary shrink-0" /> {str.fAllSeats}</li>
-              <li className="flex items-center gap-2 text-foreground/80"><Check className="h-3.5 w-3.5 text-primary shrink-0" /> {str.fAdvConstraints}</li>
-              <li className="flex items-center gap-2 text-foreground/80"><Check className="h-3.5 w-3.5 text-primary shrink-0" /> {str.fCloudSync}</li>
-              <li className="flex items-center gap-2 text-foreground/80"><Check className="h-3.5 w-3.5 text-primary shrink-0" /> {str.fAPI}</li>
+              <li className="flex items-center gap-2 text-foreground/80">
+                <Check className="h-3.5 w-3.5 text-primary shrink-0" /> {str.fHorizonUn}
+              </li>
+              <li className="flex items-center gap-2 text-foreground/80">
+                <Check className="h-3.5 w-3.5 text-primary shrink-0" /> {str.fAllSeats}
+              </li>
+              <li className="flex items-center gap-2 text-foreground/80">
+                <Check className="h-3.5 w-3.5 text-primary shrink-0" /> {str.fAdvConstraints}
+              </li>
+              <li className="flex items-center gap-2 text-foreground/80">
+                <Check className="h-3.5 w-3.5 text-primary shrink-0" /> {str.fCloudSync}
+              </li>
+              <li className="flex items-center gap-2 text-foreground/80">
+                <Check className="h-3.5 w-3.5 text-primary shrink-0" /> {str.fAPI}
+              </li>
             </ul>
           </CardContent>
           <CardFooter className="pt-2">
@@ -201,7 +232,6 @@ function PricingPage() {
             </Button>
           </CardFooter>
         </Card>
-
       </div>
 
       {/* Comparison Grid Table */}
@@ -266,7 +296,12 @@ function PricingPage() {
                   <HelpCircle className="h-4 w-4 text-primary shrink-0" />
                   {faq.q}
                 </span>
-                <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform shrink-0", openFaq === idx && "rotate-180")} />
+                <ChevronDown
+                  className={cn(
+                    "h-4 w-4 text-muted-foreground transition-transform shrink-0",
+                    openFaq === idx && "rotate-180",
+                  )}
+                />
               </button>
               {openFaq === idx && (
                 <div className="p-5 pt-0 text-xs text-muted-foreground leading-relaxed border-t border-border/20 bg-muted/5 animate-fade-in">
@@ -277,7 +312,7 @@ function PricingPage() {
           ))}
         </div>
       </div>
-      
+
       {/* Custom Quote Request Banner */}
       <div className="bg-primary/5 border border-primary/20 p-6 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-6 max-w-4xl mx-auto mt-8">
         <div className="flex gap-4 items-start text-left">
@@ -285,9 +320,12 @@ function PricingPage() {
             <MessageSquare className="h-5 w-5" />
           </div>
           <div>
-            <h4 className="font-bold text-sm text-foreground">Need a custom integration or have more than 50 machines?</h4>
+            <h4 className="font-bold text-sm text-foreground">
+              Need a custom integration or have more than 50 machines?
+            </h4>
             <p className="text-xs text-muted-foreground mt-1 leading-normal">
-              Our engineering team builds custom constraint solver rules to model specific factory flows, parent orders, and material requirements.
+              Our engineering team builds custom constraint solver rules to model specific factory
+              flows, parent orders, and material requirements.
             </p>
           </div>
         </div>
@@ -295,7 +333,6 @@ function PricingPage() {
           <Link to="/signup">{str.entCTA}</Link>
         </Button>
       </div>
-
     </div>
   );
 }

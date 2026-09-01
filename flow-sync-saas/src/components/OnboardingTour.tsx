@@ -28,22 +28,26 @@ export function OnboardingTour() {
   const steps = [
     {
       title: "Welcome to CapaSolve SaaS!",
-      description: "CapaSolve is an advanced manufacturing scheduling engine designed to eliminate workstation bottlenecks and maximize factory OEE.",
+      description:
+        "CapaSolve is an advanced manufacturing scheduling engine designed to eliminate workstation bottlenecks and maximize factory OEE.",
       icon: <Factory className="h-10 w-10 text-primary" />,
     },
     {
       title: "1. Upload Production Datasets",
-      description: "Import process CSV spreadsheets containing Order IDs, Materials, Base Quantities, Setup Times (R), and Machining Times (M). AI automatically cleans and maps your columns.",
+      description:
+        "Import process CSV spreadsheets containing Order IDs, Materials, Base Quantities, Setup Times (R), and Machining Times (M). AI automatically cleans and maps your columns.",
       icon: <Upload className="h-10 w-10 text-blue-500" />,
     },
     {
       title: "2. Constraint-Based Optimization",
-      description: "Our solver respects shift availability, setup technician ceilings, machine group rules, and SOP start dates to generate realistic timelines.",
+      description:
+        "Our solver respects shift availability, setup technician ceilings, machine group rules, and SOP start dates to generate realistic timelines.",
       icon: <Play className="h-10 w-10 text-emerald-500" />,
     },
     {
       title: "3. Live Interactive Gantt & Analytics",
-      description: "Drag-and-drop process blocks across machines, inspect live collisions, and track OEE metrics in real time.",
+      description:
+        "Drag-and-drop process blocks across machines, inspect live collisions, and track OEE metrics in real time.",
       icon: <BarChart3 className="h-10 w-10 text-indigo-500" />,
     },
   ];
@@ -72,13 +76,9 @@ export function OnboardingTour() {
       <DialogContent className="max-w-md border border-border/80 p-6 shadow-2xl">
         <DialogHeader className="text-center space-y-3 pt-2">
           <div className="flex justify-center">
-            <div className="p-4 bg-primary/10 rounded-2xl">
-              {current.icon}
-            </div>
+            <div className="p-4 bg-primary/10 rounded-2xl">{current.icon}</div>
           </div>
-          <DialogTitle className="text-xl font-bold tracking-tight">
-            {current.title}
-          </DialogTitle>
+          <DialogTitle className="text-xl font-bold tracking-tight">{current.title}</DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground leading-relaxed">
             {current.description}
           </DialogDescription>
@@ -102,7 +102,8 @@ export function OnboardingTour() {
             onClick={handleNext}
             className="text-xs font-bold cursor-pointer bg-primary text-primary-foreground hover:bg-primary/95"
           >
-            {step === steps.length - 1 ? "Get Started" : "Next"} <ChevronRight className="ml-1 h-3.5 w-3.5" />
+            {step === steps.length - 1 ? "Get Started" : "Next"}{" "}
+            <ChevronRight className="ml-1 h-3.5 w-3.5" />
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -41,7 +41,11 @@ export const runOptimizeScheduleServer = createServerFn({ method: "POST" })
       const { orgId, userId, plan } = auth.ctx;
 
       // 2. Validate Plan Limits
-      const validation = validateOptimizationPayload(data.orders.length, data.machines.length, plan);
+      const validation = validateOptimizationPayload(
+        data.orders.length,
+        data.machines.length,
+        plan,
+      );
       if (!validation.allowed) {
         return { success: false, error: validation.reason };
       }
@@ -59,7 +63,7 @@ export const runOptimizeScheduleServer = createServerFn({ method: "POST" })
         data.dailyCapacities,
         data.globalSetterCapacity,
         data.globalOperatorCapacity,
-        data.maxPreponeWeeks
+        data.maxPreponeWeeks,
       );
 
       const durationMs = Date.now() - startTime;
@@ -79,9 +83,11 @@ export const runOptimizeScheduleServer = createServerFn({ method: "POST" })
           updatedAt: new Date().toISOString(),
         };
 
-        await supabase
-          .from("schedule_data")
-          .upsert({ schedule_id: data.scheduleId, data: fullPayload, updated_at: new Date().toISOString() });
+        await supabase.from("schedule_data").upsert({
+          schedule_id: data.scheduleId,
+          data: fullPayload,
+          updated_at: new Date().toISOString(),
+        });
 
         // Log execution to schedule_execution_logs table
         await supabase.from("schedule_execution_logs").insert({

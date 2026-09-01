@@ -20,7 +20,13 @@ export interface CleaningOptions {
 
 export interface CleanedResult {
   cleanedRows: any[];
-  logs: Array<{ rowIdx: number; column: string; action: string; previous: string; current: string }>;
+  logs: Array<{
+    rowIdx: number;
+    column: string;
+    action: string;
+    previous: string;
+    current: string;
+  }>;
 }
 
 export interface AISuggestion {
@@ -50,35 +56,134 @@ export interface ColumnMapping {
 export function detectColumnMapping(headers: string[]): ColumnMapping {
   const findHeader = (possibleNames: string[], defaultFallback: string): string => {
     // Exact or array match
-    const exact = headers.find(h => {
+    const exact = headers.find((h) => {
       const lh = h.toLowerCase().trim();
-      return possibleNames.map(p => p.toLowerCase().trim()).includes(lh) || lh === defaultFallback.toLowerCase();
+      return (
+        possibleNames.map((p) => p.toLowerCase().trim()).includes(lh) ||
+        lh === defaultFallback.toLowerCase()
+      );
     });
     if (exact) return exact;
 
     // Substring match
-    const sub = headers.find(h => {
+    const sub = headers.find((h) => {
       const lh = h.toLowerCase().trim();
-      return possibleNames.some(p => lh.includes(p.toLowerCase().trim()) || p.toLowerCase().trim().includes(lh));
+      return possibleNames.some(
+        (p) => lh.includes(p.toLowerCase().trim()) || p.toLowerCase().trim().includes(lh),
+      );
     });
     if (sub) return sub;
 
     // Default fallback exact
-    const def = headers.find(h => h.toLowerCase().trim() === defaultFallback.toLowerCase());
+    const def = headers.find((h) => h.toLowerCase().trim() === defaultFallback.toLowerCase());
     return def || headers[0] || "";
   };
 
   return {
-    order: findHeader(["order", "order id", "auftrag", "job id", "workorder", "order no", "job no", "auftragsnummer"], "Order"),
-    material: findHeader(["material", "part", "materialnr", "part id", "product code", "item", "part number", "materialnumber"], "Material"),
-    processId: findHeader(["process id", "step", "vorgang", "order process id", "operation", "processstep", "step no", "step number"], "Order Process ID"),
-    qty: findHeader(["qty", "quantity", "menge", "order qty", "volume", "targetqty", "order quantity"], "Order QTY"),
-    sopStartDate: findHeader(["sop date", "start date", "sop-startdatum", "sop start date", "releasedate", "date sop"], "SOP Start Date"),
-    machine: findHeader(["machine", "arbeitsplatz", "machine id", "assembly line", "production line", "work center", "cell", "resource", "station", "line", "linie", "assembly"], "Machine"),
-    setupTime: findHeader(["set up time (not related to any qty)", "setup", "rustzeit", "setup duration", "preptime", "setup time", "setup (mins)"], "Set up Time (Not related to any qty)"),
-    processTime: findHeader(["process time (related to qty)", "process time", "bearbeitungszeit", "processing duration", "cycletime", "process time (mins)"], "Process time (related to qty)"),
-    baseQty: findHeader(["base-qty each process", "base qty", "basis", "base"], "Base-Qty each process"),
-    manpower: findHeader(["manpwer utilization", "manpower utilization", "manpower", "bediener", "crewsize", "operator load", "manpower %", "manpower utilization in %"], "Manpower Utilization"),
+    order: findHeader(
+      [
+        "order",
+        "order id",
+        "auftrag",
+        "job id",
+        "workorder",
+        "order no",
+        "job no",
+        "auftragsnummer",
+      ],
+      "Order",
+    ),
+    material: findHeader(
+      [
+        "material",
+        "part",
+        "materialnr",
+        "part id",
+        "product code",
+        "item",
+        "part number",
+        "materialnumber",
+      ],
+      "Material",
+    ),
+    processId: findHeader(
+      [
+        "process id",
+        "step",
+        "vorgang",
+        "order process id",
+        "operation",
+        "processstep",
+        "step no",
+        "step number",
+      ],
+      "Order Process ID",
+    ),
+    qty: findHeader(
+      ["qty", "quantity", "menge", "order qty", "volume", "targetqty", "order quantity"],
+      "Order QTY",
+    ),
+    sopStartDate: findHeader(
+      ["sop date", "start date", "sop-startdatum", "sop start date", "releasedate", "date sop"],
+      "SOP Start Date",
+    ),
+    machine: findHeader(
+      [
+        "machine",
+        "arbeitsplatz",
+        "machine id",
+        "assembly line",
+        "production line",
+        "work center",
+        "cell",
+        "resource",
+        "station",
+        "line",
+        "linie",
+        "assembly",
+      ],
+      "Machine",
+    ),
+    setupTime: findHeader(
+      [
+        "set up time (not related to any qty)",
+        "setup",
+        "rustzeit",
+        "setup duration",
+        "preptime",
+        "setup time",
+        "setup (mins)",
+      ],
+      "Set up Time (Not related to any qty)",
+    ),
+    processTime: findHeader(
+      [
+        "process time (related to qty)",
+        "process time",
+        "bearbeitungszeit",
+        "processing duration",
+        "cycletime",
+        "process time (mins)",
+      ],
+      "Process time (related to qty)",
+    ),
+    baseQty: findHeader(
+      ["base-qty each process", "base qty", "basis", "base"],
+      "Base-Qty each process",
+    ),
+    manpower: findHeader(
+      [
+        "manpwer utilization",
+        "manpower utilization",
+        "manpower",
+        "bediener",
+        "crewsize",
+        "operator load",
+        "manpower %",
+        "manpower utilization in %",
+      ],
+      "Manpower Utilization",
+    ),
   };
 }
 
@@ -90,8 +195,9 @@ export const runServerAICleaning = createServerFn({ method: "POST" })
       const isApiKeyAvailable = !!process.env.AI_ENGINE_API_KEY || !!process.env.OPENAI_API_KEY;
       return {
         success: false,
-        error: "AI_ENGINE_API_KEY is not configured in environment. Using high-performance client-side AI data cleaner engine.",
-        isApiKeyAvailable
+        error:
+          "AI_ENGINE_API_KEY is not configured in environment. Using high-performance client-side AI data cleaner engine.",
+        isApiKeyAvailable,
       };
     } catch (e: any) {
       return { success: false, error: e.message || "Failed in AI Server Function" };
@@ -103,7 +209,7 @@ export function detectCSVFormat(csvText: string): { delimiter: string; name: str
   if (!csvText) return { delimiter: ",", name: "Comma (Default)" };
 
   const firstLines = csvText.split("\n").slice(0, 5).join("\n");
-  
+
   // Count frequency of possible delimiters
   const commaCount = (firstLines.match(/,/g) || []).length;
   const semicolonCount = (firstLines.match(/;/g) || []).length;
@@ -121,12 +227,12 @@ export function detectCSVFormat(csvText: string): { delimiter: string; name: str
 export function parseAndNormalizeDate(dateStr: string): string {
   if (!dateStr) return "";
   const cleaned = dateStr.trim();
-  
+
   // Already in YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) {
     return cleaned;
   }
-  
+
   // DD.MM.YYYY (German standard)
   const deMatch = cleaned.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
   if (deMatch) {
@@ -159,7 +265,7 @@ export function parseAndNormalizeDate(dateStr: string): string {
       return `${year}-${val2}-${val1}`; // DD-MM-YYYY -> YYYY-MM-DD
     } else {
       // check if German DD-MM-YYYY or standard
-      return `${year}-${val2}-${val1}`; 
+      return `${year}-${val2}-${val1}`;
     }
   }
 
@@ -171,12 +277,12 @@ export function validateCSVData(csvText: string, delimiter: string, customMappin
   const parsed = Papa.parse<any>(csvText.trim(), {
     header: true,
     skipEmptyLines: true,
-    delimiter: delimiter
+    delimiter: delimiter,
   });
 
   const issues: ValidationIssue[] = [];
   const headers = parsed.meta.fields || [];
-  
+
   // Use custom mapping or auto detect
   const mapping = customMapping || detectColumnMapping(headers);
 
@@ -188,7 +294,7 @@ export function validateCSVData(csvText: string, delimiter: string, customMappin
         rowIdx: -1,
         type: "critical",
         message: `Missing column mapping for "${friendlyName}". Please select which CSV column corresponds to this field.`,
-        column: friendlyName
+        column: friendlyName,
       });
       return false;
     }
@@ -213,7 +319,7 @@ export function validateCSVData(csvText: string, delimiter: string, customMappin
           rowIdx: idx,
           type: "critical",
           message: `Line ${lineNum}: Missing value in mapped "Order ID" column ("${mapping.order}").`,
-          column: mapping.order
+          column: mapping.order,
         });
       }
     }
@@ -226,7 +332,7 @@ export function validateCSVData(csvText: string, delimiter: string, customMappin
           rowIdx: idx,
           type: "warning",
           message: `Line ${lineNum}: Missing value in mapped "Material" column ("${mapping.material}").`,
-          column: mapping.material
+          column: mapping.material,
         });
       } else if (/\t/.test(row[mapping.material]) || /\s{2,}/.test(row[mapping.material])) {
         issues.push({
@@ -234,7 +340,7 @@ export function validateCSVData(csvText: string, delimiter: string, customMappin
           type: "info",
           message: `Line ${lineNum}: Material "${material}" contains trailing tabs or excessive spacing.`,
           column: mapping.material,
-          value: row[mapping.material]
+          value: row[mapping.material],
         });
       }
     }
@@ -247,7 +353,7 @@ export function validateCSVData(csvText: string, delimiter: string, customMappin
           rowIdx: idx,
           type: "warning",
           message: `Line ${lineNum}: Missing process step number in column "${mapping.processId}" (will fall back to 10).`,
-          column: mapping.processId
+          column: mapping.processId,
         });
       } else {
         const stepVal = parseInt(stepStr, 10);
@@ -257,7 +363,7 @@ export function validateCSVData(csvText: string, delimiter: string, customMappin
             type: "critical",
             message: `Line ${lineNum}: Step value "${stepStr}" is not a valid integer.`,
             column: mapping.processId,
-            value: stepStr
+            value: stepStr,
           });
         }
       }
@@ -265,13 +371,15 @@ export function validateCSVData(csvText: string, delimiter: string, customMappin
 
     // Check Quantity
     if (hasQty) {
-      const qtyStr = String(row[mapping.qty] || "").replace(/,/g, "").trim();
+      const qtyStr = String(row[mapping.qty] || "")
+        .replace(/,/g, "")
+        .trim();
       if (!qtyStr) {
         issues.push({
           rowIdx: idx,
           type: "warning",
           message: `Line ${lineNum}: Empty quantity in column "${mapping.qty}" (will fall back to 0).`,
-          column: mapping.qty
+          column: mapping.qty,
         });
       } else {
         const qtyVal = parseFloat(qtyStr);
@@ -281,7 +389,7 @@ export function validateCSVData(csvText: string, delimiter: string, customMappin
             type: "critical",
             message: `Line ${lineNum}: Quantity "${qtyStr}" in column "${mapping.qty}" is not a valid number.`,
             column: mapping.qty,
-            value: qtyStr
+            value: qtyStr,
           });
         } else if (qtyVal < 0) {
           issues.push({
@@ -289,7 +397,7 @@ export function validateCSVData(csvText: string, delimiter: string, customMappin
             type: "warning",
             message: `Line ${lineNum}: Quantity "${qtyStr}" is negative. Needs absolute conversion.`,
             column: mapping.qty,
-            value: qtyStr
+            value: qtyStr,
           });
         }
       }
@@ -303,7 +411,7 @@ export function validateCSVData(csvText: string, delimiter: string, customMappin
           rowIdx: idx,
           type: "warning",
           message: `Line ${lineNum}: Empty start date in column "${mapping.sopStartDate}".`,
-          column: mapping.sopStartDate
+          column: mapping.sopStartDate,
         });
       } else {
         const normalized = parseAndNormalizeDate(sopDate);
@@ -313,7 +421,7 @@ export function validateCSVData(csvText: string, delimiter: string, customMappin
             type: "warning",
             message: `Line ${lineNum}: Date "${sopDate}" cannot be parsed automatically. Correct format is YYYY-MM-DD.`,
             column: mapping.sopStartDate,
-            value: sopDate
+            value: sopDate,
           });
         }
       }
@@ -328,7 +436,7 @@ export function validateCSVData(csvText: string, delimiter: string, customMappin
           type: "warning",
           message: `Line ${lineNum}: Setup time (${setupTime}) in column "${mapping.setupTime}" is negative.`,
           column: mapping.setupTime,
-          value: String(setupTime)
+          value: String(setupTime),
         });
       }
     }
@@ -342,7 +450,7 @@ export function validateCSVData(csvText: string, delimiter: string, customMappin
           type: "warning",
           message: `Line ${lineNum}: Process time (${processTime}) in column "${mapping.processTime}" is negative.`,
           column: mapping.processTime,
-          value: String(processTime)
+          value: String(processTime),
         });
       }
     }
@@ -355,7 +463,7 @@ export function validateCSVData(csvText: string, delimiter: string, customMappin
           rowIdx: idx,
           type: "warning",
           message: `Line ${lineNum}: Missing workstation assignment in column "${mapping.machine}" (fallback default will be applied).`,
-          column: mapping.machine
+          column: mapping.machine,
         });
       }
     }
@@ -375,12 +483,16 @@ export function validateCSVData(csvText: string, delimiter: string, customMappin
     issues,
     healthScore,
     totalRows: parsed.data.length,
-    mapping
+    mapping,
   };
 }
 
 // 4. Rule-based Cleaning Engine
-export function cleanCSVData(rawRows: any[], options: CleaningOptions, customMapping: ColumnMapping): CleanedResult {
+export function cleanCSVData(
+  rawRows: any[],
+  options: CleaningOptions,
+  customMapping: ColumnMapping,
+): CleanedResult {
   const logs: CleanedResult["logs"] = [];
   const mapping = customMapping;
 
@@ -392,19 +504,19 @@ export function cleanCSVData(rawRows: any[], options: CleaningOptions, customMap
       let val = cleaned[key];
       if (typeof val === "string") {
         const prev = val;
-        
+
         // Remove trailing tab spaces and carriage returns
         if (options.trimWhitespace) {
           val = val.replace(/\r/g, "").replace(/\t/g, " ").replace(/\s+/g, " ").trim();
         }
-        
+
         if (prev !== val) {
           logs.push({
             rowIdx: idx,
             column: key,
             action: "Trimmed spaces and inner tabs",
             previous: prev,
-            current: val
+            current: val,
           });
           cleaned[key] = val;
         }
@@ -422,7 +534,7 @@ export function cleanCSVData(rawRows: any[], options: CleaningOptions, customMap
           column: mapping.processId,
           action: "Filled empty process ID with default",
           previous: String(prev),
-          current: "10"
+          current: "10",
         });
       }
     }
@@ -442,7 +554,7 @@ export function cleanCSVData(rawRows: any[], options: CleaningOptions, customMap
             column: qtyKey,
             action: "Converted negative quantity to positive absolute",
             previous: strVal,
-            current: String(absVal)
+            current: String(absVal),
           });
         }
       }
@@ -459,7 +571,7 @@ export function cleanCSVData(rawRows: any[], options: CleaningOptions, customMap
             column: setupKey,
             action: "Converted negative setup time to positive",
             previous: String(num),
-            current: String(absVal)
+            current: String(absVal),
           });
         }
       }
@@ -476,7 +588,7 @@ export function cleanCSVData(rawRows: any[], options: CleaningOptions, customMap
             column: procKey,
             action: "Converted negative process time to positive",
             previous: String(num),
-            current: String(absVal)
+            current: String(absVal),
           });
         }
       }
@@ -493,7 +605,7 @@ export function cleanCSVData(rawRows: any[], options: CleaningOptions, customMap
           column: mapping.sopStartDate,
           action: "Standardized date formatting",
           previous: rawDate,
-          current: normalized
+          current: normalized,
         });
       }
     }
@@ -508,10 +620,10 @@ export function cleanCSVData(rawRows: any[], options: CleaningOptions, customMap
           column: machKey,
           action: "Assigned default workstation 'Workstation-A'",
           previous: "",
-          current: "Workstation-A"
+          current: "Workstation-A",
         });
       }
-      
+
       const baseKey = mapping.baseQty;
       if (baseKey && (cleaned[baseKey] === undefined || parseFloat(cleaned[baseKey]) <= 0)) {
         const prev = cleaned[baseKey] || "0";
@@ -521,7 +633,7 @@ export function cleanCSVData(rawRows: any[], options: CleaningOptions, customMap
           column: baseKey,
           action: "Fitted base qty fallback of 1",
           previous: String(prev),
-          current: "1"
+          current: "1",
         });
       }
     }
@@ -536,7 +648,7 @@ export function cleanCSVData(rawRows: any[], options: CleaningOptions, customMap
 export function generateAISuggestions(rows: any[], mapping: ColumnMapping): AISuggestion[] {
   const suggestions: AISuggestion[] = [];
   if (!mapping || !mapping.material) return suggestions;
-  
+
   rows.forEach((row, idx) => {
     // A. Material typos/formatting issues
     const mat = row[mapping.material] || "";
@@ -549,15 +661,18 @@ export function generateAISuggestions(rows: any[], mapping: ColumnMapping): AISu
         description: `Logical fix: material nomenclature typo detected (letter 'O' used instead of digit '0'). Fix code to '${fixed}'.`,
         originalValue: mat,
         suggestedValue: fixed,
-        category: "typo"
+        category: "typo",
       });
     }
 
     // B. Machine incompatibility based on process text
-    const textCol = Object.keys(row).find(k => k.toLowerCase().includes("text") || k.toLowerCase().includes("desc")) || "";
+    const textCol =
+      Object.keys(row).find(
+        (k) => k.toLowerCase().includes("text") || k.toLowerCase().includes("desc"),
+      ) || "";
     const text = textCol ? (row[textCol] || "").toLowerCase() : "";
     const machine = row[mapping.machine] || "";
-    
+
     if (text.includes("m1") || text.includes("line 1") || text.includes("station 1")) {
       if (machine.toLowerCase().includes("m2") || machine === "603010" || machine === "603011") {
         suggestions.push({
@@ -566,8 +681,12 @@ export function generateAISuggestions(rows: any[], mapping: ColumnMapping): AISu
           column: mapping.machine,
           description: `Resource assignment clash: Process text mentions Line/Group 1, but assigned resource '${machine}' is in Group 2. Suggest swapping to compatible Line 1 resource.`,
           originalValue: machine,
-          suggestedValue: machine.replace(/2/g, "1").replace(/M2/gi, "M1").replace(/Beta/gi, "Alpha").replace(/South/gi, "North"),
-          category: "consistency"
+          suggestedValue: machine
+            .replace(/2/g, "1")
+            .replace(/M2/gi, "M1")
+            .replace(/Beta/gi, "Alpha")
+            .replace(/South/gi, "North"),
+          category: "consistency",
         });
       }
     } else if (text.includes("m2") || text.includes("line 2") || text.includes("station 2")) {
@@ -578,8 +697,12 @@ export function generateAISuggestions(rows: any[], mapping: ColumnMapping): AISu
           column: mapping.machine,
           description: `Resource assignment clash: Process text mentions Line/Group 2, but assigned resource '${machine}' is in Group 1. Suggest swapping to compatible Line 2 resource.`,
           originalValue: machine,
-          suggestedValue: machine.replace(/1/g, "2").replace(/M1/gi, "M2").replace(/Alpha/gi, "Beta").replace(/North/gi, "South"),
-          category: "consistency"
+          suggestedValue: machine
+            .replace(/1/g, "2")
+            .replace(/M1/gi, "M2")
+            .replace(/Alpha/gi, "Beta")
+            .replace(/North/gi, "South"),
+          category: "consistency",
         });
       }
     }
@@ -595,7 +718,7 @@ export function generateAISuggestions(rows: any[], mapping: ColumnMapping): AISu
           description: `Time outlier warning: Setup time is abnormally high (${setup} mins, > 3 hrs). Suggest threshold adjustment to 30 mins.`,
           originalValue: String(setup),
           suggestedValue: "30",
-          category: "anomaly"
+          category: "anomaly",
         });
       }
     }
@@ -608,54 +731,78 @@ export function generateAISuggestions(rows: any[], mapping: ColumnMapping): AISu
 export function runCustomPromptCleaning(
   rows: any[],
   prompt: string,
-  mapping: ColumnMapping
+  mapping: ColumnMapping,
 ): { cleanedRows: any[]; aiLogs: string[] } {
   const aiLogs: string[] = [];
   const cleanedRows = [...rows].map((row, idx) => {
     const updated = { ...row };
     const p = prompt.toLowerCase();
-    
+
     // Command: "assign machine X to process text Y"
-    if (p.includes("assign") || p.includes("set resource") || p.includes("set machine") || p.includes("set line")) {
+    if (
+      p.includes("assign") ||
+      p.includes("set resource") ||
+      p.includes("set machine") ||
+      p.includes("set line")
+    ) {
       // Find resource target
       const words = prompt.split(" ");
-      const toIndex = words.findIndex(w => w.toLowerCase() === "to");
+      const toIndex = words.findIndex((w) => w.toLowerCase() === "to");
       if (toIndex > 1) {
         // resource is words between assign/set and to
-        const startIdx = words.findIndex(w => w.toLowerCase() === "assign" || w.toLowerCase() === "set") + 2;
-        const targetResource = words.slice(startIdx, toIndex).join(" ").replace(/['"“”]/g, "").trim();
-        
+        const startIdx =
+          words.findIndex((w) => w.toLowerCase() === "assign" || w.toLowerCase() === "set") + 2;
+        const targetResource = words
+          .slice(startIdx, toIndex)
+          .join(" ")
+          .replace(/['"“”]/g, "")
+          .trim();
+
         // keyword is after to
-        const keyword = words.slice(toIndex + 1).join(" ").replace(/['"“”]/g, "").trim().toLowerCase();
-        
-        const textCol = Object.keys(row).find(k => k.toLowerCase().includes("text") || k.toLowerCase().includes("desc") || k.toLowerCase().includes("name")) || "";
+        const keyword = words
+          .slice(toIndex + 1)
+          .join(" ")
+          .replace(/['"“”]/g, "")
+          .trim()
+          .toLowerCase();
+
+        const textCol =
+          Object.keys(row).find(
+            (k) =>
+              k.toLowerCase().includes("text") ||
+              k.toLowerCase().includes("desc") ||
+              k.toLowerCase().includes("name"),
+          ) || "";
         const procText = textCol ? (updated[textCol] || "").toLowerCase() : "";
-        
+
         if (procText.includes(keyword) && mapping.machine) {
           const prev = updated[mapping.machine];
           updated[mapping.machine] = targetResource;
           if (prev !== targetResource) {
             aiLogs.push(
-              `[AI HEAL] Row ${idx + 1}: Reassigned Resource from '${prev}' to '${targetResource}' because process description matches '${keyword}'.`
+              `[AI HEAL] Row ${idx + 1}: Reassigned Resource from '${prev}' to '${targetResource}' because process description matches '${keyword}'.`,
             );
           }
         }
       }
     }
-    
+
     // Command: "set setup time to X where process time is Y" or "set setup time to X for..."
     else if ((p.includes("set setup") || p.includes("change setup")) && mapping.setupTime) {
       const numMatch = prompt.match(/(?:setup time|setup|to)\s+(\d+)/i);
       if (numMatch) {
         const targetSetup = numMatch[1];
-        if ((p.includes("process time is 0") || p.includes("process time is zero")) && mapping.processTime) {
+        if (
+          (p.includes("process time is 0") || p.includes("process time is zero")) &&
+          mapping.processTime
+        ) {
           const procTime = parseFloat(updated[mapping.processTime]) || 0;
           if (procTime === 0) {
             const prev = updated[mapping.setupTime];
             updated[mapping.setupTime] = targetSetup;
             if (prev !== targetSetup) {
               aiLogs.push(
-                `[AI HEAL] Row ${idx + 1}: Modified Setup Time from '${prev}' to '${targetSetup}' mins because process time is 0.`
+                `[AI HEAL] Row ${idx + 1}: Modified Setup Time from '${prev}' to '${targetSetup}' mins because process time is 0.`,
               );
             }
           }
@@ -669,7 +816,7 @@ export function runCustomPromptCleaning(
               updated[mapping.setupTime] = targetSetup;
               if (prev !== targetSetup) {
                 aiLogs.push(
-                  `[AI HEAL] Row ${idx + 1}: Modified Setup Time to '${targetSetup}' for material matching '${targetMat}'.`
+                  `[AI HEAL] Row ${idx + 1}: Modified Setup Time to '${targetSetup}' for material matching '${targetMat}'.`,
                 );
               }
             }
@@ -679,7 +826,11 @@ export function runCustomPromptCleaning(
     }
 
     // Command: "double quantity for order X"
-    else if ((p.includes("double quantity") || p.includes("multiply qty")) && mapping.qty && mapping.order) {
+    else if (
+      (p.includes("double quantity") || p.includes("multiply qty")) &&
+      mapping.qty &&
+      mapping.order
+    ) {
       const ordMatch = prompt.match(/order\s+([a-zA-Z0-9_-]+)/i);
       if (ordMatch) {
         const targetOrd = ordMatch[1].toLowerCase();
@@ -689,7 +840,7 @@ export function runCustomPromptCleaning(
           const doubled = qtyVal * 2;
           updated[mapping.qty] = String(doubled);
           aiLogs.push(
-            `[AI HEAL] Row ${idx + 1}: Doubled Quantity from '${qtyVal}' to '${doubled}' for matching Order '${updated[mapping.order]}'.`
+            `[AI HEAL] Row ${idx + 1}: Doubled Quantity from '${qtyVal}' to '${doubled}' for matching Order '${updated[mapping.order]}'.`,
           );
         }
       }
@@ -701,7 +852,9 @@ export function runCustomPromptCleaning(
       const cleaned = prev.replace(/\s+/g, "");
       if (prev !== cleaned) {
         updated[mapping.material] = cleaned;
-        aiLogs.push(`[AI HEAL] Row ${idx + 1}: Stripped all interior spaces from material code. Formatted to '${cleaned}'.`);
+        aiLogs.push(
+          `[AI HEAL] Row ${idx + 1}: Stripped all interior spaces from material code. Formatted to '${cleaned}'.`,
+        );
       }
     }
 
@@ -710,7 +863,7 @@ export function runCustomPromptCleaning(
 
   if (aiLogs.length === 0) {
     aiLogs.push(
-      "AI Prompt interpreted. No rows matched the filter criteria in instructions, or dataset was already compliant with instructions."
+      "AI Prompt interpreted. No rows matched the filter criteria in instructions, or dataset was already compliant with instructions.",
     );
   }
 

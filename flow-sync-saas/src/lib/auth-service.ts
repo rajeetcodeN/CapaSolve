@@ -4,7 +4,10 @@ import { UserRole } from "./api/auth";
 
 export async function syncUserSession() {
   try {
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
     if (sessionError || !session?.user) {
       useAppStore.getState().setUser(null);
       useAppStore.getState().setOrganization(null);
@@ -23,7 +26,11 @@ export async function syncUserSession() {
       .maybeSingle();
 
     if (memberData) {
-      const orgInfo = memberData.organizations as unknown as { id: string; name: string; plan: string } | null;
+      const orgInfo = memberData.organizations as unknown as {
+        id: string;
+        name: string;
+        plan: string;
+      } | null;
       useAppStore.getState().setOrganization({
         id: memberData.org_id,
         name: orgInfo?.name || "Factory Organization",
@@ -32,7 +39,8 @@ export async function syncUserSession() {
       useAppStore.getState().setRole(memberData.role as UserRole);
     } else {
       // Self-heal organization provisioning if DB trigger didn't run
-      const companyName = user.user_metadata?.company_name || `${user.email?.split("@")[0]} Factory`;
+      const companyName =
+        user.user_metadata?.company_name || `${user.email?.split("@")[0]} Factory`;
       const signupRole = (user.user_metadata?.signup_role as UserRole) || "ADMIN";
       const slug = `org-${user.id.substring(0, 8)}`;
 
@@ -72,7 +80,9 @@ export function setupAuthListener() {
   syncUserSession();
 
   // Listen for auth state changes (SignIn, SignOut, TokenRefresh)
-  const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+  const {
+    data: { subscription },
+  } = supabase.auth.onAuthStateChange(async (event, session) => {
     if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
       if (session?.user) {
         useAppStore.getState().setUser(session.user);
@@ -91,9 +101,10 @@ export function setupAuthListener() {
 }
 
 export async function sendPasswordResetEmail(email: string) {
-  const redirectUrl = typeof window !== "undefined" 
-    ? `${window.location.origin}/reset-password`
-    : "http://localhost:3000/reset-password";
+  const redirectUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/reset-password`
+      : "http://localhost:3000/reset-password";
 
   const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: redirectUrl,
@@ -117,9 +128,10 @@ export async function updateUserPassword(newPassword: string) {
 }
 
 export async function signInWithOAuthProvider(provider: "google" | "azure") {
-  const redirectUrl = typeof window !== "undefined"
-    ? `${window.location.origin}/dashboard`
-    : "http://localhost:3000/dashboard";
+  const redirectUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/dashboard`
+      : "http://localhost:3000/dashboard";
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
@@ -140,4 +152,3 @@ export async function signOutUser() {
   useAppStore.getState().setOrganization(null);
   useAppStore.getState().setRole("GUEST");
 }
-

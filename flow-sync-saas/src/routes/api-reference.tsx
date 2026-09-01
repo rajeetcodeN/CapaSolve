@@ -6,7 +6,10 @@ export const Route = createFileRoute("/api-reference")({
   head: () => ({
     meta: [
       { title: "API Reference — CapaSolve" },
-      { name: "description", content: "Integrate CapaSolve scheduling solver into your ERP system via API endpoints." },
+      {
+        name: "description",
+        content: "Integrate CapaSolve scheduling solver into your ERP system via API endpoints.",
+      },
     ],
   }),
   component: ApiReferencePage,
@@ -22,7 +25,9 @@ function ApiReferencePage() {
           <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-foreground">
             API Reference
           </h1>
-          <p className="text-muted-foreground text-xs">Integrate CapaSolve's constraint engine directly with your ERP.</p>
+          <p className="text-muted-foreground text-xs">
+            Integrate CapaSolve's constraint engine directly with your ERP.
+          </p>
         </div>
 
         <Card className="border-border/60 bg-card/60 backdrop-blur-md shadow-sm">
@@ -33,7 +38,8 @@ function ApiReferencePage() {
                 Authentication
               </h3>
               <p>
-                All API requests must contain an <code>Authorization</code> header containing your Enterprise API token:
+                All API requests must contain an <code>Authorization</code> header containing your
+                Enterprise API token:
               </p>
               <pre className="bg-muted p-3.5 rounded-lg text-xs text-foreground/90 font-mono border border-border/40 overflow-x-auto">
                 Authorization: Bearer cap_live_YOUR_SECRET_API_KEY
@@ -46,13 +52,15 @@ function ApiReferencePage() {
                 1. Trigger Schedule Optimization
               </h3>
               <p>
-                To trigger the constraint optimization engine programmatically, send a <code>POST</code> request:
+                To trigger the constraint optimization engine programmatically, send a{" "}
+                <code>POST</code> request:
               </p>
               <pre className="bg-muted p-3.5 rounded-lg text-xs text-foreground/90 font-mono border border-border/40 overflow-x-auto">
                 POST https://api.capasolve.com/v1/schedule/optimize
               </pre>
               <p className="text-xs text-muted-foreground">
-                Payload parameters: <code>organization_id</code>, <code>horizon_days</code>, and <code>workstations</code> map details.
+                Payload parameters: <code>organization_id</code>, <code>horizon_days</code>, and{" "}
+                <code>workstations</code> map details.
               </p>
             </section>
 
@@ -61,9 +69,7 @@ function ApiReferencePage() {
                 <Link2 className="h-4.5 w-4.5 text-primary" />
                 2. Fetch Current Timeline
               </h3>
-              <p>
-                To retrieve the currently active Gantt schedule entries:
-              </p>
+              <p>To retrieve the currently active Gantt schedule entries:</p>
               <pre className="bg-muted p-3.5 rounded-lg text-xs text-foreground/90 font-mono border border-border/40 overflow-x-auto">
                 GET https://api.capasolve.com/v1/schedule/active
               </pre>

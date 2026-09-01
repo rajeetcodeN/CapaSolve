@@ -13,7 +13,8 @@ export const SAMPLE_DATASETS: SampleDataset[] = [
     id: "cnc_milling",
     name: "CNC Milling & Machining",
     industry: "Precision Engineering",
-    description: "German SAP ERP format with 5-axis milling, drilling, tapping & grinding setup/run times.",
+    description:
+      "German SAP ERP format with 5-axis milling, drilling, tapping & grinding setup/run times.",
     icon: "CNC",
     filename: "test_cnc_milling_workshop.csv",
     content: `Order,Order Process ID,Material,Machine,Maschine-Group,Process Text,SOP Start Date,Order QTY,Base-Qty each process,Set up Time (Not related to any qty),Unit,Process time (related to qty),Unit,Summe V2/Sum total process time,Manpwer Utilization,Unit,Summe V3 SUM total Manpower utilization process,Manpower Utilization in %,SOP Start time
@@ -46,7 +47,7 @@ export const SAMPLE_DATASETS: SampleDataset[] = [
 1023814,10,100-009-211.01-00,603010,M2,"BOHREN: Tiefloch Du. 8x120",08-06-2026,95,1,120,MIN,8.0,MIN,880,2.0,MIN,1760,100%,09:00:00
 1023814,20,100-009-211.01-00,603012,M1,"HONEN: Bohrung O8H6",08-06-2026,95,1,45,MIN,4.5,MIN,472.5,1.0,MIN,472.5,50%,14:00:00
 1023815,10,100-012-727.01-00,605001,M1,"VERZAHNEN: Modul 2.5 Z=32",09-06-2026,300,5,180,MIN,11.0,MIN,840,2.5,MIN,2100,50%,07:00:00
-1023815,20,100-012-727.01-00,603011,M2,"HÄRTEN: Induktivhärten",09-06-2026,300,50,60,MIN,5.0,MIN,90,1.0,MIN,90,20%,13:30:00`
+1023815,20,100-012-727.01-00,603011,M2,"HÄRTEN: Induktivhärten",09-06-2026,300,50,60,MIN,5.0,MIN,90,1.0,MIN,90,20%,13:30:00`,
   },
   {
     id: "automotive_assembly",
@@ -84,7 +85,7 @@ export const SAMPLE_DATASETS: SampleDataset[] = [
 100612,10,AUTO-TEST-DYNO,Assy Line Beta,B1,End-of-Line Roll Dyno Test,09-06-2026,60,1,60,MIN,15.0,MIN,960,2,MIN,1920,80%,08:00:00
 100612,20,AUTO-TEST-DYNO,Assy Line Gamma,C1,Final Inspection & Detailing,09-06-2026,60,1,30,MIN,10.0,MIN,630,1.5,MIN,945,50%,13:00:00
 100613,10,AUTO-HVAC-UNIT,Assy Line Alpha,A1,Compressor & Condenser Assy,09-06-2026,140,1,45,MIN,4.5,MIN,675,2,MIN,1350,50%,09:30:00
-100613,20,AUTO-HVAC-UNIT,Assy Line Beta,B2,R134a Refrigerant Charge,09-06-2026,140,1,20,MIN,2.0,MIN,300,1,MIN,300,40%,14:00:00`
+100613,20,AUTO-HVAC-UNIT,Assy Line Beta,B2,R134a Refrigerant Charge,09-06-2026,140,1,20,MIN,2.0,MIN,300,1,MIN,300,40%,14:00:00`,
   },
   {
     id: "electronics_smt",
@@ -123,7 +124,7 @@ WO-7020,20,PCB-GATE-DRV,SMT Line 03,SMT-REFLOW,Pin-in-Paste Reflow,08-06-2026,40
 WO-7021,10,PCB-LED-ARRAY,SMT Line 01,SMT-PICK,High Power LED Placement,09-06-2026,1500,250,30,MIN,0.05,MIN,1,07:30:00
 WO-7021,20,PCB-LED-ARRAY,SMT Line 02,SMT-REFLOW,Aluminum Substrate Reflow,09-06-2026,1500,250,35,MIN,0.15,MIN,1,10:30:00
 WO-7022,10,PCB-FIRM-PROG,SMT Line 04,AOI-INSPECT,In-Circuit Bed of Nails Test,09-06-2026,500,50,60,MIN,0.40,MIN,2,08:30:00
-WO-7022,20,PCB-FIRM-PROG,SMT Line 04,AOI-INSPECT,Automatic Firmware Flash,09-06-2026,500,50,20,MIN,0.15,MIN,1,12:30:00`
+WO-7022,20,PCB-FIRM-PROG,SMT Line 04,AOI-INSPECT,Automatic Firmware Flash,09-06-2026,500,50,20,MIN,0.15,MIN,1,12:30:00`,
   },
   {
     id: "aerospace_fab",
@@ -161,13 +162,14 @@ AERO-912,20,COMP-RUDD-ACTU,GRIND-CYL-01,CELL-LAND,"Chrome Plating Grinding",09-0
 AERO-913,10,COMP-AVIO-RACK,CNC-5AXIS-01,CELL-STRUC,"Avionics Bay Sheet Metal Rack",10-06-2026,150,10,90,MIN,12.5,MIN,1,08:30:00
 AERO-913,20,COMP-AVIO-RACK,COAT-THERM-01,CELL-SURF,"EMI Shielding Powder Coat",10-06-2026,150,25,45,MIN,8.0,MIN,1,13:00:00
 AERO-914,10,COMP-PYLN-PIN,LATHE-HEAVY-01,CELL-LAND,"Titanium Shear Pin Machining",10-06-2026,200,5,120,MIN,16.0,MIN,2,07:30:00
-AERO-914,20,COMP-PYLN-PIN,NDT-USOUND-01,CELL-QUAL,"Magnetic Particle Flaw Detect",10-06-2026,200,20,30,MIN,5.0,MIN,1,12:00:00`
+AERO-914,20,COMP-PYLN-PIN,NDT-USOUND-01,CELL-QUAL,"Magnetic Particle Flaw Detect",10-06-2026,200,20,30,MIN,5.0,MIN,1,12:00:00`,
   },
   {
     id: "medical_cleanroom",
     name: "Medical Device Cleanroom",
     industry: "Medical & Life Sciences",
-    description: "ISO7 Cleanroom titanium implants, cardiac stents, catheter extrusion & gamma packaging.",
+    description:
+      "ISO7 Cleanroom titanium implants, cardiac stents, catheter extrusion & gamma packaging.",
     icon: "MED",
     filename: "test_medical_device_manufacturing.csv",
     content: `OrderNum,ProcessSeq,SKU,WorkstationID,Department,ProcessName,ReleaseDate,OrderQuantity,BaseRatio,ChangeoverTime,Unit,ExecutionTime,Unit,Operators,ShiftStart
@@ -199,7 +201,7 @@ MED-5020,20,HEART-VALV-BO,STERIL-PACK-01,CLEANROOM-ISO5,Micro-Suture Frame Assem
 MED-5021,10,BONE-SCREW-TI,LASER-CUT-01,CLEANROOM-ISO7,Swiss Lathe Screw Machining,09-06-2026,1800,100,90,MIN,0.40,MIN,2,08:00:00
 MED-5021,20,BONE-SCREW-TI,MILL-CLEAN-02,CLEANROOM-ISO7,Anodized Color Coding Bath,09-06-2026,1800,200,40,MIN,0.15,MIN,1,12:30:00
 MED-5022,10,GLUCO-SENS-CH,INJECT-MOLD-01,PLASTICS-MED,Reagent Microfluidic Strip Printing,09-06-2026,8000,1000,120,MIN,0.02,MIN,2,07:00:00
-MED-5022,20,GLUCO-SENS-CH,STERIL-PACK-01,CLEANROOM-ISO5,Desiccant Foil Blister Packaging,09-06-2026,8000,500,60,MIN,0.05,MIN,2,11:00:00`
+MED-5022,20,GLUCO-SENS-CH,STERIL-PACK-01,CLEANROOM-ISO5,Desiccant Foil Blister Packaging,09-06-2026,8000,500,60,MIN,0.05,MIN,2,11:00:00`,
   },
   {
     id: "plastics_molding",
@@ -236,8 +238,8 @@ INJ-4021,20,FAN-BLADE-AC,ROB-DEBURR-01,FAM-POST,"Dynamic Spin Balancing Test",08
 INJ-4022,10,HELMET-SHELL,PRESS-MOLD-1200T,FAM-EXTRA,"Impact Resistant Polycarbonate Shell",08-06-2026,1200,100,150,MIN,22.0,SEC,3,07:30:00
 INJ-4022,20,HELMET-SHELL,ROB-DEBURR-01,FAM-POST,"Visor Hinge Hole Drilling",08-06-2026,1200,100,30,MIN,6.0,SEC,1,13:00:00
 INJ-4023,10,CRATE-MILK-24,PRESS-MOLD-1200T,FAM-EXTRA,"HDPE Stackable Dairy Crate",09-06-2026,1500,100,180,MIN,32.0,SEC,3,07:00:00
-INJ-4023,20,CRATE-MILK-24,PRINT-TAMP-01,FAM-POST,"Hot Stamp Logo Branding",09-06-2026,1500,100,45,MIN,4.0,SEC,1,13:00:00`
-  }
+INJ-4023,20,CRATE-MILK-24,PRINT-TAMP-01,FAM-POST,"Hot Stamp Logo Branding",09-06-2026,1500,100,45,MIN,4.0,SEC,1,13:00:00`,
+  },
 ];
 
 export interface ExpectedColumnSpec {
@@ -254,72 +256,179 @@ export const EXPECTED_COLUMNS_SPEC: ExpectedColumnSpec[] = [
     field: "order",
     label: "Order ID",
     required: true,
-    aliases: ["Order", "Order No", "Auftrag", "WorkOrder", "JobID", "OrderNum", "PressOrder", "TicketNo", "BatchID", "WaferLot"],
+    aliases: [
+      "Order",
+      "Order No",
+      "Auftrag",
+      "WorkOrder",
+      "JobID",
+      "OrderNum",
+      "PressOrder",
+      "TicketNo",
+      "BatchID",
+      "WaferLot",
+    ],
     description: "Unique identifier for the parent work order or production batch.",
-    example: "1023801 / WO-7010 / AERO-901"
+    example: "1023801 / WO-7010 / AERO-901",
   },
   {
     field: "processId",
     label: "Step / Operation ID",
     required: true,
-    aliases: ["Order Process ID", "Step No", "Vorgang", "OpStep", "OpSeq", "ProcessSeq", "StepNumber", "Step", "OpNo", "StepSeq"],
+    aliases: [
+      "Order Process ID",
+      "Step No",
+      "Vorgang",
+      "OpStep",
+      "OpSeq",
+      "ProcessSeq",
+      "StepNumber",
+      "Step",
+      "OpNo",
+      "StepSeq",
+    ],
     description: "Sequence number of the operation step (e.g. 10, 20, 30).",
-    example: "10, 20, 30"
+    example: "10, 20, 30",
   },
   {
     field: "material",
     label: "Material / SKU / Part",
     required: true,
-    aliases: ["Material", "Product Code", "Materialnr", "PartNo", "ComponentID", "SKU", "DiePartNo", "ResinPartNo", "GarmentSKU", "BeverageSKU", "DeviceID"],
+    aliases: [
+      "Material",
+      "Product Code",
+      "Materialnr",
+      "PartNo",
+      "ComponentID",
+      "SKU",
+      "DiePartNo",
+      "ResinPartNo",
+      "GarmentSKU",
+      "BeverageSKU",
+      "DeviceID",
+    ],
     description: "Part number, product code, or raw material specification.",
-    example: "100-024-830.01-00 / PCB-MOTHER-V1"
+    example: "100-024-830.01-00 / PCB-MOTHER-V1",
   },
   {
     field: "machine",
     label: "Machine / Line / Workstation",
     required: true,
-    aliases: ["Machine", "Assembly Line", "Maschine", "SMTLine", "MachineID", "WorkstationID", "PressMachine", "MoldingMachine", "SewingLine", "PackagingLine", "ClusterTool"],
+    aliases: [
+      "Machine",
+      "Assembly Line",
+      "Maschine",
+      "SMTLine",
+      "MachineID",
+      "WorkstationID",
+      "PressMachine",
+      "MoldingMachine",
+      "SewingLine",
+      "PackagingLine",
+      "ClusterTool",
+    ],
     description: "Target workstation, assembly line, or machine assigned.",
-    example: "603011 / Line Alpha / SMT Line 01"
+    example: "603011 / Line Alpha / SMT Line 01",
   },
   {
     field: "sopStartDate",
     label: "SOP Start Date",
     required: true,
-    aliases: ["SOP Start Date", "Start Date", "Startdatum", "ScheduledDate", "TargetDate", "ReleaseDate", "PlannedDate", "Date SOP", "ProductionDate"],
+    aliases: [
+      "SOP Start Date",
+      "Start Date",
+      "Startdatum",
+      "ScheduledDate",
+      "TargetDate",
+      "ReleaseDate",
+      "PlannedDate",
+      "Date SOP",
+      "ProductionDate",
+    ],
     description: "Start of Production release date constraint.",
-    example: "01-06-2026 / 2026-06-01 / 01 July 2026"
+    example: "01-06-2026 / 2026-06-01 / 01 July 2026",
   },
   {
     field: "qty",
     label: "Order Quantity",
     required: true,
-    aliases: ["Order QTY", "Quantity", "Menge", "BatchQty", "BatchCount", "OrderQuantity", "QtyProduced", "TotalQuantity", "Volume", "Pieces", "CasesCount", "WaferCount"],
+    aliases: [
+      "Order QTY",
+      "Quantity",
+      "Menge",
+      "BatchQty",
+      "BatchCount",
+      "OrderQuantity",
+      "QtyProduced",
+      "TotalQuantity",
+      "Volume",
+      "Pieces",
+      "CasesCount",
+      "WaferCount",
+    ],
     description: "Total parts or units to produce for this order.",
-    example: "120, 500, 1000"
+    example: "120, 500, 1000",
   },
   {
     field: "setupTime",
     label: "Setup Time (Mins)",
     required: false,
-    aliases: ["Set up Time", "Setup (mins)", "Rustzeit", "SetupMins", "PrepTimeMins", "ChangeoverTime", "DieSetupMins", "MoldChangeMins", "Setup Duration", "LineSetupMins", "LineSanitizationMins", "RecipeSetupMins"],
+    aliases: [
+      "Set up Time",
+      "Setup (mins)",
+      "Rustzeit",
+      "SetupMins",
+      "PrepTimeMins",
+      "ChangeoverTime",
+      "DieSetupMins",
+      "MoldChangeMins",
+      "Setup Duration",
+      "LineSetupMins",
+      "LineSanitizationMins",
+      "RecipeSetupMins",
+    ],
     description: "Fixed machine changeover or setup time in minutes (not quantity dependent).",
-    example: "45, 60, 120"
+    example: "45, 60, 120",
   },
   {
     field: "processTime",
     label: "Processing Time per Base Qty",
     required: false,
-    aliases: ["Process time", "Process Time (mins)", "Bearbeitungszeit", "RunMinsPerUnit", "CycleTimeMins", "ExecutionTime", "PressCycleMins", "CycleSecsPerPart", "Processing Duration", "SewingMinsPerPiece", "FillMinsPerCase", "EtchMinsPerWafer"],
+    aliases: [
+      "Process time",
+      "Process Time (mins)",
+      "Bearbeitungszeit",
+      "RunMinsPerUnit",
+      "CycleTimeMins",
+      "ExecutionTime",
+      "PressCycleMins",
+      "CycleSecsPerPart",
+      "Processing Duration",
+      "SewingMinsPerPiece",
+      "FillMinsPerCase",
+      "EtchMinsPerWafer",
+    ],
     description: "Time required to process the base quantity.",
-    example: "4.5, 12.0, 0.15"
+    example: "4.5, 12.0, 0.15",
   },
   {
     field: "manpower",
     label: "Manpower / Operators Required",
     required: false,
-    aliases: ["Manpower Utilization", "Manpower", "Bediener", "OperatorHeadcount", "TechsRequired", "Operators", "CrewSize", "SetterCount", "LineWorkers", "OperatorsNeeded", "EngineersRequired"],
+    aliases: [
+      "Manpower Utilization",
+      "Manpower",
+      "Bediener",
+      "OperatorHeadcount",
+      "TechsRequired",
+      "Operators",
+      "CrewSize",
+      "SetterCount",
+      "LineWorkers",
+      "OperatorsNeeded",
+      "EngineersRequired",
+    ],
     description: "Number of operators or setup technicians needed.",
-    example: "1, 2, 3"
-  }
+    example: "1, 2, 3",
+  },
 ];

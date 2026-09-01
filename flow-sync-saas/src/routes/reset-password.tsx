@@ -30,17 +30,25 @@ function ResetPasswordPage() {
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!password || !confirmPassword) {
-      toast.error(language === "de" ? "Bitte füllen Sie alle Felder aus." : "Please fill in all fields.");
+      toast.error(
+        language === "de" ? "Bitte füllen Sie alle Felder aus." : "Please fill in all fields.",
+      );
       return;
     }
 
     if (password.length < 6) {
-      toast.error(language === "de" ? "Das Passwort muss mindestens 6 Zeichen lang sein." : "Password must be at least 6 characters long.");
+      toast.error(
+        language === "de"
+          ? "Das Passwort muss mindestens 6 Zeichen lang sein."
+          : "Password must be at least 6 characters long.",
+      );
       return;
     }
 
     if (password !== confirmPassword) {
-      toast.error(language === "de" ? "Die Passwörter stimmen nicht überein." : "Passwords do not match.");
+      toast.error(
+        language === "de" ? "Die Passwörter stimmen nicht überein." : "Passwords do not match.",
+      );
       return;
     }
 
@@ -50,7 +58,7 @@ function ResetPasswordPage() {
       toast.success(
         language === "de"
           ? "Passwort erfolgreich aktualisiert! Bitte melden Sie sich an."
-          : "Password updated successfully! Please sign in."
+          : "Password updated successfully! Please sign in.",
       );
       navigate({ to: "/login" });
     } catch (err: any) {
@@ -123,14 +131,26 @@ function ResetPasswordPage() {
               />
             </div>
 
-            <Button type="submit" disabled={loading} className="w-full text-xs h-10 mt-4 cursor-pointer bg-primary text-primary-foreground hover:bg-primary/95 shadow">
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full text-xs h-10 mt-4 cursor-pointer bg-primary text-primary-foreground hover:bg-primary/95 shadow"
+            >
               {loading
-                ? (language === "de" ? "Wird aktualisiert..." : "Updating Password...")
-                : (language === "de" ? "Passwort speichern" : "Update Password")}
+                ? language === "de"
+                  ? "Wird aktualisiert..."
+                  : "Updating Password..."
+                : language === "de"
+                  ? "Passwort speichern"
+                  : "Update Password"}
             </Button>
 
             <div className="text-center pt-2">
-              <Link to="/login" search={{}} className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 font-medium">
+              <Link
+                to="/login"
+                search={{}}
+                className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 font-medium"
+              >
                 {language === "de" ? "Zurück zur Anmeldung" : "Back to Sign In"}
               </Link>
             </div>

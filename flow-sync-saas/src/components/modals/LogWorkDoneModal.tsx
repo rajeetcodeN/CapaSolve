@@ -1,7 +1,13 @@
 import { useState, useEffect } from "react";
 import { OrderProcess } from "@/lib/types";
 import { useAppStore } from "@/lib/store";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,8 +22,13 @@ interface LogWorkDoneModalProps {
   orderQty?: number;
 }
 
-export function LogWorkDoneModal({ open, onOpenChange, process, orderQty = 100 }: LogWorkDoneModalProps) {
-  const { logProcessProgress } = useAppStore();
+export function LogWorkDoneModal({
+  open,
+  onOpenChange,
+  process,
+  orderQty = 100,
+}: LogWorkDoneModalProps) {
+  const { updateStepExecutionStatus } = useAppStore();
 
   const [completedQty, setCompletedQty] = useState<number>(0);
   const [scrapQty, setScrapQty] = useState<number>(0);
@@ -46,16 +57,13 @@ export function LogWorkDoneModal({ open, onOpenChange, process, orderQty = 100 }
       return;
     }
 
-    logProcessProgress(process.id, {
-      completedQty,
-      scrapQty,
-      actualSetupMin,
-      actualProcessMin,
-      operatorNotes: notes,
-      executionStatus: completionPct >= 100 ? "COMPLETED" : completedQty > 0 ? "IN_PROGRESS" : "PLANNED",
-    });
+    const status =
+      completionPct >= 100 ? "COMPLETED" : completedQty > 0 ? "IN_PROGRESS" : "PLANNED";
+    updateStepExecutionStatus(process.id, status, completedQty, scrapQty, notes);
 
-    toast.success(`Logged progress for Step ${process.processId} (${process.processText}): ${completionPct}% Complete`);
+    toast.success(
+      `Logged progress for Step ${process.processId} (${process.processText}): ${completionPct}% Complete`,
+    );
     onOpenChange(false);
   };
 
@@ -78,7 +86,10 @@ export function LogWorkDoneModal({ open, onOpenChange, process, orderQty = 100 }
                 Step {process.processId}
               </span>
             </div>
-            <p className="text-muted-foreground text-xs">{process.processText} on Workstation: <strong className="text-foreground">{process.machineId}</strong></p>
+            <p className="text-muted-foreground text-xs">
+              {process.processText} on Workstation:{" "}
+              <strong className="text-foreground">{process.machineId}</strong>
+            </p>
           </div>
 
           {/* Progress Visual Bar */}
@@ -169,7 +180,11 @@ export function LogWorkDoneModal({ open, onOpenChange, process, orderQty = 100 }
             <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" size="sm" className="bg-primary text-primary-foreground font-bold">
+            <Button
+              type="submit"
+              size="sm"
+              className="bg-primary text-primary-foreground font-bold"
+            >
               Save Execution Log
             </Button>
           </DialogFooter>

@@ -4,6 +4,8 @@
  * and provides 1-click AI optimization recommendations.
  */
 
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { Order, OrderProcess, ScheduleSlot } from "./types";
 
 export interface AIAnalysisResult {
@@ -13,7 +15,11 @@ export interface AIAnalysisResult {
     title: string;
     description: string;
     impact: "High" | "Medium" | "Low";
-    actionType: "CHANGE_OPTIMIZATION_MODE" | "DISABLE_SETTER_CONSTRAINT" | "PREPONE_ORDERS" | "REBALANCE_GROUPS";
+    actionType:
+      | "CHANGE_OPTIMIZATION_MODE"
+      | "DISABLE_SETTER_CONSTRAINT"
+      | "PREPONE_ORDERS"
+      | "REBALANCE_GROUPS";
   }>;
   utilizationScore: number;
   otdScore: number;
@@ -38,16 +44,63 @@ export interface ScenarioContextInfo {
   branchName?: string;
 }
 
+// Server-side function: Safely executes Mistral AI calls without exposing API keys to the browser
+export const requestMistralAiAnalysisServerFn = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ promptText: z.string() }))
+  .handler(async ({ data: { promptText } }) => {
+    const apiKey = process.env.MISTRAL_API_KEY;
+    const modelName = process.env.MISTRAL_MODEL || "mistral-small-latest";
+
+    if (!apiKey) {
+      return { success: false, data: null, error: "MISTRAL_API_KEY is not configured on server" };
+    }
+
+    try {
+      const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: modelName,
+          response_format: { type: "json_object" },
+          messages: [
+            {
+              role: "system",
+              content: "You are an expert industrial AI Assistant. Return valid JSON only.",
+            },
+            {
+              role: "user",
+              content: promptText,
+            },
+          ],
+        }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        console.warn("Mistral AI server API error:", response.status, errText);
+        return { success: false, data: null, error: `Mistral returned ${response.status}` };
+      }
+
+      const json = await response.json();
+      const contentStr = json?.choices?.[0]?.message?.content || "";
+      const parsed = JSON.parse(contentStr);
+      return { success: true, data: parsed, error: null };
+    } catch (err: any) {
+      console.warn("Mistral AI server exception:", err);
+      return { success: false, data: null, error: err.message || "Failed to contact Mistral AI" };
+    }
+  });
+
 export async function analyzeScheduleWithAI(
   orders: Order[],
   processes: OrderProcess[],
   slots: ScheduleSlot[],
   setterCapPct: number = 500,
-  contextScenario?: ScenarioContextInfo
+  contextScenario?: ScenarioContextInfo,
 ): Promise<AIAnalysisResult> {
-  const apiKey = import.meta.env.VITE_MISTRAL_API_KEY || "91UaGQeZYSsicerThRrQj9BTAJ0dCwjx";
-  const modelName = import.meta.env.VITE_MISTRAL_MODEL || "mistral-small-latest";
-
   const totalOrders = orders.length;
   const totalProcesses = processes.length;
   const totalSlots = slots.length;
@@ -98,51 +151,25 @@ Provide a concise JSON analysis formatted EXACTLY as:
   "otdScore": 94
 }`;
 
-  if (apiKey) {
-    try {
-      const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: modelName,
-          response_format: { type: "json_object" },
-          messages: [
-            {
-              role: "system",
-              content: "You are an expert industrial AI Assistant. Return valid JSON only.",
-            },
-            {
-              role: "user",
-              content: promptText,
-            },
-          ],
-        }),
-      });
-
-      if (response.ok) {
-        const json = await response.json();
-        const contentStr = json?.choices?.[0]?.message?.content || "";
-        const parsed = JSON.parse(contentStr);
-        return {
-          ...parsed,
-          aiModel: "AI Engine",
-          provider: "AI Assistant",
-        } as AIAnalysisResult;
-      } else {
-        const errText = await response.text();
-        console.warn("AI API error, falling back to local solver engine:", response.status, errText);
-      }
-    } catch (err) {
-      console.warn("AI API call error, using local solver engine:", err);
+  try {
+    const serverResult = await requestMistralAiAnalysisServerFn({ data: { promptText } });
+    if (serverResult?.success && serverResult.data) {
+      return {
+        ...serverResult.data,
+        aiModel: "Mistral AI",
+        provider: "Mistral AI Assistant",
+      } as AIAnalysisResult;
     }
+  } catch (err) {
+    console.warn("Server AI analysis call skipped or failed, using local heuristic engine:", err);
   }
 
   // Fallback Smart AI Analysis Engine
   const otdScore = Math.max(70, Math.min(100, 100 - lateOrdersCount * 3));
-  const utilizationScore = Math.min(96, Math.max(65, Math.round((totalSlots / Math.max(1, totalProcesses * 10)) * 100)));
+  const utilizationScore = Math.min(
+    96,
+    Math.max(65, Math.round((totalSlots / Math.max(1, totalProcesses * 10)) * 100)),
+  );
 
   const isNoSetterMode = setterCapPct <= 0;
 
@@ -155,20 +182,23 @@ Provide a concise JSON analysis formatted EXACTLY as:
       ? `Setup staffing cap is restricted at ${setterCapPct}%. Setup changeover queuing observed.`
       : "Sequential SOP dependencies restricting early preponement.",
   ];
-  let recommendations = [
+  let recommendations: AIAnalysisResult["recommendations"] = [
     {
-      title: isNoSetterMode ? "Switch to Fully-Optimized Staff Mode" : "Enable Operator Self-Setup Mode",
+      title: isNoSetterMode
+        ? "Switch to Fully-Optimized Staff Mode"
+        : "Enable Operator Self-Setup Mode",
       description: isNoSetterMode
         ? "If dedicated setup technicians become available, set Setter Capacity to 100% or 300% to separate setup from machining."
         : "If no dedicated setup technician is present on shift, enable Operator Self-Setup mode to route setups into operator capacity.",
-      impact: "High" as const,
-      actionType: "DISABLE_SETTER_CONSTRAINT" as const,
+      impact: "High",
+      actionType: "DISABLE_SETTER_CONSTRAINT",
     },
     {
       title: "Rebalance Workstation Machine Group Load",
-      description: "Allow shift-in-group flexibility to distribute SOP process steps to alternate workstations in Group M1.",
-      impact: "Medium" as const,
-      actionType: "REBALANCE_GROUPS" as const,
+      description:
+        "Allow shift-in-group flexibility to distribute SOP process steps to alternate workstations in Group M1.",
+      impact: "Medium",
+      actionType: "REBALANCE_GROUPS",
     },
   ];
 
@@ -176,27 +206,29 @@ Provide a concise JSON analysis formatted EXACTLY as:
     summary = `AI Scenario Overview: Technician staffing shortage (${contextScenario.capacityReductionPct || 50}% reduction) active. Workstation re-routing alone is ineffective due to labor constraints. AI recommends Operator Self-Setup Mode.`;
     bottlenecks = [
       `Technician pool (${contextScenario.resourceType || "Setter"}) reduced by ${contextScenario.capacityReductionPct || 50}%. Setup changeover queuing observed.`,
-      `Labor shortage limits machine utilization across all workstation lines.`
+      `Labor shortage limits machine utilization across all workstation lines.`,
     ];
     recommendations = [
       {
         title: "Enable Operator Self-Setup Mode (Bypass Setter Constraint)",
-        description: "Allow machining operators to perform changeovers directly, bypassing dedicated technician queue bottleneck.",
+        description:
+          "Allow machining operators to perform changeovers directly, bypassing dedicated technician queue bottleneck.",
         impact: "High" as const,
         actionType: "DISABLE_SETTER_CONSTRAINT" as const,
       },
       {
         title: "Re-assign Dual-Role Technicians",
-        description: "Temporarily allocate cross-trained operators to absorb high-priority setup transitions.",
+        description:
+          "Temporarily allocate cross-trained operators to absorb high-priority setup transitions.",
         impact: "Medium" as const,
         actionType: "REBALANCE_GROUPS" as const,
-      }
+      },
     ];
   } else if (contextScenario?.type === "machine_stopped") {
     summary = `AI Scenario Overview: Unplanned breakdown on Workstation ${contextScenario.machineId || "603011"} (${contextScenario.downtimeHours || 16}h downtime) caused ${contextScenario.shiftedOrdersCount || 0} work order run shifts. Machine group rebalancing recommended.`;
     bottlenecks = [
       `Workstation ${contextScenario.machineId || "603011"} halted for ${contextScenario.downtimeHours || 16} hours due to unplanned breakdown.`,
-      `${contextScenario.shiftedOrdersCount || 0} work orders shifted to downstream timeline slots due to machine bottleneck.`
+      `${contextScenario.shiftedOrdersCount || 0} work orders shifted to downstream timeline slots due to machine bottleneck.`,
     ];
     recommendations = [
       {
@@ -207,16 +239,17 @@ Provide a concise JSON analysis formatted EXACTLY as:
       },
       {
         title: "Authorize Weekend Overtime Operating Hours",
-        description: "Extend operating shifts over the weekend to absorb the downtime queue without delaying customer orders.",
+        description:
+          "Extend operating shifts over the weekend to absorb the downtime queue without delaying customer orders.",
         impact: "Medium" as const,
         actionType: "DISABLE_SETTER_CONSTRAINT" as const,
-      }
+      },
     ];
   } else if (contextScenario?.type === "machine_group_delay") {
     summary = `AI Scenario Overview: Machine Group ${contextScenario.machineGroupId || "M1"} line delay (${contextScenario.groupDelayHours || 24}h) impacted ${contextScenario.shiftedOrdersCount || 0} order runs.`;
     bottlenecks = [
       `Entire Machine Group ${contextScenario.machineGroupId || "M1"} experiencing ${contextScenario.groupDelayHours || 24}h line halt.`,
-      `Capacity constraints tight across adjacent line groups.`
+      `Capacity constraints tight across adjacent line groups.`,
     ];
     recommendations = [
       {
@@ -227,16 +260,17 @@ Provide a concise JSON analysis formatted EXACTLY as:
       },
       {
         title: "Setup Matrix Tooling Batching",
-        description: "Group order runs by matching tooling specs to minimize setup changeover time.",
+        description:
+          "Group order runs by matching tooling specs to minimize setup changeover time.",
         impact: "Medium" as const,
         actionType: "DISABLE_SETTER_CONSTRAINT" as const,
-      }
+      },
     ];
   } else if (contextScenario?.type === "shift_change") {
     summary = `AI Scenario Overview: Shift operating schedule adjustment active. ${contextScenario.shiftedOrdersCount || 0} order runs shifted due to operating hour window changes.`;
     bottlenecks = [
       `Operating window restricted during unstaffed shift hours.`,
-      `SOP deadline risks accumulated for late-target orders.`
+      `SOP deadline risks accumulated for late-target orders.`,
     ];
     recommendations = [
       {
@@ -247,30 +281,33 @@ Provide a concise JSON analysis formatted EXACTLY as:
       },
       {
         title: "Prioritize Critical SOP Target Orders",
-        description: "Re-sequence order dispatch to complete high-margin SOP orders within Shift 1 window.",
+        description:
+          "Re-sequence order dispatch to complete high-margin SOP orders within Shift 1 window.",
         impact: "Medium" as const,
         actionType: "REBALANCE_GROUPS" as const,
-      }
+      },
     ];
   } else if (contextScenario?.type === "rush_order") {
     summary = `AI Scenario Overview: Emergency Rush Order #${contextScenario.rushOrderId || "Priority"} inserted into dispatch. ${contextScenario.shiftedOrdersCount || 0} standard orders pre-empted.`;
     bottlenecks = [
       `Standard work orders pre-empted and shifted downstream for Rush Order #${contextScenario.rushOrderId || "Priority"}.`,
-      `Setup changeover required for rush material specs.`
+      `Setup changeover required for rush material specs.`,
     ];
     recommendations = [
       {
         title: "Fast-Track Rush Order Line Preemption",
-        description: "Pre-empt low-priority jobs on the fastest workstation to clear rush order bottleneck.",
+        description:
+          "Pre-empt low-priority jobs on the fastest workstation to clear rush order bottleneck.",
         impact: "High" as const,
         actionType: "PREPONE_ORDERS" as const,
       },
       {
         title: "Batch Tooling with Active Material Setup",
-        description: "Pair rush order tooling with matching material orders to eliminate setup penalty.",
+        description:
+          "Pair rush order tooling with matching material orders to eliminate setup penalty.",
         impact: "Medium" as const,
         actionType: "DISABLE_SETTER_CONSTRAINT" as const,
-      }
+      },
     ];
   }
 

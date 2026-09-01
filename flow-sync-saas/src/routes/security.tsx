@@ -6,7 +6,10 @@ export const Route = createFileRoute("/security")({
   head: () => ({
     meta: [
       { title: "Security and Compliance — CapaSolve" },
-      { name: "description", content: "Learn more about CapaSolve's data security, RLS isolation, and encryption." },
+      {
+        name: "description",
+        content: "Learn more about CapaSolve's data security, RLS isolation, and encryption.",
+      },
     ],
   }),
   component: SecurityPage,
@@ -22,7 +25,9 @@ function SecurityPage() {
           <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-foreground">
             Security & Compliance
           </h1>
-          <p className="text-muted-foreground text-xs">How we protect your industrial planning data.</p>
+          <p className="text-muted-foreground text-xs">
+            How we protect your industrial planning data.
+          </p>
         </div>
 
         <Card className="border-border/60 bg-card/60 backdrop-blur-md shadow-sm">
@@ -33,7 +38,10 @@ function SecurityPage() {
                 1. Multi-Tenant Data Isolation
               </h3>
               <p>
-                Our core database leverages PostgreSQL **Row-Level Security (RLS)** in Supabase. This ensures that every SQL query executed on behalf of a user is strictly restricted to that user's active organization ID, preventing any cross-tenant data leaks.
+                Our core database leverages PostgreSQL **Row-Level Security (RLS)** in Supabase.
+                This ensures that every SQL query executed on behalf of a user is strictly
+                restricted to that user's active organization ID, preventing any cross-tenant data
+                leaks.
               </p>
             </section>
 
@@ -43,7 +51,9 @@ function SecurityPage() {
                 2. Server-Side Request Verification
               </h3>
               <p>
-                All scheduling updates and file saves invoke TanStack Start `createServerFn` endpoints. These endpoints require a verified client JWT token, validating the signature against Supabase Auth before processing any backend file transfers.
+                All scheduling updates and file saves invoke TanStack Start `createServerFn`
+                endpoints. These endpoints require a verified client JWT token, validating the
+                signature against Supabase Auth before processing any backend file transfers.
               </p>
             </section>
 
@@ -53,7 +63,9 @@ function SecurityPage() {
                 3. Encryption & Storage
               </h3>
               <p>
-                All data is encrypted in transit using TLS 1.3 and at rest inside S3-compatible cloud storage buckets and encrypted PostgreSQL disks. Regular backups are automated to secure scheduling continuity.
+                All data is encrypted in transit using TLS 1.3 and at rest inside S3-compatible
+                cloud storage buckets and encrypted PostgreSQL disks. Regular backups are automated
+                to secure scheduling continuity.
               </p>
             </section>
           </CardContent>

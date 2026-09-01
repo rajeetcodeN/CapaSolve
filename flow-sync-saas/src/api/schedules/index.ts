@@ -60,10 +60,13 @@ export async function POST(request: Request) {
       .single();
 
     if (schedErr || !newSchedule) {
-      return new Response(JSON.stringify({ error: schedErr?.message || "Failed to create schedule" }), {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ error: schedErr?.message || "Failed to create schedule" }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
     }
 
     await supabase.from("schedule_data").insert({

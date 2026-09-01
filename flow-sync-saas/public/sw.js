@@ -1,15 +1,11 @@
 const CACHE_NAME = "capasolve-v1";
-const ASSETS_TO_CACHE = [
-  "/",
-  "/manifest.json",
-  "/digitalbiz_Logo.jpg",
-];
+const ASSETS_TO_CACHE = ["/", "/manifest.json", "/digitalbiz_Logo.jpg"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(ASSETS_TO_CACHE);
-    })
+    }),
   );
   self.skipWaiting();
 });
@@ -22,9 +18,9 @@ self.addEventListener("activate", (event) => {
           if (key !== CACHE_NAME) {
             return caches.delete(key);
           }
-        })
+        }),
       );
-    })
+    }),
   );
   self.clients.claim();
 });
@@ -39,6 +35,6 @@ self.addEventListener("fetch", (event) => {
       return fetch(event.request).catch(() => {
         return caches.match("/");
       });
-    })
+    }),
   );
 });

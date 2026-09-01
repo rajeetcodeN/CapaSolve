@@ -28,7 +28,11 @@ function ForgotPasswordPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) {
-      toast.error(language === "de" ? "Bitte geben Sie eine E-Mail-Adresse ein." : "Please enter an email address.");
+      toast.error(
+        language === "de"
+          ? "Bitte geben Sie eine E-Mail-Adresse ein."
+          : "Please enter an email address.",
+      );
       return;
     }
 
@@ -39,7 +43,7 @@ function ForgotPasswordPage() {
       toast.success(
         language === "de"
           ? "Passwort-Zurücksetzungs-Link gesendet! Prüfen Sie Ihren Posteingang."
-          : "Password reset link sent! Check your inbox."
+          : "Password reset link sent! Check your inbox.",
       );
     } catch (err: any) {
       toast.error(err.message || "Failed to send reset link.");
@@ -83,7 +87,11 @@ function ForgotPasswordPage() {
                   : `We have sent password reset instructions to ${email}. Please check your inbox and spam folder.`}
               </p>
               <div className="pt-2">
-                <Link to="/login" search={{}} className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1.5">
+                <Link
+                  to="/login"
+                  search={{}}
+                  className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1.5"
+                >
                   <ArrowLeft className="h-3.5 w-3.5" />
                   {language === "de" ? "Zurück zur Anmeldung" : "Back to Sign In"}
                 </Link>
@@ -106,14 +114,26 @@ function ForgotPasswordPage() {
                 />
               </div>
 
-              <Button type="submit" disabled={loading} className="w-full text-xs h-10 mt-4 cursor-pointer bg-primary text-primary-foreground hover:bg-primary/95 shadow">
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full text-xs h-10 mt-4 cursor-pointer bg-primary text-primary-foreground hover:bg-primary/95 shadow"
+              >
                 {loading
-                  ? (language === "de" ? "Wird gesendet..." : "Sending Link...")
-                  : (language === "de" ? "Zurücksetzungs-Link senden" : "Send Reset Link")}
+                  ? language === "de"
+                    ? "Wird gesendet..."
+                    : "Sending Link..."
+                  : language === "de"
+                    ? "Zurücksetzungs-Link senden"
+                    : "Send Reset Link"}
               </Button>
 
               <div className="text-center pt-2">
-                <Link to="/login" search={{}} className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 font-medium">
+                <Link
+                  to="/login"
+                  search={{}}
+                  className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 font-medium"
+                >
                   <ArrowLeft className="h-3.5 w-3.5" />
                   {language === "de" ? "Zurück zur Anmeldung" : "Back to Sign In"}
                 </Link>

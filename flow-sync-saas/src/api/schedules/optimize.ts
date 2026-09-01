@@ -54,7 +54,7 @@ export async function POST(request: Request) {
       dailyCapacities,
       globalSetterCapacity,
       globalOperatorCapacity,
-      maxPreponeWeeks
+      maxPreponeWeeks,
     );
 
     const durationMs = Date.now() - startTime;
@@ -73,9 +73,11 @@ export async function POST(request: Request) {
         updatedAt: new Date().toISOString(),
       };
 
-      await supabase
-        .from("schedule_data")
-        .upsert({ schedule_id: scheduleId, data: fullPayload, updated_at: new Date().toISOString() });
+      await supabase.from("schedule_data").upsert({
+        schedule_id: scheduleId,
+        data: fullPayload,
+        updated_at: new Date().toISOString(),
+      });
 
       await supabase.from("schedule_execution_logs").insert({
         schedule_id: scheduleId,
@@ -102,7 +104,7 @@ export async function POST(request: Request) {
       {
         status: 200,
         headers: { "Content-Type": "application/json" },
-      }
+      },
     );
   } catch (err: any) {
     return new Response(JSON.stringify({ error: err.message || "Optimization execution failed" }), {

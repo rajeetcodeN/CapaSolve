@@ -18,7 +18,22 @@ import { useAppStore } from "@/lib/store";
 import { useTranslations } from "@/lib/translations";
 import { CreateOrderModal } from "@/components/modals/CreateOrderModal";
 import { CreateStepModal } from "@/components/modals/CreateStepModal";
-import { Upload, RotateCcw, Factory, Layers, Calendar, Clock, Search, FileSpreadsheet, ArrowUpDown, ArrowUp, ArrowDown, PlusCircle, Wrench, Copy } from "lucide-react";
+import {
+  Upload,
+  RotateCcw,
+  Factory,
+  Layers,
+  Calendar,
+  Clock,
+  Search,
+  FileSpreadsheet,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  PlusCircle,
+  Wrench,
+  Copy,
+} from "lucide-react";
 import { parseSOPDate } from "@/lib/scheduler";
 import { ExportButton } from "@/components/ExportButton";
 
@@ -33,22 +48,17 @@ export const Route = createFileRoute("/orders")({
 });
 
 function OrdersPage() {
-  const {
-    orders,
-    processes,
-    loadDefaultCSV,
-    loadFromCSVText,
-    clearAll,
-    removeOrder,
-    role,
-  } = useAppStore();
+  const { orders, processes, loadDefaultCSV, loadFromCSVText, clearAll, removeOrder, role } =
+    useAppStore();
   const { t } = useTranslations();
-  
+
   const fileRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("summary");
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [sortField, setSortField] = useState<"orderId" | "material" | "orderQty" | "sopDate" | null>("sopDate");
+  const [sortField, setSortField] = useState<
+    "orderId" | "material" | "orderQty" | "sopDate" | null
+  >("sopDate");
   const [sortAsc, setSortAsc] = useState<boolean>(true);
 
   // Modal States
@@ -106,11 +116,11 @@ function OrdersPage() {
     return sorted;
   }, [orders, sortField, sortAsc]);
 
-
-
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (role !== "DEVELOPER" && role !== "ADMIN") {
-      toast.error("Access Denied: Only users with the Developer or Admin role can upload or change production datasets.");
+      toast.error(
+        "Access Denied: Only users with the Developer or Admin role can upload or change production datasets.",
+      );
       return;
     }
     const file = e.target.files?.[0];
@@ -136,7 +146,9 @@ function OrdersPage() {
 
   const handleReset = async () => {
     if (role !== "DEVELOPER" && role !== "ADMIN") {
-      toast.error("Access Denied: Only users with the Developer or Admin role can reset the scheduler to factory seeding.");
+      toast.error(
+        "Access Denied: Only users with the Developer or Admin role can reset the scheduler to factory seeding.",
+      );
       return;
     }
     setImporting(true);
@@ -152,7 +164,9 @@ function OrdersPage() {
 
   const handleClearAll = () => {
     if (role !== "DEVELOPER" && role !== "ADMIN") {
-      toast.error("Access Denied: Only users with the Developer or Admin role can clear the scheduler data.");
+      toast.error(
+        "Access Denied: Only users with the Developer or Admin role can clear the scheduler data.",
+      );
       return;
     }
     clearAll();
@@ -187,25 +201,51 @@ function OrdersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      {/* 1. Streamlined Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/60 pb-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">{t("orders.title")}</h1>
-          <p className="text-muted-foreground">
-            Current schedule is seeded directly from the workspace's <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-xs text-foreground">process.csv</code>.
+          <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+            <div className="h-7.5 w-7.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/80 dark:border-emerald-800/80 flex items-center justify-center text-emerald-800 dark:text-emerald-300 shrink-0">
+              <FileSpreadsheet className="h-4 w-4" />
+            </div>
+            {t("orders.title")}
+          </h1>
+          <p className="text-muted-foreground text-xs mt-0.5">
+            Manage, sequence, and import manufacturing work orders from CSV and ERP sources.
           </p>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
-          <Button size="sm" onClick={() => setIsOrderModalOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold">
-            <PlusCircle className="mr-1.5 h-4 w-4" /> New Order
+          <Button
+            size="sm"
+            onClick={() => setIsOrderModalOpen(true)}
+            className="bg-[#1e3f2e] hover:bg-[#27533d] text-white font-semibold shadow-xs border border-[#27533d] rounded-lg h-8 text-xs cursor-pointer"
+          >
+            <PlusCircle className="mr-1.5 h-3.5 w-3.5" /> New Order
           </Button>
-          <Button size="sm" variant="outline" onClick={() => setIsStepModalOpen(true)} className="font-semibold border-primary/40 text-primary hover:bg-primary/10">
-            <Wrench className="mr-1.5 h-4 w-4" /> Add Step
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setIsStepModalOpen(true)}
+            className="font-medium h-8 text-xs border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-850 rounded-lg shadow-2xs cursor-pointer"
+          >
+            <Wrench className="mr-1.5 h-3.5 w-3.5 text-slate-500" /> Add Step
           </Button>
           <ExportButton size="sm" />
-          <Button variant="outline" size="sm" onClick={handleReset} disabled={importing}>
-            <RotateCcw className="mr-1.5 h-4 w-4" /> {t("common.reset")}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleReset}
+            disabled={importing}
+            className="h-8 text-xs rounded-lg shadow-2xs cursor-pointer"
+          >
+            <RotateCcw className="mr-1.5 h-3.5 w-3.5 text-slate-500" /> {t("common.reset")}
           </Button>
-          <Button variant="outline" size="sm" onClick={handleClearAll} className="text-destructive hover:bg-destructive/10 hover:text-destructive">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleClearAll}
+            className="h-8 text-xs text-rose-600 border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg cursor-pointer"
+          >
             {t("common.clearAll")}
           </Button>
           <input
@@ -220,8 +260,9 @@ function OrdersPage() {
             variant="outline"
             onClick={() => fileRef.current?.click()}
             disabled={importing}
+            className="h-8 text-xs rounded-lg shadow-2xs cursor-pointer"
           >
-            <Upload className="mr-1.5 h-4 w-4" />
+            <Upload className="mr-1.5 h-3.5 w-3.5 text-slate-500" />
             {importing ? t("common.importing") : t("common.uploadCSV")}
           </Button>
         </div>
@@ -239,7 +280,7 @@ function OrdersPage() {
               {t("orders.tabExcel")}
             </TabsTrigger>
           </TabsList>
-          
+
           {activeTab === "excel" && (
             <div className="relative w-64">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -261,16 +302,14 @@ function OrdersPage() {
                 <Layers className="h-5 w-5 text-primary" />
                 {t("orders.activeDatasets", { orders: orders.length, processes: processes.length })}
               </CardTitle>
-              <CardDescription>
-                {t("orders.summaryRollup")}
-              </CardDescription>
+              <CardDescription>{t("orders.summaryRollup")}</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/40 select-none">
-                      <TableHead 
+                      <TableHead
                         onClick={() => handleSort("orderId")}
                         className="w-[120px] font-semibold sticky left-0 bg-muted z-10 border-r border-border/40 shadow-[2px_0_5px_rgba(0,0,0,0.02)] cursor-pointer hover:bg-muted/60 transition-colors"
                       >
@@ -279,7 +318,7 @@ function OrdersPage() {
                           {renderSortIcon("orderId")}
                         </div>
                       </TableHead>
-                      <TableHead 
+                      <TableHead
                         onClick={() => handleSort("material")}
                         className="font-semibold cursor-pointer hover:bg-muted/60 transition-colors"
                       >
@@ -288,7 +327,7 @@ function OrdersPage() {
                           {renderSortIcon("material")}
                         </div>
                       </TableHead>
-                      <TableHead 
+                      <TableHead
                         onClick={() => handleSort("orderQty")}
                         className="text-right font-semibold cursor-pointer hover:bg-muted/60 transition-colors"
                       >
@@ -297,7 +336,7 @@ function OrdersPage() {
                           {renderSortIcon("orderQty")}
                         </div>
                       </TableHead>
-                      <TableHead 
+                      <TableHead
                         onClick={() => handleSort("sopDate")}
                         className="font-semibold cursor-pointer hover:bg-muted/60 transition-colors"
                       >
@@ -306,7 +345,7 @@ function OrdersPage() {
                           {renderSortIcon("sopDate")}
                         </div>
                       </TableHead>
-                      <TableHead 
+                      <TableHead
                         onClick={() => handleSort("sopDate")}
                         className="font-semibold cursor-pointer hover:bg-muted/60 transition-colors"
                       >
@@ -325,9 +364,9 @@ function OrdersPage() {
                       <TableRow>
                         <TableCell colSpan={7} className="py-16 text-center text-muted-foreground">
                           <div className="flex flex-col items-center justify-center gap-2">
-                             <Upload className="h-8 w-8 text-muted-foreground/50 animate-bounce" />
-                             <span className="text-base font-medium">{t("orders.noActive")}</span>
-                             <span className="text-xs">{t("orders.uploadPrompt")}</span>
+                            <Upload className="h-8 w-8 text-muted-foreground/50 animate-bounce" />
+                            <span className="text-base font-medium">{t("orders.noActive")}</span>
+                            <span className="text-xs">{t("orders.uploadPrompt")}</span>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -336,62 +375,85 @@ function OrdersPage() {
                       const steps = processes.filter((p) => p.orderId === o.id);
                       return (
                         <TableRow key={o.id} className="hover:bg-muted/10 transition-colors">
-                          <TableCell className="font-semibold text-primary sticky left-0 bg-background z-10 border-r border-border/30 shadow-[2px_0_5px_rgba(0,0,0,0.02)]">{o.orderId}</TableCell>
-                           <TableCell className="font-mono text-xs">{o.material}</TableCell>
-                           <TableCell className="text-right font-mono font-medium">{o.orderQty.toLocaleString()}</TableCell>
-                           <TableCell>
-                             <div className="flex items-center gap-1.5 text-xs">
-                               <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                               {o.sopStartDate}
-                             </div>
-                           </TableCell>
-                           <TableCell>
-                             <div className="flex items-center gap-1.5 text-xs">
-                               <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                               {o.sopStartTime}
-                             </div>
-                           </TableCell>
-                           <TableCell>
-                             <div className="flex flex-wrap gap-3 py-1.5">
-                               {steps.map((s) => (
-                                 <div
-                                   key={s.id}
-                                   className="flex flex-col gap-1.5 rounded-lg bg-secondary/70 p-3 text-xs font-medium text-secondary-foreground shadow-sm border border-border/60 min-w-[210px] hover:shadow transition-shadow"
-                                 >
-                                   <div className="flex items-center justify-between border-b border-border/40 pb-1">
-                                     <span className="font-mono font-bold text-primary">{t("orders.step")} {s.processId}</span>
-                                     <span className="text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-extrabold font-mono">ID: {o.orderId}</span>
-                                   </div>
-                                   <div className="flex items-center gap-1 text-foreground font-semibold">
-                                     <Factory className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                     <span className="font-mono">{t("common.machine")}: {s.machineId}</span>
-                                   </div>
-                                   <div className="text-[10px] text-muted-foreground space-y-0.5 font-mono">
-                                     <div className="flex justify-between">
-                                       <span>{t("common.setupTime")} R:</span>
-                                       <span className="font-bold text-foreground">{s.setupTimeMin}m</span>
-                                     </div>
-                                     <div className="flex justify-between">
-                                       <span>{t("common.processTime")} M:</span>
-                                       <span className="font-bold text-foreground">{s.processTimeMin}m</span>
-                                     </div>
-                                     <div className="flex justify-between border-t border-border/30 pt-0.5 mt-0.5">
-                                       <span>SumV2:</span>
-                                       <span className="font-bold text-sky-600">{(s.sumV2 ?? 0).toFixed(1)}m</span>
-                                     </div>
-                                     <div className="flex justify-between">
-                                       <span>SumV3:</span>
-                                       <span className="font-bold text-indigo-600">{(s.sumV3 ?? 0).toLocaleString(undefined, {maximumFractionDigits: 1})}m</span>
-                                     </div>
-                                     <div className="flex justify-between">
-                                       <span>{t("common.ratio")} P%:</span>
-                                       <span className="font-bold text-orange-600">{Math.round((s.manpowerPct ?? 0) * 100)}%</span>
-                                     </div>
-                                   </div>
-                                 </div>
-                               ))}
-                             </div>
-                           </TableCell>
+                          <TableCell className="font-semibold text-primary sticky left-0 bg-background z-10 border-r border-border/30 shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
+                            {o.orderId}
+                          </TableCell>
+                          <TableCell className="font-mono text-xs">{o.material}</TableCell>
+                          <TableCell className="text-right font-mono font-medium">
+                            {o.orderQty.toLocaleString()}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1.5 text-xs">
+                              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                              {o.sopStartDate}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1.5 text-xs">
+                              <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                              {o.sopStartTime}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-3 py-1.5">
+                              {steps.map((s) => (
+                                <div
+                                  key={s.id}
+                                  className="flex flex-col gap-1.5 rounded-lg bg-secondary/70 p-3 text-xs font-medium text-secondary-foreground shadow-sm border border-border/60 min-w-[210px] hover:shadow transition-shadow"
+                                >
+                                  <div className="flex items-center justify-between border-b border-border/40 pb-1">
+                                    <span className="font-mono font-bold text-primary">
+                                      {t("orders.step")} {s.processId}
+                                    </span>
+                                    <span className="text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-extrabold font-mono">
+                                      ID: {o.orderId}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1 text-foreground font-semibold">
+                                    <Factory className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                    <span className="font-mono">
+                                      {t("common.machine")}: {s.machineId}
+                                    </span>
+                                  </div>
+                                  <div className="text-[10px] text-muted-foreground space-y-0.5 font-mono">
+                                    <div className="flex justify-between">
+                                      <span>{t("common.setupTime")} R:</span>
+                                      <span className="font-bold text-foreground">
+                                        {s.setupTimeMin}m
+                                      </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span>{t("common.processTime")} M:</span>
+                                      <span className="font-bold text-foreground">
+                                        {s.processTimeMin}m
+                                      </span>
+                                    </div>
+                                    <div className="flex justify-between border-t border-border/30 pt-0.5 mt-0.5">
+                                      <span>SumV2:</span>
+                                      <span className="font-bold text-sky-600">
+                                        {(s.sumV2 ?? 0).toFixed(1)}m
+                                      </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span>SumV3:</span>
+                                      <span className="font-bold text-indigo-600">
+                                        {(s.sumV3 ?? 0).toLocaleString(undefined, {
+                                          maximumFractionDigits: 1,
+                                        })}
+                                        m
+                                      </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span>{t("common.ratio")} P%:</span>
+                                      <span className="font-bold text-orange-600">
+                                        {Math.round((s.manpowerPct ?? 0) * 100)}%
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </TableCell>
                           <TableCell className="text-right">
                             <Button
                               variant="ghost"
@@ -420,48 +482,61 @@ function OrdersPage() {
                 <FileSpreadsheet className="h-5 w-5 text-emerald-600" />
                 {t("orders.excelTitle")}
               </CardTitle>
-              <CardDescription>
-                {t("orders.excelDesc")}
-              </CardDescription>
+              <CardDescription>{t("orders.excelDesc")}</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto max-w-full">
                 <Table className="text-xs border-collapse">
                   <TableHeader>
-                    <TableRow className="bg-slate-50 border-b border-border">
-                      <TableHead className="font-semibold text-slate-700 uppercase tracking-wider text-left border-r border-border/40">{t("orders.excelOrderQty").split(" ")[0]}</TableHead>
-                      <TableHead className="font-semibold text-slate-700 uppercase tracking-wider text-left border-r border-border/40">{t("orders.tableSequence").split(" ")[2] || "Process"} ID</TableHead>
-                      <TableHead className="font-semibold text-slate-700 uppercase tracking-wider text-left border-r border-border/40">{t("orders.tableMaterial")}</TableHead>
-                      <TableHead className="font-semibold text-slate-700 uppercase tracking-wider text-left border-r border-border/40">{t("common.machine")}</TableHead>
-                      <TableHead className="font-semibold text-slate-700 uppercase tracking-wider text-left border-r border-border/40">Process Text</TableHead>
-                      <TableHead className="font-semibold text-slate-700 uppercase tracking-wider text-left border-r border-border/40">{t("orders.tableSopDate")}</TableHead>
-                      
-                      {/* RED columns */}
-                      <TableHead className="bg-red-600 text-white font-extrabold uppercase tracking-wider text-center border-r border-red-700 w-[95px] min-w-[95px]">
+                    <TableRow className="bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800">
+                      <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-left border-r border-slate-200 dark:border-slate-800">
+                        {t("orders.excelOrderQty").split(" ")[0]}
+                      </TableHead>
+                      <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-left border-r border-slate-200 dark:border-slate-800">
+                        {t("orders.tableSequence").split(" ")[2] || "Process"} ID
+                      </TableHead>
+                      <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-left border-r border-slate-200 dark:border-slate-800">
+                        {t("orders.tableMaterial")}
+                      </TableHead>
+                      <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-left border-r border-slate-200 dark:border-slate-800">
+                        {t("common.machine")}
+                      </TableHead>
+                      <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-left border-r border-slate-200 dark:border-slate-800">
+                        Process Text
+                      </TableHead>
+                      <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-left border-r border-slate-200 dark:border-slate-800">
+                        {t("orders.tableSopDate")}
+                      </TableHead>
+                      <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-right border-r border-slate-200 dark:border-slate-800 w-[95px]">
                         {t("orders.excelOrderQty")}
                       </TableHead>
-                      <TableHead className="bg-red-600 text-white font-extrabold uppercase tracking-wider text-center border-r border-red-700 w-[85px] min-w-[85px]">
+                      <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-right border-r border-slate-200 dark:border-slate-800 w-[85px]">
                         {t("orders.excelBaseQty")}
                       </TableHead>
-                      
-                      {/* YELLOW columns */}
-                      <TableHead className="bg-yellow-400 text-yellow-950 font-extrabold uppercase tracking-wider text-center border-r border-yellow-500 w-[100px] min-w-[100px]">
+                      <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-right border-r border-slate-200 dark:border-slate-800 w-[100px]">
                         {t("orders.excelSetupTime")}
                       </TableHead>
-                      <TableHead className="bg-yellow-400 text-yellow-950 font-extrabold uppercase tracking-wider text-center border-r border-yellow-500 w-[100px] min-w-[100px]">
+                      <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-right border-r border-slate-200 dark:border-slate-800 w-[100px]">
                         {t("orders.excelProcessTime")}
                       </TableHead>
-                      
-                      <TableHead className="font-semibold text-slate-700 uppercase tracking-wider text-right border-r border-border/40">{t("orders.excelOperatorUtil")}</TableHead>
-                      <TableHead className="font-semibold text-sky-700 bg-sky-50/30 uppercase tracking-wider text-right border-r border-border/40 font-bold">{t("orders.excelSumV2")}</TableHead>
-                      <TableHead className="font-semibold text-indigo-700 bg-indigo-50/30 uppercase tracking-wider text-right border-r border-border/40 font-bold">{t("orders.excelSumV3")}</TableHead>
-                      <TableHead className="font-semibold text-orange-700 bg-orange-50/30 uppercase tracking-wider text-center font-bold">{t("orders.excelManpowerPct")}</TableHead>
+                      <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-right border-r border-slate-200 dark:border-slate-800">
+                        {t("orders.excelOperatorUtil")}
+                      </TableHead>
+                      <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-right border-r border-slate-200 dark:border-slate-800">
+                        {t("orders.excelSumV2")}
+                      </TableHead>
+                      <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-right border-r border-slate-200 dark:border-slate-800">
+                        {t("orders.excelSumV3")}
+                      </TableHead>
+                      <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">
+                        {t("orders.excelManpowerPct")}
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredProcesses.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={14} className="py-12 text-center text-muted-foreground">
+                        <TableCell colSpan={14} className="py-12 text-center text-slate-500">
                           {t("orders.noExcelMatches")}
                         </TableCell>
                       </TableRow>
@@ -469,38 +544,56 @@ function OrdersPage() {
                     {filteredProcesses.map((p) => {
                       const order = orders.find((o) => o.id === p.orderId);
                       if (!order) return null;
-                      
+
                       return (
-                        <TableRow key={p.id} className="hover:bg-muted/5 transition-colors font-mono">
-                          <TableCell className="font-bold text-foreground font-sans border-r border-border/30">{order.orderId}</TableCell>
-                          <TableCell className="font-bold text-primary border-r border-border/30">{p.processId}</TableCell>
-                          <TableCell className="text-muted-foreground border-r border-border/30">{order.material}</TableCell>
-                          <TableCell className="font-semibold text-foreground border-r border-border/30">{p.machineId}</TableCell>
-                          <TableCell className="font-sans font-medium text-foreground max-w-[200px] truncate border-r border-border/30" title={p.processText}>
+                        <TableRow
+                          key={p.id}
+                          className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors font-mono text-xs"
+                        >
+                          <TableCell className="font-semibold text-slate-900 dark:text-white font-sans border-r border-slate-200 dark:border-slate-800">
+                            {order.orderId}
+                          </TableCell>
+                          <TableCell className="font-semibold text-slate-900 dark:text-white border-r border-slate-200 dark:border-slate-800">
+                            {p.processId}
+                          </TableCell>
+                          <TableCell className="text-slate-600 dark:text-slate-400 border-r border-slate-200 dark:border-slate-800">
+                            {order.material}
+                          </TableCell>
+                          <TableCell className="font-medium text-slate-800 dark:text-slate-200 border-r border-slate-200 dark:border-slate-800">
+                            {p.machineId}
+                          </TableCell>
+                          <TableCell
+                            className="font-sans font-normal text-slate-700 dark:text-slate-300 max-w-[200px] truncate border-r border-slate-200 dark:border-slate-800"
+                            title={p.processText}
+                          >
                             {p.processText}
                           </TableCell>
-                          <TableCell className="font-sans text-xs text-muted-foreground border-r border-border/30">
+                          <TableCell className="font-sans text-xs text-slate-500 border-r border-slate-200 dark:border-slate-800">
                             {order.sopStartDate} {order.sopStartTime}
                           </TableCell>
-                          
-                          {/* RED inputs */}
-                          <TableCell className="text-center font-bold text-red-700 bg-red-50/40 border-r border-red-100">{order.orderQty.toLocaleString()}</TableCell>
-                          <TableCell className="text-center font-bold text-red-700 bg-red-50/40 border-r border-red-100">{p.baseQty}</TableCell>
-                          
-                          {/* YELLOW inputs */}
-                          <TableCell className="text-center font-bold text-yellow-800 bg-yellow-50/30 border-r border-yellow-100">{p.setupTimeMin} min</TableCell>
-                          <TableCell className="text-center font-bold text-yellow-800 bg-yellow-50/30 border-r border-yellow-100">{p.processTimeMin} min</TableCell>
-                          
-                          <TableCell className="text-right font-medium text-slate-700 border-r border-border/30">{(p.manpowerUtilizationMin ?? 0).toFixed(3)}</TableCell>
-                          
-                          {/* Calculations */}
-                          <TableCell className="text-right font-bold text-sky-700 bg-sky-50/10 border-r border-border/30">
+                          <TableCell className="text-right text-slate-800 dark:text-slate-200 border-r border-slate-200 dark:border-slate-800">
+                            {order.orderQty.toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-right text-slate-800 dark:text-slate-200 border-r border-slate-200 dark:border-slate-800">
+                            {p.baseQty}
+                          </TableCell>
+                          <TableCell className="text-right text-slate-800 dark:text-slate-200 border-r border-slate-200 dark:border-slate-800">
+                            {p.setupTimeMin} min
+                          </TableCell>
+                          <TableCell className="text-right text-slate-800 dark:text-slate-200 border-r border-slate-200 dark:border-slate-800">
+                            {p.processTimeMin} min
+                          </TableCell>
+                          <TableCell className="text-right text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800">
+                            {(p.manpowerUtilizationMin ?? 0).toFixed(3)}
+                          </TableCell>
+                          <TableCell className="text-right text-slate-800 dark:text-slate-200 border-r border-slate-200 dark:border-slate-800">
                             {(p.sumV2 ?? 0).toFixed(1)}m
                           </TableCell>
-                          <TableCell className="text-right font-bold text-indigo-700 bg-indigo-50/10 border-r border-border/30">
-                            {(p.sumV3 ?? 0).toLocaleString(undefined, {maximumFractionDigits: 0})}m
+                          <TableCell className="text-right text-slate-800 dark:text-slate-200 border-r border-slate-200 dark:border-slate-800">
+                            {(p.sumV3 ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                            m
                           </TableCell>
-                          <TableCell className="text-center font-bold text-orange-700 bg-orange-50/10">
+                          <TableCell className="text-center font-medium text-slate-800 dark:text-slate-200">
                             {Math.round((p.manpowerPct ?? 0) * 100)}%
                           </TableCell>
                         </TableRow>
@@ -515,14 +608,8 @@ function OrdersPage() {
       </Tabs>
 
       {/* Manual Order & Step Creation Modals */}
-      <CreateOrderModal
-        isOpen={isOrderModalOpen}
-        onClose={() => setIsOrderModalOpen(false)}
-      />
-      <CreateStepModal
-        isOpen={isStepModalOpen}
-        onClose={() => setIsStepModalOpen(false)}
-      />
+      <CreateOrderModal isOpen={isOrderModalOpen} onClose={() => setIsOrderModalOpen(false)} />
+      <CreateStepModal isOpen={isStepModalOpen} onClose={() => setIsStepModalOpen(false)} />
     </div>
   );
 }

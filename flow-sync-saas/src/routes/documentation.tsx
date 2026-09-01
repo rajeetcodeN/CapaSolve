@@ -6,7 +6,10 @@ export const Route = createFileRoute("/documentation")({
   head: () => ({
     meta: [
       { title: "Documentation — CapaSolve" },
-      { name: "description", content: "Learn how to use CapaSolve to optimize constraint-based manufacturing schedules." },
+      {
+        name: "description",
+        content: "Learn how to use CapaSolve to optimize constraint-based manufacturing schedules.",
+      },
     ],
   }),
   component: DocumentationPage,
@@ -22,7 +25,9 @@ function DocumentationPage() {
           <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-foreground">
             Documentation
           </h1>
-          <p className="text-muted-foreground text-xs">Learn how to model your factory and schedule orders.</p>
+          <p className="text-muted-foreground text-xs">
+            Learn how to model your factory and schedule orders.
+          </p>
         </div>
 
         <Card className="border-border/60 bg-card/60 backdrop-blur-md shadow-sm">
@@ -33,13 +38,22 @@ function DocumentationPage() {
                 1. Importing CSV Spreadsheet
               </h3>
               <p>
-                Navigate to the <strong>Orders</strong> page in the dashboard workspace to upload your CSV file containing production orders. The CSV columns must map to fields like:
+                Navigate to the <strong>Orders</strong> page in the dashboard workspace to upload
+                your CSV file containing production orders. The CSV columns must map to fields like:
               </p>
               <ul className="list-disc pl-5 space-y-1">
-                <li><code>order_id</code> — Unique order ID string.</li>
-                <li><code>item_name</code> — Name or part identifier of the item.</li>
-                <li><code>process_time_hrs</code> — Processing duration.</li>
-                <li><code>due_date</code> — Delivery deadline date.</li>
+                <li>
+                  <code>order_id</code> — Unique order ID string.
+                </li>
+                <li>
+                  <code>item_name</code> — Name or part identifier of the item.
+                </li>
+                <li>
+                  <code>process_time_hrs</code> — Processing duration.
+                </li>
+                <li>
+                  <code>due_date</code> — Delivery deadline date.
+                </li>
               </ul>
             </section>
 
@@ -49,7 +63,11 @@ function DocumentationPage() {
                 2. Running the Solver
               </h3>
               <p>
-                Once your orders are loaded, open the <strong>Gantt Chart</strong> or <strong>Capacity Planning</strong> page. Tap the **Optimize Schedule** button in the header toolbar to trigger the constraint solver. The solver parses setup constraints, line assignments, and calendar shifts to structure your production timeline.
+                Once your orders are loaded, open the <strong>Gantt Chart</strong> or{" "}
+                <strong>Capacity Planning</strong> page. Tap the **Optimize Schedule** button in the
+                header toolbar to trigger the constraint solver. The solver parses setup
+                constraints, line assignments, and calendar shifts to structure your production
+                timeline.
               </p>
             </section>
 
@@ -59,7 +77,9 @@ function DocumentationPage() {
                 3. Analyzing OEE Metrics
               </h3>
               <p>
-                Open the **Analytics** dashboard to evaluate the generated plan. The charts display workstation utilization rates, average setup delay, total order delay hours, and overall plant OEE calculations to verify planning performance.
+                Open the **Analytics** dashboard to evaluate the generated plan. The charts display
+                workstation utilization rates, average setup delay, total order delay hours, and
+                overall plant OEE calculations to verify planning performance.
               </p>
             </section>
           </CardContent>

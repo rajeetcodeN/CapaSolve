@@ -46,7 +46,7 @@ export function getPlanLimits(planName?: string): PlanLimits {
 export function validateOptimizationPayload(
   orderCount: number,
   machineCount: number,
-  planName: string
+  planName: string,
 ): { allowed: boolean; reason?: string } {
   const limits = getPlanLimits(planName);
 

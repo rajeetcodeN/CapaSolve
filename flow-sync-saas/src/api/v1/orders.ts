@@ -8,7 +8,10 @@ export function handleGetOrdersApi(searchQuery?: string) {
   if (searchQuery) {
     const q = searchQuery.toLowerCase();
     filtered = filtered.filter(
-      (o) => o.id.toLowerCase().includes(q) || o.sku.toLowerCase().includes(q) || o.description?.toLowerCase().includes(q)
+      (o) =>
+        o.id.toLowerCase().includes(q) ||
+        o.orderId.toLowerCase().includes(q) ||
+        o.material.toLowerCase().includes(q),
     );
   }
   return {
@@ -43,7 +46,7 @@ export function handlePostOrdersApi(body: { orders: Order[]; processes?: OrderPr
   if (Array.isArray(body.processes)) {
     body.processes.forEach((newProc) => {
       const idx = inMemoryProcessesStore.findIndex(
-        (p) => p.orderId === newProc.orderId && p.stepId === newProc.stepId
+        (p) => p.orderId === newProc.orderId && p.processId === newProc.processId,
       );
       if (idx >= 0) {
         inMemoryProcessesStore[idx] = newProc;

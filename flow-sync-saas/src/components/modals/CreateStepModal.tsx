@@ -1,5 +1,12 @@
 import React, { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,7 +21,11 @@ interface CreateStepModalProps {
   targetOrderId?: string;
 }
 
-export const CreateStepModal: React.FC<CreateStepModalProps> = ({ isOpen, onClose, targetOrderId }) => {
+export const CreateStepModal: React.FC<CreateStepModalProps> = ({
+  isOpen,
+  onClose,
+  targetOrderId,
+}) => {
   const { language } = useTranslations();
   const { orders, machines, addWorkOrder } = useAppStore();
 
@@ -26,7 +37,9 @@ export const CreateStepModal: React.FC<CreateStepModalProps> = ({ isOpen, onClos
   const [processTimeMin, setProcessTimeMin] = useState(3);
   const [manpowerUtil, setManpowerUtil] = useState(0.8);
 
-  const selectedOrder = orders.find((o) => o.orderId === selectedOrderId || o.id === selectedOrderId);
+  const selectedOrder = orders.find(
+    (o) => o.orderId === selectedOrderId || o.id === selectedOrderId,
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,7 +98,9 @@ export const CreateStepModal: React.FC<CreateStepModalProps> = ({ isOpen, onClos
 
           <div className="grid grid-cols-2 gap-3 bg-muted/20 p-3 rounded-xl border border-border/50">
             <div className="space-y-1">
-              <Label className="text-[11px] font-medium text-muted-foreground">Step ID / No (Vorgang)</Label>
+              <Label className="text-[11px] font-medium text-muted-foreground">
+                Step ID / No (Vorgang)
+              </Label>
               <Input
                 type="number"
                 value={processId}
@@ -97,7 +112,9 @@ export const CreateStepModal: React.FC<CreateStepModalProps> = ({ isOpen, onClos
             </div>
 
             <div className="space-y-1">
-              <Label className="text-[11px] font-medium text-muted-foreground">Workcenter / Machine</Label>
+              <Label className="text-[11px] font-medium text-muted-foreground">
+                Workcenter / Machine
+              </Label>
               <select
                 value={machineId}
                 onChange={(e) => setMachineId(e.target.value)}
@@ -112,7 +129,9 @@ export const CreateStepModal: React.FC<CreateStepModalProps> = ({ isOpen, onClos
             </div>
 
             <div className="col-span-2 space-y-1">
-              <Label className="text-[11px] font-medium text-muted-foreground">Step Description</Label>
+              <Label className="text-[11px] font-medium text-muted-foreground">
+                Step Description
+              </Label>
               <Input
                 value={processText}
                 onChange={(e) => setProcessText(e.target.value)}
@@ -122,7 +141,9 @@ export const CreateStepModal: React.FC<CreateStepModalProps> = ({ isOpen, onClos
             </div>
 
             <div className="space-y-1">
-              <Label className="text-[11px] font-medium text-muted-foreground">Setup Time (mins)</Label>
+              <Label className="text-[11px] font-medium text-muted-foreground">
+                Setup Time (mins)
+              </Label>
               <Input
                 type="number"
                 value={setupTimeMin}
@@ -133,7 +154,9 @@ export const CreateStepModal: React.FC<CreateStepModalProps> = ({ isOpen, onClos
             </div>
 
             <div className="space-y-1">
-              <Label className="text-[11px] font-medium text-muted-foreground">Process Time / Unit (mins)</Label>
+              <Label className="text-[11px] font-medium text-muted-foreground">
+                Process Time / Unit (mins)
+              </Label>
               <Input
                 type="number"
                 value={processTimeMin}
@@ -146,10 +169,20 @@ export const CreateStepModal: React.FC<CreateStepModalProps> = ({ isOpen, onClos
           </div>
 
           <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" size="sm" onClick={onClose} className="text-xs h-9">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onClose}
+              className="text-xs h-9"
+            >
               Cancel
             </Button>
-            <Button type="submit" size="sm" className="text-xs h-9 bg-primary text-primary-foreground hover:bg-primary/95">
+            <Button
+              type="submit"
+              size="sm"
+              className="text-xs h-9 bg-primary text-primary-foreground hover:bg-primary/95"
+            >
               Add Step
             </Button>
           </DialogFooter>

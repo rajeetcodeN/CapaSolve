@@ -9,7 +9,10 @@ export const saveStateToSupabase = createServerFn({ method: "POST" })
   .handler(async ({ data: { orgId, stateJson, token } }) => {
     try {
       // 1. Verify user authentication token
-      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser(token);
       if (authError || !user) {
         return { success: false, error: "Authentication failed: Invalid session token." };
       }
@@ -23,11 +26,17 @@ export const saveStateToSupabase = createServerFn({ method: "POST" })
         .maybeSingle();
 
       if (memError || !membership) {
-        return { success: false, error: "Access Denied: You are not a member of this organization." };
+        return {
+          success: false,
+          error: "Access Denied: You are not a member of this organization.",
+        };
       }
 
       if (membership.role !== "ADMIN" && membership.role !== "DEVELOPER") {
-        return { success: false, error: "Access Denied: Insufficient permissions to modify schedules." };
+        return {
+          success: false,
+          error: "Access Denied: Insufficient permissions to modify schedules.",
+        };
       }
 
       const config = getServerConfig();
@@ -39,8 +48,8 @@ export const saveStateToSupabase = createServerFn({ method: "POST" })
       const response = await fetch(url, {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${config.supabaseAnonKey}`,
-          "apikey": config.supabaseAnonKey,
+          Authorization: `Bearer ${config.supabaseAnonKey}`,
+          apikey: config.supabaseAnonKey,
           "x-upsert": "true",
           "Content-Type": "application/json",
         },
@@ -65,7 +74,10 @@ export const loadStateFromSupabase = createServerFn({ method: "POST" })
   .handler(async ({ data: { orgId, token } }) => {
     try {
       // 1. Verify user authentication token
-      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser(token);
       if (authError || !user) {
         return { success: false, error: "Authentication failed: Invalid session token." };
       }
@@ -79,7 +91,10 @@ export const loadStateFromSupabase = createServerFn({ method: "POST" })
         .maybeSingle();
 
       if (memError || !membership) {
-        return { success: false, error: "Access Denied: You are not a member of this organization." };
+        return {
+          success: false,
+          error: "Access Denied: You are not a member of this organization.",
+        };
       }
 
       const config = getServerConfig();
@@ -91,8 +106,8 @@ export const loadStateFromSupabase = createServerFn({ method: "POST" })
       const response = await fetch(url, {
         method: "GET",
         headers: {
-          "Authorization": `Bearer ${config.supabaseAnonKey}`,
-          "apikey": config.supabaseAnonKey,
+          Authorization: `Bearer ${config.supabaseAnonKey}`,
+          apikey: config.supabaseAnonKey,
         },
       });
 

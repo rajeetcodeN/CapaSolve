@@ -39,7 +39,7 @@ function ContactPage() {
       toast.success(
         language === "de"
           ? "Nachricht erfolgreich gesendet! Unser Team wird sich in Kürze bei Ihnen melden."
-          : "Message sent successfully! Our team will contact you shortly."
+          : "Message sent successfully! Our team will contact you shortly.",
       );
       setName("");
       setEmail("");
@@ -52,7 +52,7 @@ function ContactPage() {
   return (
     <div className="flex-1 py-16 px-6 relative bg-gradient-to-b from-background via-muted/10 to-background">
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
-      
+
       <div className="max-w-5xl mx-auto space-y-12 relative z-10">
         <div className="text-center space-y-4">
           <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-foreground">
@@ -75,10 +75,15 @@ function ContactPage() {
                 </div>
                 <div>
                   <h4 className="font-bold text-sm text-foreground">Email Us</h4>
-                  <a href="mailto:info@digitalbiz.tech" className="text-xs text-primary font-medium hover:underline block mt-1">
+                  <a
+                    href="mailto:info@digitalbiz.tech"
+                    className="text-xs text-primary font-medium hover:underline block mt-1"
+                  >
                     info@digitalbiz.tech
                   </a>
-                  <span className="text-[10px] text-muted-foreground block mt-0.5">Response within 12 hours</span>
+                  <span className="text-[10px] text-muted-foreground block mt-0.5">
+                    Response within 12 hours
+                  </span>
                 </div>
               </CardContent>
             </Card>
@@ -90,10 +95,15 @@ function ContactPage() {
                 </div>
                 <div>
                   <h4 className="font-bold text-sm text-foreground">Call Us</h4>
-                  <a href="tel:+16143473250" className="text-xs text-foreground/80 hover:text-primary font-medium block mt-1">
+                  <a
+                    href="tel:+16143473250"
+                    className="text-xs text-foreground/80 hover:text-primary font-medium block mt-1"
+                  >
                     (614) 347-3250
                   </a>
-                  <span className="text-[10px] text-muted-foreground block mt-0.5">Mon - Fri, 9am - 5pm EST</span>
+                  <span className="text-[10px] text-muted-foreground block mt-0.5">
+                    Mon - Fri, 9am - 5pm EST
+                  </span>
                 </div>
               </CardContent>
             </Card>
@@ -133,7 +143,9 @@ function ContactPage() {
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-1">
-                      <Label htmlFor="contact-name" className="text-xs">Your Name *</Label>
+                      <Label htmlFor="contact-name" className="text-xs">
+                        Your Name *
+                      </Label>
                       <Input
                         id="contact-name"
                         value={name}
@@ -144,7 +156,9 @@ function ContactPage() {
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label htmlFor="contact-email" className="text-xs">Email Address *</Label>
+                      <Label htmlFor="contact-email" className="text-xs">
+                        Email Address *
+                      </Label>
                       <Input
                         id="contact-email"
                         type="email"
@@ -158,7 +172,9 @@ function ContactPage() {
                   </div>
 
                   <div className="space-y-1">
-                    <Label htmlFor="contact-subject" className="text-xs">Subject</Label>
+                    <Label htmlFor="contact-subject" className="text-xs">
+                      Subject
+                    </Label>
                     <Input
                       id="contact-subject"
                       value={subject}
@@ -169,7 +185,9 @@ function ContactPage() {
                   </div>
 
                   <div className="space-y-1">
-                    <Label htmlFor="contact-message" className="text-xs">Message *</Label>
+                    <Label htmlFor="contact-message" className="text-xs">
+                      Message *
+                    </Label>
                     <Textarea
                       id="contact-message"
                       value={message}
@@ -180,7 +198,11 @@ function ContactPage() {
                     />
                   </div>
 
-                  <Button type="submit" disabled={sending} className="w-full text-xs h-10 gap-2 cursor-pointer">
+                  <Button
+                    type="submit"
+                    disabled={sending}
+                    className="w-full text-xs h-10 gap-2 cursor-pointer"
+                  >
                     <Send className="h-3.5 w-3.5" />
                     {sending ? "Sending Message..." : "Send Message"}
                   </Button>

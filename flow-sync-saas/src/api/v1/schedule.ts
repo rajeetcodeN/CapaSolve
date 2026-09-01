@@ -4,6 +4,7 @@ import { SupabaseScheduleData } from "@/lib/db-service";
 export interface SolveApiRequest {
   orders: any[];
   processes: any[];
+  machines?: any[];
   optimizationMode?: "full" | "workstation" | "pre-optimization";
   groupSerialization?: boolean;
   allowProcessOverlap?: boolean;
@@ -46,16 +47,16 @@ export function handleScheduleSolveApi(reqPayload: SolveApiRequest) {
   const scheduleResult = generateSchedule(
     reqPayload.orders || [],
     reqPayload.processes || [],
+    reqPayload.machines || [],
     (reqPayload.optimizationMode as any) || "full",
     reqPayload.groupSerialization ?? false,
     reqPayload.allowProcessOverlap ?? true,
     reqPayload.allowSopOverride ?? true,
     reqPayload.maxUtilizeResources ?? true,
-    "en",
-    reqPayload.maxPreponeWeeks || 0,
+    reqPayload.dailyCapacities || {},
     reqPayload.globalSetterCapacity || 100,
-    reqPayload.globalOperatorCapacity || 100,
-    reqPayload.dailyCapacities || {}
+    reqPayload.globalOperatorCapacity || 200,
+    reqPayload.maxPreponeWeeks || 0,
   );
   const solveTimeMs = Math.round(performance.now() - startTime);
 

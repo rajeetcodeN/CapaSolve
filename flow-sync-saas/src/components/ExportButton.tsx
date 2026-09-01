@@ -24,7 +24,7 @@ export function ExportButton({ variant = "outline", size = "sm" }: { variant?: a
       const parentOrder = orders.find((o) => o.id === p.orderId);
       return {
         "Order ID": parentOrder?.orderId || p.orderId,
-        "Material": parentOrder?.material || "",
+        Material: parentOrder?.material || "",
         "Process Step": p.processId,
         "Process Text": p.processText,
         "Machine ID": p.machineId,
@@ -33,7 +33,7 @@ export function ExportButton({ variant = "outline", size = "sm" }: { variant?: a
         "Setup Time (min)": p.setupTimeMin,
         "Process Time (min)": p.processTimeMin,
         "Total Time (min)": Math.round(p.totalTimeMin),
-        "Status": p.status,
+        Status: p.status,
         "Scheduled Start": p.scheduledStart || "N/A",
         "Scheduled End": p.scheduledEnd || "N/A",
       };
@@ -44,7 +44,10 @@ export function ExportButton({ variant = "outline", size = "sm" }: { variant?: a
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", `CapaSolve_Schedule_${new Date().toISOString().substring(0, 10)}.csv`);
+    link.setAttribute(
+      "download",
+      `CapaSolve_Schedule_${new Date().toISOString().substring(0, 10)}.csv`,
+    );
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -58,7 +61,11 @@ export function ExportButton({ variant = "outline", size = "sm" }: { variant?: a
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant={variant} size={size} className="gap-1.5 cursor-pointer font-medium text-xs">
+        <Button
+          variant={variant}
+          size={size}
+          className="gap-1.5 cursor-pointer font-medium text-xs"
+        >
           <Download className="h-3.5 w-3.5" />
           <span>Export</span>
         </Button>

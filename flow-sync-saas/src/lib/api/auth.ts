@@ -16,7 +16,7 @@ export interface AuthContext {
  */
 export async function authenticateRequest(
   request: Request,
-  requiredRoles: UserRole[] = ["ADMIN", "DEVELOPER", "GUEST"]
+  requiredRoles: UserRole[] = ["ADMIN", "DEVELOPER", "GUEST"],
 ): Promise<{ error?: string; status?: number; ctx?: AuthContext }> {
   try {
     const authHeader = request.headers.get("Authorization") || request.headers.get("authorization");
@@ -59,7 +59,10 @@ export async function authenticateRequest(
     }
 
     // Otherwise, validate Supabase JWT session token
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser(token);
     if (authError || !user) {
       return { error: "Authentication failed: Invalid or expired token", status: 401 };
     }

@@ -17,7 +17,13 @@ import {
   ComposedChart,
 } from "recharts";
 import { Activity, AlertTriangle, Clock, Users, Wrench } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export const Route = createFileRoute("/analytics")({
   head: () => ({
@@ -195,26 +201,33 @@ function AnalyticsDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      {/* 1. Streamlined Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/60 pb-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">{t("analytics.title")}</h1>
-          <p className="text-muted-foreground">{t("analytics.subtitle")}</p>
+          <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+            <div className="h-7.5 w-7.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/80 dark:border-emerald-800/80 flex items-center justify-center text-emerald-800 dark:text-emerald-300 shrink-0">
+              <Activity className="h-4 w-4" />
+            </div>
+            {t("analytics.title")}
+          </h1>
+          <p className="text-muted-foreground text-xs mt-0.5">{t("analytics.subtitle")}</p>
         </div>
 
         {/* Machine Group Filter */}
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-muted-foreground">
+          <span className="text-xs font-medium text-muted-foreground">
             {t("analytics.selectGroup")}
           </span>
           <Select value={selectedGroupId} onValueChange={setSelectedGroupId}>
-            <SelectTrigger className="w-[180px] bg-background">
+            <SelectTrigger className="w-[180px] h-8 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 shadow-2xs">
               <SelectValue placeholder={t("analytics.allGroups")} />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">{t("analytics.allGroups")}</SelectItem>
+            <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-md">
+              <SelectItem value="ALL" className="text-xs">
+                {t("analytics.allGroups")}
+              </SelectItem>
               {machineGroups.map((g) => (
-                <SelectItem key={g.id} value={g.id}>
+                <SelectItem key={g.id} value={g.id} className="text-xs">
                   {g.name}
                 </SelectItem>
               ))}
@@ -225,58 +238,62 @@ function AnalyticsDashboard() {
 
       {/* KPI Stats Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="shadow-sm">
+        <Card className="border border-slate-200 dark:border-slate-800 shadow-2xs bg-white dark:bg-slate-900">
           <CardContent className="flex items-center gap-4 pt-6">
-            <div className="rounded-lg bg-primary/10 p-2 text-primary">
-              <Clock className="h-6 w-6" />
+            <div className="rounded-lg bg-slate-100 dark:bg-slate-800 p-2 text-slate-500">
+              <Clock className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-xs font-medium text-muted-foreground">
-                {t("analytics.totalTime")}
+              <div className="text-xs font-medium text-slate-500">{t("analytics.totalTime")}</div>
+              <div className="text-2xl font-bold font-mono text-slate-900 dark:text-white">
+                {summaryStats.totalScheduledHours} h
               </div>
-              <div className="text-2xl font-bold">{summaryStats.totalScheduledHours} h</div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm">
+        <Card className="border border-slate-200 dark:border-slate-800 shadow-2xs bg-white dark:bg-slate-900">
           <CardContent className="flex items-center gap-4 pt-6">
-            <div className="rounded-lg bg-emerald-500/10 p-2 text-emerald-500">
-              <Activity className="h-6 w-6" />
+            <div className="rounded-lg bg-slate-100 dark:bg-slate-800 p-2 text-slate-500">
+              <Activity className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-xs font-medium text-muted-foreground">
+              <div className="text-xs font-medium text-slate-500">
                 {t("analytics.avgUtilization")}
               </div>
-              <div className="text-2xl font-bold">{summaryStats.avgOee}%</div>
+              <div className="text-2xl font-bold font-mono text-slate-900 dark:text-white">
+                {summaryStats.avgOee}%
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm">
+        <Card className="border border-slate-200 dark:border-slate-800 shadow-2xs bg-white dark:bg-slate-900">
           <CardContent className="flex items-center gap-4 pt-6">
-            <div className="rounded-lg bg-amber-500/10 p-2 text-amber-500">
-              <AlertTriangle className="h-6 w-6" />
+            <div className="rounded-lg bg-slate-100 dark:bg-slate-800 p-2 text-slate-500">
+              <AlertTriangle className="h-5 w-5 text-amber-600" />
             </div>
             <div>
-              <div className="text-xs font-medium text-muted-foreground">
+              <div className="text-xs font-medium text-slate-500">
                 {t("analytics.warningsCount")}
               </div>
-              <div className="text-2xl font-bold">{summaryStats.warningsCount}</div>
+              <div className="text-2xl font-bold font-mono text-slate-900 dark:text-white">
+                {summaryStats.warningsCount}
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm">
+        <Card className="border border-slate-200 dark:border-slate-800 shadow-2xs bg-white dark:bg-slate-900">
           <CardContent className="flex items-center gap-4 pt-6">
-            <div className="rounded-lg bg-blue-500/10 p-2 text-blue-500">
-              <Users className="h-6 w-6" />
+            <div className="rounded-lg bg-slate-100 dark:bg-slate-800 p-2 text-slate-500">
+              <Users className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-xs font-medium text-muted-foreground">
-                {t("analytics.manpowerMin")}
+              <div className="text-xs font-medium text-slate-500">{t("analytics.manpowerMin")}</div>
+              <div className="text-2xl font-bold font-mono text-slate-900 dark:text-white">
+                {summaryStats.totalManpowerHours} h
               </div>
-              <div className="text-2xl font-bold">{summaryStats.totalManpowerHours} h</div>
             </div>
           </CardContent>
         </Card>
@@ -288,9 +305,7 @@ function AnalyticsDashboard() {
         <Card className="col-span-1 shadow-sm">
           <CardHeader>
             <CardTitle className="text-base">{t("analytics.oeeBreakdown")}</CardTitle>
-            <CardDescription className="text-xs">
-              {t("analytics.oeeBreakdownDesc")}
-            </CardDescription>
+            <CardDescription className="text-xs">{t("analytics.oeeBreakdownDesc")}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-[350px] w-full">
@@ -300,7 +315,11 @@ function AnalyticsDashboard() {
                   margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" />
-                  <XAxis dataKey="machineName" stroke="currentColor" className="text-muted-foreground text-xs" />
+                  <XAxis
+                    dataKey="machineName"
+                    stroke="currentColor"
+                    className="text-muted-foreground text-xs"
+                  />
                   <YAxis
                     label={{
                       value: "Minutes",
@@ -351,9 +370,7 @@ function AnalyticsDashboard() {
         <Card className="col-span-1 shadow-sm">
           <CardHeader>
             <CardTitle className="text-base">{t("analytics.bottleneckAnalysis")}</CardTitle>
-            <CardDescription className="text-xs">
-              {t("analytics.bottleneckDesc")}
-            </CardDescription>
+            <CardDescription className="text-xs">{t("analytics.bottleneckDesc")}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-[350px] w-full">
@@ -416,7 +433,11 @@ function AnalyticsDashboard() {
                   margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" />
-                  <XAxis dataKey="date" stroke="currentColor" className="text-muted-foreground text-xs" />
+                  <XAxis
+                    dataKey="date"
+                    stroke="currentColor"
+                    className="text-muted-foreground text-xs"
+                  />
                   <YAxis
                     label={{
                       value: "Person-Minutes",

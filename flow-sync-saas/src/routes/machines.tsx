@@ -3,23 +3,25 @@ import { useState, useMemo } from "react";
 import { useAppStore } from "@/lib/store";
 import { useTranslations } from "@/lib/translations";
 import { toast } from "sonner";
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle,
-  CardDescription
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { DatePickerField } from "@/components/ui/date-picker";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import {
   Dialog,
@@ -43,7 +45,7 @@ import {
   Shield,
   Trash2,
   CalendarOff,
-  Activity
+  Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -51,7 +53,11 @@ export const Route = createFileRoute("/machines")({
   head: () => ({
     meta: [
       { title: "Workstation & Machine Management — CapaSolve SaaS" },
-      { name: "description", content: "Manage manufacturing workstations, machine groups, and planned maintenance downtime blocks." },
+      {
+        name: "description",
+        content:
+          "Manage manufacturing workstations, machine groups, and planned maintenance downtime blocks.",
+      },
     ],
   }),
   component: MachineManagementPage,
@@ -84,7 +90,11 @@ function MachineManagementPage() {
       if (selectedGroup !== "ALL" && m.machineGroupId !== selectedGroup) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        return m.id.toLowerCase().includes(q) || m.name.toLowerCase().includes(q) || m.machineGroupId.toLowerCase().includes(q);
+        return (
+          m.id.toLowerCase().includes(q) ||
+          m.name.toLowerCase().includes(q) ||
+          m.machineGroupId.toLowerCase().includes(q)
+        );
       }
       return true;
     });
@@ -114,91 +124,123 @@ function MachineManagementPage() {
       count++;
     }
 
-    toast.success(`Scheduled ${count} maintenance downtime days for ${selectedMachineForMaint.name}`);
+    toast.success(
+      `Scheduled ${count} maintenance downtime days for ${selectedMachineForMaint.name}`,
+    );
     setIsMaintenanceOpen(false);
   };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      {/* 1. Streamlined Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/60 pb-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
-            <Factory className="h-7 w-7 text-primary" />
-            Workstation & Machine Group Management
+          <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+            <div className="h-7.5 w-7.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/80 dark:border-emerald-800/80 flex items-center justify-center text-emerald-800 dark:text-emerald-300 shrink-0">
+              <Factory className="h-4 w-4" />
+            </div>
+            Workstation & Machine Management
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Configure manufacturing lines, assigned machine groups, and scheduled preventive maintenance blocks.
+          <p className="text-muted-foreground text-xs mt-0.5">
+            Configure manufacturing lines, assigned machine groups, and scheduled preventive
+            maintenance blocks.
           </p>
         </div>
 
         <Dialog open={isAddMachineOpen} onOpenChange={setIsAddMachineOpen}>
           <DialogTrigger asChild>
-            <Button size="lg" className="bg-primary text-primary-foreground font-bold shadow-md text-xs gap-2">
+            <Button
+              size="sm"
+              className="bg-[#1e3f2e] hover:bg-[#27533d] text-white font-medium shadow-xs border border-[#27533d] text-xs gap-1.5 cursor-pointer rounded-lg"
+            >
               <Plus className="h-4 w-4" />
               Add New Workstation
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle className="text-base font-bold flex items-center gap-2">
-                <Plus className="h-4 w-4 text-primary" />
+              <DialogTitle className="text-sm font-bold flex items-center gap-2">
+                <Plus className="h-4 w-4 text-slate-500" />
                 Add Workstation Line
               </DialogTitle>
             </DialogHeader>
 
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              if (!newMachineId.trim()) return toast.error("Machine Code is required.");
-              toast.success(`Added workstation ${newMachineName || newMachineId}`);
-              setIsAddMachineOpen(false);
-              setNewMachineId("");
-              setNewMachineName("");
-            }} className="space-y-4 pt-2 text-xs">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!newMachineId.trim()) return toast.error("Machine Code is required.");
+                toast.success(`Added workstation ${newMachineName || newMachineId}`);
+                setIsAddMachineOpen(false);
+                setNewMachineId("");
+                setNewMachineName("");
+              }}
+              className="space-y-4 pt-2 text-xs"
+            >
               <div className="space-y-1">
-                <Label htmlFor="m-id" className="text-xs font-semibold">Workstation Code / ID *</Label>
+                <Label
+                  htmlFor="m-id"
+                  className="text-xs font-semibold text-slate-700 dark:text-slate-300"
+                >
+                  Workstation Code / ID *
+                </Label>
                 <Input
                   id="m-id"
                   value={newMachineId}
                   onChange={(e) => setNewMachineId(e.target.value)}
                   placeholder="e.g. 603013"
-                  className="h-9 text-xs"
+                  className="h-8 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xs"
                   required
                 />
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="m-name" className="text-xs font-semibold">Workstation Description</Label>
+                <Label
+                  htmlFor="m-name"
+                  className="text-xs font-semibold text-slate-700 dark:text-slate-300"
+                >
+                  Workstation Description
+                </Label>
                 <Input
                   id="m-name"
                   value={newMachineName}
                   onChange={(e) => setNewMachineName(e.target.value)}
                   placeholder="e.g. High-Speed SMT Assembly Line 03"
-                  className="h-9 text-xs"
+                  className="h-8 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xs"
                 />
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="m-group" className="text-xs font-semibold">Machine Group *</Label>
-                <select
-                  id="m-group"
-                  value={newGroupId}
-                  onChange={(e) => setNewGroupId(e.target.value)}
-                  className="w-full h-9 bg-background border border-input rounded-md px-3 text-xs focus:ring-1 focus:ring-primary"
-                >
-                  {machineGroups.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.name} ({g.id})
-                    </option>
-                  ))}
-                </select>
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Machine Group *
+                </Label>
+                <Select value={newGroupId} onValueChange={setNewGroupId}>
+                  <SelectTrigger className="w-full h-8 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 shadow-2xs">
+                    <SelectValue placeholder="Select group" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-md">
+                    {machineGroups.map((g) => (
+                      <SelectItem key={g.id} value={g.id} className="text-xs">
+                        {g.name} ({g.id})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <DialogFooter className="pt-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => setIsAddMachineOpen(false)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsAddMachineOpen(false)}
+                >
                   Cancel
                 </Button>
-                <Button type="submit" size="sm" className="bg-primary text-primary-foreground font-bold">
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="bg-[#1e3f2e] hover:bg-[#27533d] text-white font-medium shadow-xs border border-[#27533d]"
+                >
                   Save Workstation
                 </Button>
               </DialogFooter>
@@ -209,41 +251,47 @@ function MachineManagementPage() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="p-4 border-border/70 bg-card shadow-2xs flex items-center justify-between">
+        <Card className="p-4 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs flex items-center justify-between rounded-xl">
           <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase">Total Workstations</p>
-            <p className="text-2xl font-extrabold font-mono mt-1 text-foreground">{stats.total}</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase">Total Workstations</p>
+            <p className="text-2xl font-bold font-mono mt-1 text-slate-900 dark:text-white">
+              {stats.total}
+            </p>
           </div>
-          <Factory className="h-8 w-8 text-primary opacity-80" />
+          <Factory className="h-7 w-7 text-slate-400" />
         </Card>
 
-        <Card className="p-4 border-border/70 bg-card shadow-2xs flex items-center justify-between">
+        <Card className="p-4 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs flex items-center justify-between rounded-xl">
           <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase">Machine Groups</p>
-            <p className="text-2xl font-extrabold font-mono mt-1 text-primary">{stats.totalGroups}</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase">Machine Groups</p>
+            <p className="text-2xl font-bold font-mono mt-1 text-slate-900 dark:text-white">
+              {stats.totalGroups}
+            </p>
           </div>
-          <Layers className="h-8 w-8 text-emerald-500 opacity-80" />
+          <Layers className="h-7 w-7 text-slate-400" />
         </Card>
 
-        <Card className="p-4 border-border/70 bg-card shadow-2xs flex items-center justify-between">
+        <Card className="p-4 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs flex items-center justify-between rounded-xl">
           <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase">Maintenance Status</p>
-            <p className="text-sm font-bold mt-1 text-emerald-600 dark:text-emerald-400">All Lines Operational</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase">Maintenance Status</p>
+            <p className="text-sm font-semibold mt-1 text-emerald-600 dark:text-emerald-400">
+              All Lines Operational
+            </p>
           </div>
-          <CheckCircle2 className="h-8 w-8 text-emerald-500 opacity-80" />
+          <CheckCircle2 className="h-7 w-7 text-slate-400" />
         </Card>
       </div>
 
       {/* Filter & Search Bar */}
-      <Card className="p-4 border-border/70 shadow-xs bg-card space-y-3">
+      <Card className="p-3 border-slate-200/90 dark:border-slate-800 shadow-2xs bg-white dark:bg-slate-900 rounded-xl space-y-3">
         <div className="flex flex-col sm:flex-row items-center gap-3">
           <div className="relative flex-1 w-full">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search workstation by code, description, or group..."
-              className="pl-9 text-xs h-9"
+              className="pl-9 text-xs h-8 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 shadow-2xs"
             />
           </div>
 
@@ -252,16 +300,21 @@ function MachineManagementPage() {
               <Filter className="h-3.5 w-3.5" />
               <span>Group:</span>
             </div>
-            <select
-              value={selectedGroup}
-              onChange={(e) => setSelectedGroup(e.target.value)}
-              className="h-9 bg-background border border-input rounded-md px-3 text-xs focus:ring-1 focus:ring-primary min-w-[150px]"
-            >
-              <option value="ALL">All Groups</option>
-              {machineGroups.map((g) => (
-                <option key={g.id} value={g.id}>{g.name} ({g.id})</option>
-              ))}
-            </select>
+            <Select value={selectedGroup} onValueChange={setSelectedGroup}>
+              <SelectTrigger className="h-8 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 shadow-2xs min-w-[150px]">
+                <SelectValue placeholder="All Groups" />
+              </SelectTrigger>
+              <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-md">
+                <SelectItem value="ALL" className="text-xs">
+                  All Groups
+                </SelectItem>
+                {machineGroups.map((g) => (
+                  <SelectItem key={g.id} value={g.id} className="text-xs">
+                    {g.name} ({g.id})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </Card>
@@ -282,9 +335,13 @@ function MachineManagementPage() {
             <TableBody>
               {filteredMachines.map((m) => (
                 <TableRow key={m.id} className="hover:bg-muted/30 transition-colors text-xs">
-                  <TableCell className="font-extrabold font-mono text-primary text-xs">{m.id}</TableCell>
+                  <TableCell className="font-extrabold font-mono text-primary text-xs">
+                    {m.id}
+                  </TableCell>
                   <TableCell className="font-semibold text-foreground">{m.name}</TableCell>
-                  <TableCell className="font-mono text-muted-foreground">Group {m.machineGroupId}</TableCell>
+                  <TableCell className="font-mono text-muted-foreground">
+                    Group {m.machineGroupId}
+                  </TableCell>
                   <TableCell className="text-center">
                     <span className="inline-flex items-center gap-1 text-[10.5px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/20">
                       <CheckCircle2 className="h-3 w-3" /> Operational
@@ -323,45 +380,43 @@ function MachineManagementPage() {
 
           <form onSubmit={handleScheduleMaintenance} className="space-y-4 pt-2 text-xs">
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="maint-start" className="text-xs font-semibold">Start Date *</Label>
-                <Input
-                  id="maint-start"
-                  type="date"
-                  value={maintStartDate}
-                  onChange={(e) => setMaintStartDate(e.target.value)}
-                  className="h-9 text-xs font-mono"
-                  required
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="maint-end" className="text-xs font-semibold">End Date *</Label>
-                <Input
-                  id="maint-end"
-                  type="date"
-                  value={maintEndDate}
-                  onChange={(e) => setMaintEndDate(e.target.value)}
-                  className="h-9 text-xs font-mono"
-                  required
-                />
-              </div>
+              <DatePickerField
+                value={maintStartDate}
+                onChange={setMaintStartDate}
+                label="Start Date *"
+              />
+              <DatePickerField value={maintEndDate} onChange={setMaintEndDate} label="End Date *" />
             </div>
 
             <div className="space-y-1">
-              <Label htmlFor="maint-note" className="text-xs font-semibold">Maintenance Description / Reason</Label>
+              <Label
+                htmlFor="maint-note"
+                className="text-xs font-semibold text-slate-700 dark:text-slate-300"
+              >
+                Maintenance Description / Reason
+              </Label>
               <textarea
                 id="maint-note"
                 value={maintNote}
                 onChange={(e) => setMaintNote(e.target.value)}
-                className="w-full bg-background border border-input rounded-md p-2 text-xs min-h-[70px] outline-none focus:ring-1 focus:ring-primary"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 text-xs min-h-[70px] outline-none focus:ring-1 focus:ring-emerald-600 shadow-2xs"
               />
             </div>
 
             <DialogFooter className="pt-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => setIsMaintenanceOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsMaintenanceOpen(false)}
+              >
                 Cancel
               </Button>
-              <Button type="submit" size="sm" className="bg-amber-600 text-white font-bold hover:bg-amber-700">
+              <Button
+                type="submit"
+                size="sm"
+                className="bg-[#1e3f2e] hover:bg-[#27533d] text-white font-semibold shadow-xs border border-[#27533d]"
+              >
                 Block Machine Dates
               </Button>
             </DialogFooter>

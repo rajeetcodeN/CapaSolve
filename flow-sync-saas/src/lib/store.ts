@@ -17,12 +17,14 @@ import { saveStateToSupabase, loadStateFromSupabase } from "./supabase.server";
 import { toast } from "sonner";
 import { supabase } from "./supabase";
 import { runOptimizeScheduleServer } from "./api/schedules.server";
-import { 
-  syncScheduleToSupabaseDB, 
+import {
+  syncScheduleToSupabaseDB,
   fetchScheduleFromSupabaseDB,
   fetchMachinesFromSupabaseDB,
-  saveMachineToSupabaseDB
+  saveMachineToSupabaseDB,
 } from "./db-service";
+
+import { DEFAULT_CSV_CONTENT } from "./default-csv";
 
 // Clean up older localStorage store versions to prevent QuotaExceededError
 if (typeof window !== "undefined" && window.localStorage) {
@@ -35,25 +37,22 @@ if (typeof window !== "undefined" && window.localStorage) {
         keysToRemove.push(key);
       }
     }
-    keysToRemove.forEach(k => window.localStorage.removeItem(k));
+    keysToRemove.forEach((k) => window.localStorage.removeItem(k));
   } catch (e) {
     console.error("LocalStorage cleanup failed:", e);
   }
 }
 
-// 1. Full-stack Server Function to fetch process.csv from workspace
-export const getCsvSeed = createServerFn({ method: "GET" })
-  .handler(async () => {
-    try {
-      const fs = await import("fs");
-      const path = await import("path");
-      const filePath = path.resolve(process.cwd(), "process.csv");
-      return await fs.promises.readFile(filePath, "utf-8");
-    } catch (e) {
-      console.error("Failed to read process.csv on server:", e);
-      return "";
-    }
-  });
+// 1. Full-stack Server Function to fetch process.csv (Serverless safe)
+export const getCsvSeed = createServerFn({ method: "GET" }).handler(async () => {
+  try {
+    // In serverless environments, return bundled production default CSV
+    return DEFAULT_CSV_CONTENT;
+  } catch (e) {
+    console.error("Failed to provide default CSV seed:", e);
+    return DEFAULT_CSV_CONTENT;
+  }
+});
 
 // Seed static machine data matching Excel screenshots and CSV
 export const SEED_GROUPS: MachineGroup[] = [
@@ -92,20 +91,23 @@ export function parseCSVData(csvText: any) {
 
   const orders: Order[] = [];
   const processes: OrderProcess[] = [];
-  const batchMap = new Map<string, {
-    orderCode: string;
-    material: string;
-    step: number;
-    orderQty: number;
-    sopStartDate: string;
-    sopStartTime: string;
-    machineId: string;
-    processText: string;
-    baseQty: number;
-    setupTimeMin: number;
-    processTimeMin: number;
-    manpowerUtilizationMin: number;
-  }>();
+  const batchMap = new Map<
+    string,
+    {
+      orderCode: string;
+      material: string;
+      step: number;
+      orderQty: number;
+      sopStartDate: string;
+      sopStartTime: string;
+      machineId: string;
+      processText: string;
+      baseQty: number;
+      setupTimeMin: number;
+      processTimeMin: number;
+      manpowerUtilizationMin: number;
+    }
+  >();
 
   parsed.data.forEach((row) => {
     const orderCode = row["Order"]?.trim();
@@ -125,7 +127,7 @@ export function parseCSVData(csvText: any) {
     const existing = batchMap.get(batchKey);
     if (existing) {
       existing.orderQty += qty;
-      
+
       // Update to earliest SOP date
       try {
         const d1 = parseSOPDate(existing.sopStartDate, existing.sopStartTime);
@@ -178,7 +180,8 @@ export function parseCSVData(csvText: any) {
     // Confirmed formulas
     const sumV2 = (batch.orderQty / batch.baseQty) * batch.processTimeMin;
     const sumV3 = batch.manpowerUtilizationMin * batch.baseQty * batch.orderQty;
-    const manpowerPct = batch.processTimeMin > 0 ? (batch.manpowerUtilizationMin / batch.processTimeMin) : 0;
+    const manpowerPct =
+      batch.processTimeMin > 0 ? batch.manpowerUtilizationMin / batch.processTimeMin : 0;
     const totalTimeMin = batch.setupTimeMin + sumV2;
 
     processes.push({
@@ -205,8 +208,6 @@ export function parseCSVData(csvText: any) {
   return { orders, processes };
 }
 
-import { DEFAULT_CSV_CONTENT } from "./default-csv";
-
 const initialData = parseCSVData(DEFAULT_CSV_CONTENT);
 const initialResult = generateSchedule(
   initialData.orders,
@@ -221,7 +222,7 @@ const initialResult = generateSchedule(
   false,
   true,
   true,
-  true
+  true,
 );
 
 export interface NotificationItem {
@@ -255,7 +256,7 @@ interface AppState {
   maxUtilizeResources: boolean;
   language: "en" | "de";
   maxPreponeWeeks: number;
-  
+
   // Theme & UX state
   theme: "light" | "dark" | "system";
   setTheme: (theme: "light" | "dark" | "system") => void;
@@ -269,7 +270,11 @@ interface AppState {
 
   // Notifications & Activity
   notifications: NotificationItem[];
-  addNotification: (notif: { title: string; message: string; type?: "info" | "warning" | "error" | "success" }) => void;
+  addNotification: (notif: {
+    title: string;
+    message: string;
+    type?: "info" | "warning" | "error" | "success";
+  }) => void;
   markNotificationAsRead: (id: string) => void;
   clearNotifications: () => void;
   recentActivity: ActivityItem[];
@@ -282,13 +287,13 @@ interface AppState {
   dailyCapacities: Record<string, { setter: number; process: number; isHoliday?: boolean }>;
   setDailyCapacity: (
     dateStr: string,
-    capacities: { setter?: number; process?: number; isHoliday?: boolean }
+    capacities: { setter?: number; process?: number; isHoliday?: boolean },
   ) => void;
 
   setupMatrixRules: SetupMatrixRule[];
   addSetupMatrixRule: (rule: Omit<SetupMatrixRule, "id">) => void;
   deleteSetupMatrixRule: (id: string) => void;
-  
+
   setOrders: (orders: Order[], processes: OrderProcess[]) => void;
   removeOrder: (id: string) => void;
   clearAll: () => void;
@@ -302,13 +307,13 @@ interface AppState {
   setMaxUtilizeResources: (enabled: boolean) => void;
   setLanguage: (lang: "en" | "de") => void;
   setMaxPreponeWeeks: (weeks: number) => void;
-  
+
   // Reschedule interactive update for drag-and-drop
   updateSlotSchedule: (
     processId: string,
     newMachineId: string,
     newStartDateStr: string,
-    newStartHour: number
+    newStartHour: number,
   ) => void;
   resetProcessToAuto: (processId: string) => void;
   pinProcessSchedule: (processId: string) => void;
@@ -331,7 +336,7 @@ interface AppState {
     executionStatus: "PLANNED" | "IN_PROGRESS" | "PAUSED" | "COMPLETED" | "DELAYED",
     completedQty?: number,
     scrapQty?: number,
-    notes?: string
+    notes?: string,
   ) => void;
   isCloudSaving: boolean;
   isCloudLoading: boolean;
@@ -340,18 +345,36 @@ interface AppState {
 
   // SaaS States
   user: any | null;
-  organization: { id: string; name: string; plan: 'FREE' | 'PRO' | 'ENTERPRISE' } | null;
-  role: 'ADMIN' | 'DEVELOPER' | 'GUEST';
-  plan: 'FREE' | 'PRO' | 'ENTERPRISE';
+  organization: { id: string; name: string; plan: "FREE" | "PRO" | "ENTERPRISE" } | null;
+  role: "ADMIN" | "DEVELOPER" | "GUEST";
+  plan: "FREE" | "PRO" | "ENTERPRISE";
   planChanges: number;
-  teamMembers: Array<{ id: string; name: string; email: string; role: 'ADMIN' | 'DEVELOPER' | 'GUEST' }>;
-  
+  teamMembers: Array<{
+    id: string;
+    name: string;
+    email: string;
+    role: "ADMIN" | "DEVELOPER" | "GUEST";
+  }>;
+
   setUser: (user: any | null) => void;
-  setOrganization: (org: { id: string; name: string; plan: 'FREE' | 'PRO' | 'ENTERPRISE' } | null) => void;
-  setRole: (role: 'ADMIN' | 'DEVELOPER' | 'GUEST') => void;
-  setPlan: (plan: 'FREE' | 'PRO' | 'ENTERPRISE') => { success: boolean; message: string };
-  setTeamMembers: (members: Array<{ id: string; name: string; email: string; role: 'ADMIN' | 'DEVELOPER' | 'GUEST' }>) => void;
-  addTeamMember: (member: { name: string; email: string; role: 'ADMIN' | 'DEVELOPER' | 'GUEST' }) => void;
+  setOrganization: (
+    org: { id: string; name: string; plan: "FREE" | "PRO" | "ENTERPRISE" } | null,
+  ) => void;
+  setRole: (role: "ADMIN" | "DEVELOPER" | "GUEST") => void;
+  setPlan: (plan: "FREE" | "PRO" | "ENTERPRISE") => { success: boolean; message: string };
+  setTeamMembers: (
+    members: Array<{
+      id: string;
+      name: string;
+      email: string;
+      role: "ADMIN" | "DEVELOPER" | "GUEST";
+    }>,
+  ) => void;
+  addTeamMember: (member: {
+    name: string;
+    email: string;
+    role: "ADMIN" | "DEVELOPER" | "GUEST";
+  }) => void;
   removeTeamMember: (id: string) => void;
 
   columnMapping: ColumnMapping;
@@ -375,8 +398,8 @@ export const useAppStore = create<AppState>()(
       maxUtilizeResources: true,
       language: "en",
       maxPreponeWeeks: 0,
-      
-      theme: "system",
+
+      theme: "light",
       setTheme: (theme) => set({ theme }),
       sidebarCollapsed: true,
       toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
@@ -392,26 +415,28 @@ export const useAppStore = create<AppState>()(
           title: "Welcome to CapaSolve",
           message: "Import a dataset or click 'Load Sample Data' to begin timeline scheduling.",
           type: "info",
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
           read: false,
-        }
+        },
       ],
-      addNotification: (notif) => set((s) => ({
-        notifications: [
-          {
-            id: Date.now().toString(),
-            title: notif.title,
-            message: notif.message,
-            type: notif.type || "info",
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            read: false,
-          },
-          ...s.notifications.slice(0, 20),
-        ]
-      })),
-      markNotificationAsRead: (id) => set((s) => ({
-        notifications: s.notifications.map((n) => n.id === id ? { ...n, read: true } : n)
-      })),
+      addNotification: (notif) =>
+        set((s) => ({
+          notifications: [
+            {
+              id: Date.now().toString(),
+              title: notif.title,
+              message: notif.message,
+              type: notif.type || "info",
+              timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+              read: false,
+            },
+            ...s.notifications.slice(0, 20),
+          ],
+        })),
+      markNotificationAsRead: (id) =>
+        set((s) => ({
+          notifications: s.notifications.map((n) => (n.id === id ? { ...n, read: true } : n)),
+        })),
       clearNotifications: () => set({ notifications: [] }),
 
       recentActivity: [
@@ -419,29 +444,28 @@ export const useAppStore = create<AppState>()(
           id: "act-1",
           action: "System Initialized",
           timestamp: "Just now",
-          details: "CapaSolve manufacturing engine ready."
-        }
+          details: "CapaSolve manufacturing engine ready.",
+        },
       ],
-      addActivity: (action, details) => set((s) => ({
-        recentActivity: [
-          {
-            id: Date.now().toString(),
-            action,
-            timestamp: "Just now",
-            details
-          },
-          ...s.recentActivity.slice(0, 15)
-        ]
-      })),
+      addActivity: (action, details) =>
+        set((s) => ({
+          recentActivity: [
+            {
+              id: Date.now().toString(),
+              action,
+              timestamp: "Just now",
+              details,
+            },
+            ...s.recentActivity.slice(0, 15),
+          ],
+        })),
 
       user: null,
       organization: null,
       role: "DEVELOPER",
       plan: "FREE",
       planChanges: 0,
-      teamMembers: [
-        { id: "1", name: "Dev User", email: "dev@factory.com", role: "DEVELOPER" }
-      ],
+      teamMembers: [{ id: "1", name: "Dev User", email: "dev@factory.com", role: "DEVELOPER" }],
       columnMapping: {
         order: "Order",
         material: "Material",
@@ -452,19 +476,23 @@ export const useAppStore = create<AppState>()(
         setupTime: "Set up Time (Not related to any qty)",
         processTime: "Process time (related to qty)",
         baseQty: "Base-Qty each process",
-        manpower: "Manpower Utilization"
+        manpower: "Manpower Utilization",
       },
       setColumnMapping: (columnMapping) => set({ columnMapping }),
       setUser: (user) => set({ user }),
-      setOrganization: (org) => set((s) => ({ 
-        organization: org, 
-        plan: org ? org.plan : "FREE"
-      })),
+      setOrganization: (org) =>
+        set((s) => ({
+          organization: org,
+          plan: org ? org.plan : "FREE",
+        })),
       setRole: (role) => set({ role }),
       setPlan: (plan) => {
         const { planChanges } = get();
         if (planChanges >= 3) {
-          return { success: false, message: "Demo Limit: You can only change the plan up to 3 times." };
+          return {
+            success: false,
+            message: "Demo Limit: You can only change the plan up to 3 times.",
+          };
         }
         set((s) => ({ plan, planChanges: s.planChanges + 1 }));
         get().runScheduler();
@@ -473,15 +501,12 @@ export const useAppStore = create<AppState>()(
       setTeamMembers: (teamMembers) => set({ teamMembers }),
       addTeamMember: (member) => {
         set((s) => ({
-          teamMembers: [
-            ...s.teamMembers,
-            { id: Date.now().toString(), ...member }
-          ]
+          teamMembers: [...s.teamMembers, { id: Date.now().toString(), ...member }],
         }));
       },
       removeTeamMember: (id) => {
         set((s) => ({
-          teamMembers: s.teamMembers.filter((m) => m.id !== id)
+          teamMembers: s.teamMembers.filter((m) => m.id !== id),
         }));
       },
       globalSetterCapacity: 100,
@@ -498,11 +523,15 @@ export const useAppStore = create<AppState>()(
 
       setDailyCapacity: (dateStr, capacities) => {
         set((s) => {
-          const current = s.dailyCapacities?.[dateStr] || { setter: s.globalSetterCapacity, process: s.globalOperatorCapacity };
+          const current = s.dailyCapacities?.[dateStr] || {
+            setter: s.globalSetterCapacity,
+            process: s.globalOperatorCapacity,
+          };
           const updated = {
             setter: capacities.setter !== undefined ? capacities.setter : current.setter,
             process: capacities.process !== undefined ? capacities.process : current.process,
-            isHoliday: capacities.isHoliday !== undefined ? capacities.isHoliday : current.isHoliday,
+            isHoliday:
+              capacities.isHoliday !== undefined ? capacities.isHoliday : current.isHoliday,
           };
           if (updated.isHoliday) {
             updated.setter = 0;
@@ -519,8 +548,20 @@ export const useAppStore = create<AppState>()(
       },
 
       setupMatrixRules: [
-        { id: "sm-1", fromMaterial: "*", toMaterial: "*", setupTimeMin: 15, description: "Standard Changeover (Default)" },
-        { id: "sm-2", fromMaterial: "100-024-830.01-00", toMaterial: "100-024-830.02-00", setupTimeMin: 45, description: "Heavy Die Tooling Changeover" }
+        {
+          id: "sm-1",
+          fromMaterial: "*",
+          toMaterial: "*",
+          setupTimeMin: 15,
+          description: "Standard Changeover (Default)",
+        },
+        {
+          id: "sm-2",
+          fromMaterial: "100-024-830.01-00",
+          toMaterial: "100-024-830.02-00",
+          setupTimeMin: 45,
+          description: "Heavy Die Tooling Changeover",
+        },
       ],
       addSetupMatrixRule: (rule: Omit<SetupMatrixRule, "id">) => {
         const newRule: SetupMatrixRule = {
@@ -531,7 +572,9 @@ export const useAppStore = create<AppState>()(
         get().runScheduler();
       },
       deleteSetupMatrixRule: (id: string) => {
-        set((s: AppState) => ({ setupMatrixRules: (s.setupMatrixRules || []).filter((r: SetupMatrixRule) => r.id !== id) }));
+        set((s: AppState) => ({
+          setupMatrixRules: (s.setupMatrixRules || []).filter((r: SetupMatrixRule) => r.id !== id),
+        }));
         get().runScheduler();
       },
 
@@ -595,7 +638,7 @@ export const useAppStore = create<AppState>()(
         const sumV2 = (orderData.orderQty / baseQty) * processTimeMin;
         const sumV3 = manpowerUtilizationMin * baseQty * orderData.orderQty;
         const totalTimeMin = setupTimeMin + sumV2;
-        const manpowerPct = processTimeMin > 0 ? (manpowerUtilizationMin / processTimeMin) : 0.5;
+        const manpowerPct = processTimeMin > 0 ? manpowerUtilizationMin / processTimeMin : 0.5;
 
         let existingOrder = get().orders.find((o) => o.orderId === orderIdStr);
         let newOrders = [...get().orders];
@@ -678,16 +721,33 @@ export const useAppStore = create<AppState>()(
         get().loadFromCSVText(DEFAULT_CSV_CONTENT);
       },
 
-       runScheduler: async () => {
-        let { orders, processes, machines, optimizationMode, groupSerialization, allowProcessOverlap, allowSopOverride, maxUtilizeResources, dailyCapacities, globalSetterCapacity, globalOperatorCapacity, maxPreponeWeeks } = get();
+      runScheduler: async () => {
+        let {
+          orders,
+          processes,
+          machines,
+          optimizationMode,
+          groupSerialization,
+          allowProcessOverlap,
+          allowSopOverride,
+          maxUtilizeResources,
+          dailyCapacities,
+          globalSetterCapacity,
+          globalOperatorCapacity,
+          maxPreponeWeeks,
+        } = get();
         if (orders.length === 0) return;
-        
+
         // Self-heal stale persisted state migrations (e.g. "post" -> "full")
-        if (optimizationMode !== "pre" && optimizationMode !== "workstation" && optimizationMode !== "full") {
+        if (
+          optimizationMode !== "pre" &&
+          optimizationMode !== "workstation" &&
+          optimizationMode !== "full"
+        ) {
           optimizationMode = "full";
           set({ optimizationMode: "full" });
         }
-        
+
         // Reset processes status before scheduling, preserving manual overrides
         const resetProcesses = processes.map((p) => {
           if (p.isManual) {
@@ -707,7 +767,9 @@ export const useAppStore = create<AppState>()(
         let warnings: string[] = [];
 
         try {
-          const { data: { session } } = await supabase.auth.getSession();
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
           if (session?.access_token) {
             const serverRes = await runOptimizeScheduleServer({
               data: {
@@ -739,19 +801,19 @@ export const useAppStore = create<AppState>()(
         // Client-side fallback solver if server call was skipped or offline
         if (slots.length === 0) {
           const result = generateSchedule(
-            orders, 
-            resetProcesses, 
-            machines, 
-            optimizationMode, 
-            groupSerialization, 
-            allowProcessOverlap, 
-            allowSopOverride, 
-            maxUtilizeResources, 
+            orders,
+            resetProcesses,
+            machines,
+            optimizationMode,
+            groupSerialization,
+            allowProcessOverlap,
+            allowSopOverride,
+            maxUtilizeResources,
             dailyCapacities || {},
             globalSetterCapacity,
             globalOperatorCapacity,
             maxPreponeWeeks || 0,
-            get().setupMatrixRules || []
+            get().setupMatrixRules || [],
           );
           slots = result.slots;
           warnings = result.warnings;
@@ -759,14 +821,20 @@ export const useAppStore = create<AppState>()(
 
         // Map slot start/end ranges back to each process
         const processTimeMap = new Map<string, { start: Date; end: Date; machineId: string }>();
-        
+
         slots.forEach((slot) => {
-          const slotStart = new Date(`${slot.date}T${String(slot.hourStart).padStart(2, "0")}:00:00`);
+          const slotStart = new Date(
+            `${slot.date}T${String(slot.hourStart).padStart(2, "0")}:00:00`,
+          );
           const slotEnd = new Date(slotStart.getTime() + 3600000);
-          
+
           const existing = processTimeMap.get(slot.processId);
           if (!existing) {
-            processTimeMap.set(slot.processId, { start: slotStart, end: slotEnd, machineId: slot.machineId });
+            processTimeMap.set(slot.processId, {
+              start: slotStart,
+              end: slotEnd,
+              machineId: slot.machineId,
+            });
           } else {
             if (slotStart < existing.start) existing.start = slotStart;
             if (slotEnd > existing.end) existing.end = slotEnd;
@@ -796,11 +864,13 @@ export const useAppStore = create<AppState>()(
 
       updateSlotSchedule: (processId, newMachineId, newStartDateStr, newStartHour) => {
         const { processes, slots, machines } = get();
-        
+
         // Update the machine and manual scheduled date of the target process
         const updatedProcesses = processes.map((p) => {
           if (p.id === processId) {
-            const startD = new Date(`${newStartDateStr}T${String(newStartHour).padStart(2, "0")}:00:00`);
+            const startD = new Date(
+              `${newStartDateStr}T${String(newStartHour).padStart(2, "0")}:00:00`,
+            );
             const endD = new Date(startD.getTime() + Math.ceil(p.totalTimeMin / 60) * 3600000);
             return {
               ...p,
@@ -825,21 +895,21 @@ export const useAppStore = create<AppState>()(
         }
 
         const result = generateSchedule(
-          get().orders, 
-          updatedProcesses, 
-          machines, 
-          activeMode, 
-          get().groupSerialization, 
-          get().allowProcessOverlap, 
-          get().allowSopOverride, 
-          get().maxUtilizeResources, 
+          get().orders,
+          updatedProcesses,
+          machines,
+          activeMode,
+          get().groupSerialization,
+          get().allowProcessOverlap,
+          get().allowSopOverride,
+          get().maxUtilizeResources,
           get().dailyCapacities || {},
           get().globalSetterCapacity,
           get().globalOperatorCapacity,
           get().maxPreponeWeeks || 0,
-          get().setupMatrixRules || []
+          get().setupMatrixRules || [],
         );
-        
+
         let finalSlots = result.slots;
         let finalProcesses = updatedProcesses;
 
@@ -910,7 +980,7 @@ export const useAppStore = create<AppState>()(
         }
 
         set({ isCloudSaving: true });
-        
+
         try {
           const payload = {
             orders,
@@ -928,12 +998,20 @@ export const useAppStore = create<AppState>()(
           };
 
           // 1. Sync to Supabase Database Tables (schedules + schedule_data + scheduler_configs)
-          const dbRes = await syncScheduleToSupabaseDB(organization.id, "Primary Production Plan", payload);
+          const dbRes = await syncScheduleToSupabaseDB(
+            organization.id,
+            "Primary Production Plan",
+            payload,
+          );
 
           // 2. Storage backup fallback
-          const { data: { session } } = await supabase.auth.getSession();
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
           const token = session?.access_token || "";
-          await saveStateToSupabase({ data: { orgId: organization.id, stateJson: JSON.stringify(payload), token } });
+          await saveStateToSupabase({
+            data: { orgId: organization.id, stateJson: JSON.stringify(payload), token },
+          });
 
           if (dbRes.success) {
             toast.success("Successfully saved schedule to Supabase Database!");
@@ -964,7 +1042,9 @@ export const useAppStore = create<AppState>()(
 
           // 2. Fallback to Storage JSON if DB data not found
           if (!state) {
-            const { data: { session } } = await supabase.auth.getSession();
+            const {
+              data: { session },
+            } = await supabase.auth.getSession();
             const token = session?.access_token || "";
             const res = await loadStateFromSupabase({ data: { orgId: organization.id, token } });
             if (res.success && res.data) {
@@ -987,7 +1067,7 @@ export const useAppStore = create<AppState>()(
               globalOperatorCapacity: state.globalOperatorCapacity ?? 200,
               dailyCapacities: state.dailyCapacities || {},
             });
-            
+
             get().runScheduler();
             toast.success("Successfully loaded schedule from Supabase Database!");
           } else {
@@ -1001,6 +1081,6 @@ export const useAppStore = create<AppState>()(
         }
       },
     }),
-    { name: "mfg-scheduler-v13-store" }
-  )
+    { name: "mfg-scheduler-v13-store" },
+  ),
 );

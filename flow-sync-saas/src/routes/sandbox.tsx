@@ -6,14 +6,24 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { 
-  GitBranch, 
-  Sparkles, 
-  TrendingUp, 
-  Clock, 
-  AlertTriangle, 
-  CheckCircle2, 
-  Plus, 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarPicker } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import {
+  GitBranch,
+  Sparkles,
+  TrendingUp,
+  Clock,
+  AlertTriangle,
+  CheckCircle2,
+  Plus,
   ArrowRight,
   Zap,
   Factory,
@@ -23,35 +33,40 @@ import {
   Layers,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   RefreshCw,
   Info,
   Sliders,
   Check,
   Trash2,
   ArrowRightLeft,
-  Shuffle
+  Shuffle,
+  ShieldCheck,
+  Cpu,
+  BarChart2,
+  Calendar,
+  Wrench,
+  Clock3,
+  CalendarClock,
+  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { analyzeScheduleWithAI, AIAnalysisResult, ScenarioContextInfo } from "@/lib/ai-service";
-import { 
-  ScenarioConfig, 
-  ScenarioType, 
-  ScenarioBranch, 
-  ShiftedOrderImpact 
-} from "@/lib/types";
+import { ScenarioConfig, ScenarioType, ScenarioBranch, ShiftedOrderImpact } from "@/lib/types";
 import { simulateScenario } from "@/lib/scheduler";
+import { DatePickerField } from "@/components/ui/date-picker";
 
 export const Route = createFileRoute("/sandbox")({
   component: SandboxPage,
 });
 
 function SandboxPage() {
-  const { 
-    orders, 
-    processes, 
-    machines, 
-    machineGroups, 
-    slots, 
+  const {
+    orders,
+    processes,
+    machines,
+    machineGroups,
+    slots,
     optimizationMode,
     groupSerialization,
     allowProcessOverlap,
@@ -62,7 +77,7 @@ function SandboxPage() {
     globalOperatorCapacity,
     maxPreponeWeeks,
     setupMatrixRules,
-    runScheduler 
+    runScheduler,
   } = useAppStore();
 
   // Dynamic Baseline computed from active live store state (No static dummy data)
@@ -79,10 +94,12 @@ function SandboxPage() {
       if (s.slotType === "R") totalSetupMinutes += s.minutesUsed;
     });
 
-    const makespanMs = (maxEndMs > minStartMs && minStartMs !== Infinity) ? maxEndMs - minStartMs : 14 * 24 * 3600000;
+    const makespanMs =
+      maxEndMs > minStartMs && minStartMs !== Infinity ? maxEndMs - minStartMs : 14 * 24 * 3600000;
     const makespanDays = Math.round((makespanMs / (24 * 3600000)) * 10) / 10;
     const totalSetupHours = Math.round((totalSetupMinutes / 60) * 10) / 10;
-    const utilizationPct = slots.length > 0 ? Math.min(98, Math.max(72, Math.round(80 + (slots.length / 40)))) : 84;
+    const utilizationPct =
+      slots.length > 0 ? Math.min(98, Math.max(72, Math.round(80 + slots.length / 40))) : 84;
     const otdPct = 96;
 
     return {
@@ -97,11 +114,13 @@ function SandboxPage() {
       otdPct,
       active: true,
       shiftedOrders: [],
-      aiAdaptationAdvice: ["Active production master schedule without active simulated bottlenecks."]
+      aiAdaptationAdvice: [
+        "Active production master schedule without active simulated bottlenecks.",
+      ],
     };
   }, [slots, orders, processes]);
 
-  // Evaluated Scenario Branches state (starts with live baseline only, no hardcoded dummy scenarios)
+  // Evaluated Scenario Branches state
   const [userBranches, setUserBranches] = useState<ScenarioBranch[]>([]);
   const [activeBranchId, setActiveBranchId] = useState<string>("baseline");
 
@@ -121,24 +140,34 @@ function SandboxPage() {
   const [customName, setCustomName] = useState<string>("");
   const [customDesc, setCustomDesc] = useState<string>("");
 
+  // Sub-tabs for Projected Impact Card
+  const [impactTab, setImpactTab] = useState<"overview" | "shifted" | "bottlenecks">("overview");
+
   // UI state
   const [isAiAnalyzing, setIsAiAnalyzing] = useState(false);
   const [aiResult, setAiResult] = useState<AIAnalysisResult | null>(null);
-  const [aiResultContextName, setAiResultContextName] = useState<string>("Master Live Dispatch Baseline");
+  const [aiResultContextName, setAiResultContextName] = useState<string>(
+    "Master Live Dispatch Baseline",
+  );
   const [expandedScenId, setExpandedScenId] = useState<string | null>(null);
 
   // Combined scenarios list: Live Master Baseline first, followed by user-simulated branches
   const scenarios = useMemo(() => {
     const baselineObj = {
       ...liveBaselineBranch,
-      active: activeBranchId === "baseline"
+      active: activeBranchId === "baseline",
     };
-    const userList = userBranches.map(b => ({
+    const userList = userBranches.map((b) => ({
       ...b,
-      active: b.id === activeBranchId
+      active: b.id === activeBranchId,
     }));
     return [baselineObj, ...userList];
   }, [liveBaselineBranch, userBranches, activeBranchId]);
+
+  // The active scenario branch currently inspected in the Impact Analysis Canvas
+  const inspectedBranch = useMemo(() => {
+    return scenarios.find((s) => s.id === activeBranchId) || scenarios[0];
+  }, [scenarios, activeBranchId]);
 
   const currentMachineObj = useMemo(() => {
     return machines.find((m) => m.id === machineId) || machines[0];
@@ -146,24 +175,46 @@ function SandboxPage() {
 
   const alternateGroupMachines = useMemo(() => {
     if (!currentMachineObj) return [];
-    return machines.filter((m) => m.machineGroupId === currentMachineObj.machineGroupId && m.id !== currentMachineObj.id);
+    return machines.filter(
+      (m) => m.machineGroupId === currentMachineObj.machineGroupId && m.id !== currentMachineObj.id,
+    );
   }, [machines, currentMachineObj]);
 
-  const currentFormContext: ScenarioContextInfo = useMemo(() => ({
-    type: selectedType,
-    machineId,
-    machineName: currentMachineObj?.name,
-    machineGroupId,
-    machineGroupName: machineGroups.find((g) => g.id === machineGroupId)?.name,
-    downtimeHours: selectedType === "machine_stopped" ? downtimeHours : undefined,
-    groupDelayHours: selectedType === "machine_group_delay" ? groupDelayHours : undefined,
-    resourceType: selectedType === "resource_unavailable" ? resourceType : undefined,
-    capacityReductionPct: selectedType === "resource_unavailable" ? capacityReductionPct : undefined,
-    shiftOption: selectedType === "shift_change" ? shiftOption : undefined,
-    rushOrderId: selectedType === "rush_order" ? (rushOrderCode || orders[0]?.orderId || "") : undefined,
-    startDate,
-    branchName: customName.trim() || undefined,
-  }), [selectedType, machineId, currentMachineObj, machineGroupId, machineGroups, downtimeHours, groupDelayHours, resourceType, capacityReductionPct, shiftOption, rushOrderCode, orders, startDate, customName]);
+  const currentFormContext: ScenarioContextInfo = useMemo(
+    () => ({
+      type: selectedType,
+      machineId,
+      machineName: currentMachineObj?.name,
+      machineGroupId,
+      machineGroupName: machineGroups.find((g) => g.id === machineGroupId)?.name,
+      downtimeHours: selectedType === "machine_stopped" ? downtimeHours : undefined,
+      groupDelayHours: selectedType === "machine_group_delay" ? groupDelayHours : undefined,
+      resourceType: selectedType === "resource_unavailable" ? resourceType : undefined,
+      capacityReductionPct:
+        selectedType === "resource_unavailable" ? capacityReductionPct : undefined,
+      shiftOption: selectedType === "shift_change" ? shiftOption : undefined,
+      rushOrderId:
+        selectedType === "rush_order" ? rushOrderCode || orders[0]?.orderId || "" : undefined,
+      startDate,
+      branchName: customName.trim() || undefined,
+    }),
+    [
+      selectedType,
+      machineId,
+      currentMachineObj,
+      machineGroupId,
+      machineGroups,
+      downtimeHours,
+      groupDelayHours,
+      resourceType,
+      capacityReductionPct,
+      shiftOption,
+      rushOrderCode,
+      orders,
+      startDate,
+      customName,
+    ],
+  );
 
   const handleRunAiAnalysis = async (scenContext?: ScenarioContextInfo) => {
     setIsAiAnalyzing(true);
@@ -171,18 +222,21 @@ function SandboxPage() {
     toast.info("AI engine analyzing schedule bottlenecks & scenario resilience...");
     try {
       const res = await analyzeScheduleWithAI(
-        orders, 
-        processes, 
-        slots, 
+        orders,
+        processes,
+        slots,
         globalSetterCapacity,
-        targetContext
+        targetContext,
       );
       setAiResult(res);
       if (targetContext?.branchName) {
         setAiResultContextName(targetContext.branchName);
       } else if (targetContext?.type) {
         const typeStr = targetContext.type.replace(/_/g, " ").toUpperCase();
-        const durationStr = targetContext.groupDelayHours || targetContext.downtimeHours ? ` (${targetContext.groupDelayHours || targetContext.downtimeHours}h)` : "";
+        const durationStr =
+          targetContext.groupDelayHours || targetContext.downtimeHours
+            ? ` (${targetContext.groupDelayHours || targetContext.downtimeHours}h)`
+            : "";
         setAiResultContextName(`${typeStr}${durationStr}`);
       } else {
         setAiResultContextName("Master Live Dispatch Baseline");
@@ -260,13 +314,17 @@ function SandboxPage() {
       shiftedOrders: simRes.shiftedOrders,
       aiAdaptationAdvice: [
         `AI Machine Divert Applied: Re-routed operations from ${sourceName} to alternate ${targetName}.`,
-        `Capacity Recovery: ${targetName} absorbed work order load with minimal schedule disruption.`
+        `Capacity Recovery: ${targetName} absorbed work order load with minimal schedule disruption.`,
       ],
     };
 
     setUserBranches([newBranch, ...userBranches]);
+    setActiveBranchId(newBranch.id);
     setExpandedScenId(newBranch.id);
-    toast.success(`AI Machine Divert Executed! Operations successfully re-routed to ${targetName}.`);
+    setImpactTab("shifted");
+    toast.success(
+      `AI Machine Divert Executed! Operations successfully re-routed to ${targetName}.`,
+    );
 
     // Context-aware AI insights update
     handleRunAiAnalysis({
@@ -278,14 +336,23 @@ function SandboxPage() {
     });
   };
 
-  const executeScenarioSimulation = (config: ScenarioConfig, overrideName?: string, overrideDesc?: string) => {
+  const executeScenarioSimulation = (
+    config: ScenarioConfig,
+    overrideName?: string,
+    overrideDesc?: string,
+  ) => {
     let titleName = overrideName || customName.trim();
     if (!titleName) {
-      if (config.type === "machine_group_delay") titleName = `Machine Group ${config.machineGroupId || "M1"} Delay (${config.groupDelayHours || 24}h)`;
-      else if (config.type === "machine_stopped") titleName = `Workstation ${config.machineId || "Line"} Breakdown (${config.downtimeHours || 16}h)`;
-      else if (config.type === "resource_unavailable") titleName = `${(config.resourceType || "Setter").toUpperCase()} ${config.capacityReductionPct || 50}% Shortage`;
-      else if (config.type === "shift_change") titleName = `Shift Adjustment (${config.shiftOption === "no_shift_2" ? "No Shift 2" : "Weekend Overtime"})`;
-      else if (config.type === "rush_order") titleName = `Rush Order #${config.rushOrderId || "Priority"} Insertion`;
+      if (config.type === "machine_group_delay")
+        titleName = `Machine Group ${config.machineGroupId || "M1"} Delay (${config.groupDelayHours || 24}h)`;
+      else if (config.type === "machine_stopped")
+        titleName = `Workstation ${config.machineId || "Line"} Breakdown (${config.downtimeHours || 16}h)`;
+      else if (config.type === "resource_unavailable")
+        titleName = `${(config.resourceType || "Setter").toUpperCase()} ${config.capacityReductionPct || 50}% Shortage`;
+      else if (config.type === "shift_change")
+        titleName = `Shift Adjustment (${config.shiftOption === "no_shift_2" ? "No Shift 2" : "Weekend Overtime"})`;
+      else if (config.type === "rush_order")
+        titleName = `Rush Order #${config.rushOrderId || "Priority"} Insertion`;
       else titleName = "Scenario Adaptation Branch";
     }
 
@@ -307,7 +374,10 @@ function SandboxPage() {
     const newBranch: ScenarioBranch = {
       id: `scen-${Date.now()}`,
       name: titleName,
-      description: overrideDesc || customDesc.trim() || `What-If simulation evaluating order run shifting under ${config.type.replace(/_/g, " ")}.`,
+      description:
+        overrideDesc ||
+        customDesc.trim() ||
+        `What-If simulation evaluating order run shifting under ${config.type.replace(/_/g, " ")}.`,
       createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       config,
       makespanDays: simRes.makespanDays,
@@ -320,7 +390,9 @@ function SandboxPage() {
     };
 
     setUserBranches([newBranch, ...userBranches]);
+    setActiveBranchId(newBranch.id);
     setExpandedScenId(newBranch.id);
+    setImpactTab(simRes.shiftedOrders.length > 0 ? "shifted" : "overview");
     setCustomName("");
     setCustomDesc("");
 
@@ -336,7 +408,9 @@ function SandboxPage() {
     });
 
     if (simRes.shiftedOrders.length > 0) {
-      toast.warning(`Scenario simulated! ${simRes.shiftedOrders.length} order run(s) dynamically shifted.`);
+      toast.warning(
+        `Scenario simulated! ${simRes.shiftedOrders.length} order run(s) dynamically shifted.`,
+      );
     } else {
       toast.success(`Scenario simulated! System absorbed the constraint with 0 order delays.`);
     }
@@ -347,15 +421,21 @@ function SandboxPage() {
 
     const config: ScenarioConfig = {
       type: selectedType,
-      machineGroupId: selectedType === "machine_group_delay" ? (machineGroupId || machineGroups[0]?.id || "M1") : undefined,
+      machineGroupId:
+        selectedType === "machine_group_delay"
+          ? machineGroupId || machineGroups[0]?.id || "M1"
+          : undefined,
       groupDelayHours: selectedType === "machine_group_delay" ? groupDelayHours : undefined,
-      machineId: selectedType === "machine_stopped" ? (machineId || machines[0]?.id || "605001") : undefined,
+      machineId:
+        selectedType === "machine_stopped" ? machineId || machines[0]?.id || "605001" : undefined,
       machineStopped: selectedType === "machine_stopped" ? true : undefined,
       downtimeHours: selectedType === "machine_stopped" ? downtimeHours : undefined,
       resourceType: selectedType === "resource_unavailable" ? resourceType : undefined,
-      capacityReductionPct: selectedType === "resource_unavailable" ? capacityReductionPct : undefined,
+      capacityReductionPct:
+        selectedType === "resource_unavailable" ? capacityReductionPct : undefined,
       shiftOption: selectedType === "shift_change" ? shiftOption : undefined,
-      rushOrderId: selectedType === "rush_order" ? (rushOrderCode || orders[0]?.orderId || "") : undefined,
+      rushOrderId:
+        selectedType === "rush_order" ? rushOrderCode || orders[0]?.orderId || "" : undefined,
       startDate,
     };
 
@@ -370,1087 +450,1535 @@ function SandboxPage() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300 pb-12">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      {/* ========================================================================= */}
+      {/* 1. STREAMLINED TOP HEADER                                                  */}
+      {/* ========================================================================= */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-1">
         <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
-              <GitBranch className="h-7 w-7 text-primary" />
-              AI "What-If" Scenario Simulation Sandbox
-            </h1>
-            <Badge className="bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 text-xs gap-1.5 font-mono shadow-sm">
-              <span className="h-2 w-2 rounded-full bg-slate-500 dark:bg-slate-400 animate-pulse"></span>
-              AI Engine Connected
-            </Badge>
-          </div>
-          <p className="text-sm text-muted-foreground mt-1">
-            Test machine group delays, workstation breakdowns, resource shortages, and shift changes on live workspace data.
+          <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2.5">
+            <div className="h-7.5 w-7.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/80 dark:border-emerald-800/80 flex items-center justify-center text-emerald-800 dark:text-emerald-300 shrink-0">
+              <GitBranch className="h-4 w-4" />
+            </div>
+            AI "What-If" Scenario Sandbox
+          </h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Test shopfloor disruptions, machine breakdowns, and rush orders against live schedule
+            data.
           </p>
         </div>
-
-        <Button
-          onClick={() => handleRunAiAnalysis()}
-          disabled={isAiAnalyzing}
-          className="bg-slate-900 hover:bg-slate-800 text-slate-100 dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-900 font-bold text-xs gap-2 shadow-md cursor-pointer border border-slate-700/50"
-        >
-          <Sparkles className={`h-4 w-4 ${isAiAnalyzing ? "animate-spin" : ""}`} />
-          {isAiAnalyzing ? "Analyzing with AI..." : "Run AI Scenario Solver"}
-        </Button>
       </div>
 
-      {/* Scenario Creator Card with Dynamic Fields based on Case Selection */}
-      <Card className="border border-primary/30 shadow-md bg-card">
-        <CardHeader className="pb-3 border-b border-border/60">
-          <CardTitle className="text-base font-bold flex items-center gap-2 text-foreground">
-            <Sliders className="h-5 w-5 text-primary" />
-            Configure Scenario Simulation Options
-          </CardTitle>
-          <CardDescription className="text-xs">
-            Select a simulation case below. The configuration fields dynamically update to match the selected case.
-          </CardDescription>
-        </CardHeader>
-
-        <CardContent className="pt-4 space-y-5">
-          {/* Step 1: Select Case Type */}
+      {/* ========================================================================= */}
+      {/* 2. FULL-WIDTH SCENARIO SIMULATION CARD                                     */}
+      {/* ========================================================================= */}
+      <Card className="border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs rounded-xl">
+        <CardContent className="pt-4.5 space-y-4.5">
+          {/* Step 1: Scenario Case Type Segmented Tab Bar */}
           <div>
-            <Label className="text-xs font-semibold text-muted-foreground block mb-2">
+            <Label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-2.5">
               Select Scenario Case Type:
             </Label>
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+            <div className="p-1.5 bg-slate-100/90 dark:bg-slate-850 rounded-xl border border-slate-200/90 dark:border-slate-800 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5">
+              {/* 1. Machine Group Delay */}
               <button
                 type="button"
                 onClick={() => setSelectedType("machine_group_delay")}
-                className={`p-3 rounded-xl border text-left flex flex-col items-center justify-center gap-1.5 transition-all text-xs font-medium cursor-pointer ${
+                className={`flex items-center gap-2.5 p-2.5 rounded-lg text-left transition-all cursor-pointer ${
                   selectedType === "machine_group_delay"
-                    ? "border-primary bg-primary/10 text-primary font-bold shadow-sm ring-2 ring-primary/20"
-                    : "border-border/80 hover:bg-muted/50 text-muted-foreground"
+                    ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs border border-slate-200/90 dark:border-slate-700/80 ring-1 ring-emerald-600/30"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-800/60 border border-transparent"
                 }`}
               >
-                <Factory className="h-4 w-4 text-amber-500" />
-                <span>Machine Group Delay</span>
+                <div
+                  className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                    selectedType === "machine_group_delay"
+                      ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80"
+                      : "bg-slate-200/70 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
+                  }`}
+                >
+                  <Factory className="h-4 w-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span
+                    className={`block text-xs font-semibold leading-tight truncate ${selectedType === "machine_group_delay" ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300"}`}
+                  >
+                    Machine Group Delay
+                  </span>
+                  <span
+                    className={`block text-[10px] mt-0.5 truncate ${selectedType === "machine_group_delay" ? "text-emerald-800 dark:text-emerald-400 font-medium" : "text-slate-400"}`}
+                  >
+                    Line halt & buffer backlog
+                  </span>
+                </div>
+                {selectedType === "machine_group_delay" && (
+                  <span className="h-2 w-2 rounded-full bg-emerald-600 shrink-0 ml-1"></span>
+                )}
               </button>
 
+              {/* 2. Machine Breakdown */}
               <button
                 type="button"
                 onClick={() => setSelectedType("machine_stopped")}
-                className={`p-3 rounded-xl border text-left flex flex-col items-center justify-center gap-1.5 transition-all text-xs font-medium cursor-pointer ${
+                className={`flex items-center gap-2.5 p-2.5 rounded-lg text-left transition-all cursor-pointer ${
                   selectedType === "machine_stopped"
-                    ? "border-primary bg-primary/10 text-primary font-bold shadow-sm ring-2 ring-primary/20"
-                    : "border-border/80 hover:bg-muted/50 text-muted-foreground"
+                    ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs border border-slate-200/90 dark:border-slate-700/80 ring-1 ring-emerald-600/30"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-800/60 border border-transparent"
                 }`}
               >
-                <AlertTriangle className="h-4 w-4 text-red-500" />
-                <span>Machine Breakdown</span>
+                <div
+                  className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                    selectedType === "machine_stopped"
+                      ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80"
+                      : "bg-slate-200/70 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
+                  }`}
+                >
+                  <Wrench className="h-4 w-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span
+                    className={`block text-xs font-semibold leading-tight truncate ${selectedType === "machine_stopped" ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300"}`}
+                  >
+                    Machine Breakdown
+                  </span>
+                  <span
+                    className={`block text-[10px] mt-0.5 truncate ${selectedType === "machine_stopped" ? "text-emerald-800 dark:text-emerald-400 font-medium" : "text-slate-400"}`}
+                  >
+                    Tool outage & repair
+                  </span>
+                </div>
+                {selectedType === "machine_stopped" && (
+                  <span className="h-2 w-2 rounded-full bg-emerald-600 shrink-0 ml-1"></span>
+                )}
               </button>
 
+              {/* 3. Resource Shortage */}
               <button
                 type="button"
                 onClick={() => setSelectedType("resource_unavailable")}
-                className={`p-3 rounded-xl border text-left flex flex-col items-center justify-center gap-1.5 transition-all text-xs font-medium cursor-pointer ${
+                className={`flex items-center gap-2.5 p-2.5 rounded-lg text-left transition-all cursor-pointer ${
                   selectedType === "resource_unavailable"
-                    ? "border-primary bg-primary/10 text-primary font-bold shadow-sm ring-2 ring-primary/20"
-                    : "border-border/80 hover:bg-muted/50 text-muted-foreground"
+                    ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs border border-slate-200/90 dark:border-slate-700/80 ring-1 ring-emerald-600/30"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-800/60 border border-transparent"
                 }`}
               >
-                <UserX className="h-4 w-4 text-purple-500" />
-                <span>Resource Shortage</span>
+                <div
+                  className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                    selectedType === "resource_unavailable"
+                      ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80"
+                      : "bg-slate-200/70 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
+                  }`}
+                >
+                  <Users className="h-4 w-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span
+                    className={`block text-xs font-semibold leading-tight truncate ${selectedType === "resource_unavailable" ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300"}`}
+                  >
+                    Resource Shortage
+                  </span>
+                  <span
+                    className={`block text-[10px] mt-0.5 truncate ${selectedType === "resource_unavailable" ? "text-emerald-800 dark:text-emerald-400 font-medium" : "text-slate-400"}`}
+                  >
+                    Setter & operator deficit
+                  </span>
+                </div>
+                {selectedType === "resource_unavailable" && (
+                  <span className="h-2 w-2 rounded-full bg-emerald-600 shrink-0 ml-1"></span>
+                )}
               </button>
 
+              {/* 4. Shift Adjustments */}
               <button
                 type="button"
                 onClick={() => setSelectedType("shift_change")}
-                className={`p-3 rounded-xl border text-left flex flex-col items-center justify-center gap-1.5 transition-all text-xs font-medium cursor-pointer ${
+                className={`flex items-center gap-2.5 p-2.5 rounded-lg text-left transition-all cursor-pointer ${
                   selectedType === "shift_change"
-                    ? "border-primary bg-primary/10 text-primary font-bold shadow-sm ring-2 ring-primary/20"
-                    : "border-border/80 hover:bg-muted/50 text-muted-foreground"
+                    ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs border border-slate-200/90 dark:border-slate-700/80 ring-1 ring-emerald-600/30"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-800/60 border border-transparent"
                 }`}
               >
-                <CalendarOff className="h-4 w-4 text-blue-500" />
-                <span>Shift Adjustments</span>
+                <div
+                  className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                    selectedType === "shift_change"
+                      ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80"
+                      : "bg-slate-200/70 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
+                  }`}
+                >
+                  <CalendarClock className="h-4 w-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span
+                    className={`block text-xs font-semibold leading-tight truncate ${selectedType === "shift_change" ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300"}`}
+                  >
+                    Shift Adjustments
+                  </span>
+                  <span
+                    className={`block text-[10px] mt-0.5 truncate ${selectedType === "shift_change" ? "text-emerald-800 dark:text-emerald-400 font-medium" : "text-slate-400"}`}
+                  >
+                    Overtime & cancellations
+                  </span>
+                </div>
+                {selectedType === "shift_change" && (
+                  <span className="h-2 w-2 rounded-full bg-emerald-600 shrink-0 ml-1"></span>
+                )}
               </button>
 
+              {/* 5. Rush Order Priority */}
               <button
                 type="button"
                 onClick={() => setSelectedType("rush_order")}
-                className={`p-3 rounded-xl border text-left flex flex-col items-center justify-center gap-1.5 transition-all text-xs font-medium cursor-pointer ${
+                className={`flex items-center gap-2.5 p-2.5 rounded-lg text-left transition-all cursor-pointer ${
                   selectedType === "rush_order"
-                    ? "border-primary bg-primary/10 text-primary font-bold shadow-sm ring-2 ring-primary/20"
-                    : "border-border/80 hover:bg-muted/50 text-muted-foreground"
+                    ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs border border-slate-200/90 dark:border-slate-700/80 ring-1 ring-emerald-600/30"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-800/60 border border-transparent"
                 }`}
               >
-                <Flame className="h-4 w-4 text-orange-500" />
-                <span>Rush Order Priority</span>
+                <div
+                  className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                    selectedType === "rush_order"
+                      ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80"
+                      : "bg-slate-200/70 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
+                  }`}
+                >
+                  <Flame className="h-4 w-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span
+                    className={`block text-xs font-semibold leading-tight truncate ${selectedType === "rush_order" ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300"}`}
+                  >
+                    Rush Order Priority
+                  </span>
+                  <span
+                    className={`block text-[10px] mt-0.5 truncate ${selectedType === "rush_order" ? "text-emerald-800 dark:text-emerald-400 font-medium" : "text-slate-400"}`}
+                  >
+                    High-priority preemption
+                  </span>
+                </div>
+                {selectedType === "rush_order" && (
+                  <span className="h-2 w-2 rounded-full bg-emerald-600 shrink-0 ml-1"></span>
+                )}
               </button>
             </div>
           </div>
 
+          {/* Step 2: Dynamic Form Fields based on Selected Case (Split Grid) */}
           <form onSubmit={handleSimulateFormSubmit} className="space-y-4">
-            {/* Step 2: Dynamic Form Fields strictly matching the chosen Case */}
-            <div className="bg-primary/5 p-4 rounded-xl border border-primary/20 space-y-3">
-              <div className="flex items-center gap-2 text-xs text-primary font-semibold mb-1">
-                <Info className="h-4 w-4" />
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4.5 items-start">
+              {/* LEFT SECTION (7/8 Cols): Dynamic Parameters Box + Branch Title & Notes */}
+              <div className="lg:col-span-7 xl:col-span-8 space-y-3.5">
+                <div className="bg-slate-50 dark:bg-slate-850 p-4.5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3.5 shadow-2xs">
+                  <div className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 font-medium pb-1.5 border-b border-slate-200/70 dark:border-slate-750">
+                    <Info className="h-3.5 w-3.5 text-slate-500" />
+                    <span>
+                      {selectedType === "machine_group_delay" &&
+                        "Configuring parameters for Machine Group Downtime / Line Halt"}
+                      {selectedType === "machine_stopped" &&
+                        "Configuring parameters for Workstation Breakdown & Tool Repair"}
+                      {selectedType === "resource_unavailable" &&
+                        "Configuring parameters for Staffing & Technician Shortage"}
+                      {selectedType === "shift_change" &&
+                        "Configuring parameters for Shift Schedule & Operating Hours"}
+                      {selectedType === "rush_order" &&
+                        "Configuring parameters for Emergency High-Priority Rush Order Insertion"}
+                    </span>
+                  </div>
+
+                  {/* CASE 1: Machine Group Delay */}
+                  {selectedType === "machine_group_delay" && (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 text-xs animate-in fade-in duration-200">
+                      <div className="space-y-1.5">
+                        <Label className="font-semibold text-xs text-slate-700 dark:text-slate-300">
+                          Target Machine Group *
+                        </Label>
+                        <Select
+                          value={machineGroupId}
+                          onValueChange={(val) => setMachineGroupId(val)}
+                        >
+                          <SelectTrigger className="w-full h-8.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-xs font-medium text-slate-800 dark:text-slate-200 shadow-2xs">
+                            <SelectValue placeholder="Select Machine Group" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-md">
+                            {machineGroups.map((g) => (
+                              <SelectItem key={g.id} value={g.id} className="text-xs">
+                                Group {g.name} (Line {g.id})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="font-semibold text-xs text-slate-700 dark:text-slate-300">
+                          Group Delay Duration
+                        </Label>
+                        <Select
+                          value={String(groupDelayHours)}
+                          onValueChange={(val) => setGroupDelayHours(Number(val))}
+                        >
+                          <SelectTrigger className="w-full h-8.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-xs font-medium text-slate-800 dark:text-slate-200 shadow-2xs">
+                            <SelectValue placeholder="Select Duration" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-md">
+                            <SelectItem value="8" className="text-xs">
+                              8 Hours Delay
+                            </SelectItem>
+                            <SelectItem value="12" className="text-xs">
+                              12 Hours Delay
+                            </SelectItem>
+                            <SelectItem value="24" className="text-xs">
+                              24 Hours (1 Full Day Halt)
+                            </SelectItem>
+                            <SelectItem value="48" className="text-xs">
+                              48 Hours (2 Days Delay)
+                            </SelectItem>
+                            <SelectItem value="72" className="text-xs">
+                              72 Hours (3 Days Delay)
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <DatePickerField
+                        value={startDate}
+                        onChange={setStartDate}
+                        label="Effective Start Date"
+                      />
+                    </div>
+                  )}
+
+                  {/* CASE 2: Machine Breakdown / Stopped */}
+                  {selectedType === "machine_stopped" && (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 text-xs animate-in fade-in duration-200">
+                      <div className="space-y-1.5">
+                        <Label className="font-semibold text-xs text-slate-700 dark:text-slate-300">
+                          Target Workstation *
+                        </Label>
+                        <Select value={machineId} onValueChange={(val) => setMachineId(val)}>
+                          <SelectTrigger className="w-full h-8.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-xs font-medium text-slate-800 dark:text-slate-200 shadow-2xs">
+                            <SelectValue placeholder="Select Workstation" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-md">
+                            {machines.map((m) => (
+                              <SelectItem key={m.id} value={m.id} className="text-xs">
+                                {m.name} (Group {m.machineGroupId})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="font-semibold text-xs text-slate-700 dark:text-slate-300">
+                          Breakdown Downtime
+                        </Label>
+                        <Select
+                          value={String(downtimeHours)}
+                          onValueChange={(val) => setDowntimeHours(Number(val))}
+                        >
+                          <SelectTrigger className="w-full h-8.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-xs font-medium text-slate-800 dark:text-slate-200 shadow-2xs">
+                            <SelectValue placeholder="Select Downtime" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-md">
+                            <SelectItem value="4" className="text-xs">
+                              4 Hours (Quick Tool Repair)
+                            </SelectItem>
+                            <SelectItem value="8" className="text-xs">
+                              8 Hours (Half Shift Outage)
+                            </SelectItem>
+                            <SelectItem value="16" className="text-xs">
+                              16 Hours (Full Day Halt)
+                            </SelectItem>
+                            <SelectItem value="32" className="text-xs">
+                              32 Hours (2-Day Spindle Overhaul)
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <DatePickerField
+                        value={startDate}
+                        onChange={setStartDate}
+                        label="Breakdown Start Date"
+                      />
+                    </div>
+                  )}
+
+                  {/* CASE 3: Resource / Staffing Shortage */}
+                  {selectedType === "resource_unavailable" && (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 text-xs animate-in fade-in duration-200">
+                      <div className="space-y-1.5">
+                        <Label className="font-semibold text-xs text-slate-700 dark:text-slate-300">
+                          Resource Skill Category *
+                        </Label>
+                        <Select
+                          value={resourceType}
+                          onValueChange={(val: any) => setResourceType(val)}
+                        >
+                          <SelectTrigger className="w-full h-8.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-xs font-medium text-slate-800 dark:text-slate-200 shadow-2xs">
+                            <SelectValue placeholder="Select Resource Skill" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-md">
+                            <SelectItem value="setter" className="text-xs">
+                              Setup Technicians (Setters)
+                            </SelectItem>
+                            <SelectItem value="operator" className="text-xs">
+                              Machine Operators
+                            </SelectItem>
+                            <SelectItem value="both" className="text-xs">
+                              Both Setter & Operator Staffing
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="font-semibold text-xs text-slate-700 dark:text-slate-300">
+                          Staffing Reduction
+                        </Label>
+                        <Select
+                          value={String(capacityReductionPct)}
+                          onValueChange={(val) => setCapacityReductionPct(Number(val))}
+                        >
+                          <SelectTrigger className="w-full h-8.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-xs font-medium text-slate-800 dark:text-slate-200 shadow-2xs">
+                            <SelectValue placeholder="Select Staffing Reduction" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-md">
+                            <SelectItem value="25" className="text-xs">
+                              25% Reduction (Minor Absenteeism)
+                            </SelectItem>
+                            <SelectItem value="50" className="text-xs">
+                              50% Reduction (Half Staffing)
+                            </SelectItem>
+                            <SelectItem value="75" className="text-xs">
+                              75% Severe Shortage
+                            </SelectItem>
+                            <SelectItem value="100" className="text-xs">
+                              100% Total Absence
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <DatePickerField
+                        value={startDate}
+                        onChange={setStartDate}
+                        label="Effective Start Date"
+                      />
+                    </div>
+                  )}
+
+                  {/* CASE 4: Shift Adjustments */}
+                  {selectedType === "shift_change" && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs animate-in fade-in duration-200">
+                      <div className="space-y-1.5">
+                        <Label className="font-semibold text-xs text-slate-700 dark:text-slate-300">
+                          Shift Operating Case *
+                        </Label>
+                        <Select
+                          value={shiftOption}
+                          onValueChange={(val: any) => setShiftOption(val)}
+                        >
+                          <SelectTrigger className="w-full h-8.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-xs font-medium text-slate-800 dark:text-slate-200 shadow-2xs">
+                            <SelectValue placeholder="Select Shift Case" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-md">
+                            <SelectItem value="no_shift_2" className="text-xs">
+                              Cancel Shift 2 (13:00 - 20:00 Shutdown / 7h daily max)
+                            </SelectItem>
+                            <SelectItem value="weekend_overtime" className="text-xs">
+                              Add Weekend Overtime Shift (Sat/Sun Operations)
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <DatePickerField
+                        value={startDate}
+                        onChange={setStartDate}
+                        label="Effective Start Date"
+                      />
+                    </div>
+                  )}
+
+                  {/* CASE 5: Rush Order Insertion */}
+                  {selectedType === "rush_order" && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs animate-in fade-in duration-200">
+                      <div className="space-y-1.5">
+                        <Label className="font-semibold text-xs text-slate-700 dark:text-slate-300">
+                          Select Emergency Rush Order *
+                        </Label>
+                        <Select
+                          value={rushOrderCode}
+                          onValueChange={(val) => setRushOrderCode(val)}
+                        >
+                          <SelectTrigger className="w-full h-8.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-xs font-medium text-slate-800 dark:text-slate-200 shadow-2xs">
+                            <SelectValue placeholder="Select Emergency Rush Order" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-md">
+                            {orders.length > 0 ? (
+                              orders.map((o) => (
+                                <SelectItem key={o.id} value={o.orderId} className="text-xs">
+                                  Order #{o.orderId} — Material: {o.material} (Qty: {o.orderQty})
+                                </SelectItem>
+                              ))
+                            ) : (
+                              <SelectItem value="1019015" className="text-xs">
+                                Order #1019015 — Material 100-024-830.01-00
+                              </SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <DatePickerField
+                        value={startDate}
+                        onChange={setStartDate}
+                        label="Rush Insertion Date"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Branch Name & Notes (Optional) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="space-y-1">
+                    <Label className="font-medium text-slate-500">
+                      Scenario Branch Title (Optional)
+                    </Label>
+                    <Input
+                      type="text"
+                      placeholder="e.g. M1 Delay Adaptation Branch"
+                      value={customName}
+                      onChange={(e) => setCustomName(e.target.value)}
+                      className="h-8.5 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="font-medium text-slate-500">Notes / Target Objective</Label>
+                    <Input
+                      type="text"
+                      placeholder="e.g. Evaluating shifted order timeline & OTD resilience"
+                      value={customDesc}
+                      onChange={(e) => setCustomDesc(e.target.value)}
+                      className="h-8.5 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* RIGHT SECTION (5/4 Cols): Quick Presets Panel */}
+              <div className="lg:col-span-5 xl:col-span-4 bg-slate-50/90 dark:bg-slate-850/90 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2.5 shadow-2xs">
+                <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/70 dark:border-slate-750">
+                  <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 uppercase tracking-wider">
+                    <Zap className="h-3.5 w-3.5 text-amber-500" />
+                    Quick Presets (Instant Simulation)
+                  </span>
+                  <Badge
+                    variant="outline"
+                    className="text-[9.5px] px-1.5 py-0 h-4 bg-white dark:bg-slate-900 font-mono"
+                  >
+                    1-Click
+                  </Badge>
+                </div>
+                <p className="text-[11px] text-slate-500 leading-tight">
+                  Trigger pre-configured constraint models on active workspace data:
+                </p>
+
+                <div className="flex flex-col gap-1.5 pt-1">
+                  {/* Preset 1: Machine Group Delay */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      executeScenarioSimulation(
+                        {
+                          type: "machine_group_delay",
+                          machineGroupId: machineGroups[0]?.id || "M1",
+                          groupDelayHours: 24,
+                          startDate: "2026-06-01",
+                        },
+                        `Machine Group ${machineGroups[0]?.id || "M1"} 24h Delay`,
+                        "Simulate 24-hour maintenance delay across group line.",
+                      );
+                    }}
+                    className="w-full text-left p-2 rounded-lg border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 hover:bg-emerald-50/70 dark:hover:bg-emerald-950/40 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all flex items-center justify-between gap-2 cursor-pointer shadow-2xs group"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Factory className="h-3.5 w-3.5 text-slate-400 group-hover:text-emerald-700" />
+                      <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 group-hover:text-emerald-950 dark:group-hover:text-emerald-100">
+                        {machineGroups[0]?.name
+                          ? `Group ${machineGroups[0].name}`
+                          : "mapped-group-1"}{" "}
+                        24h Delay
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-mono text-slate-400 group-hover:text-emerald-700">
+                      Line Halt
+                    </span>
+                  </button>
+
+                  {/* Preset 2: Workstation Breakdown */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      executeScenarioSimulation(
+                        {
+                          type: "machine_stopped",
+                          machineId: machines[0]?.id || "605001",
+                          machineStopped: true,
+                          downtimeHours: 16,
+                          startDate: "2026-06-01",
+                        },
+                        `Workstation ${machines[0]?.id || "605001"} Breakdown`,
+                        "Simulate 16-hour unplanned machine breakdown.",
+                      );
+                    }}
+                    className="w-full text-left p-2 rounded-lg border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 hover:bg-emerald-50/70 dark:hover:bg-emerald-950/40 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all flex items-center justify-between gap-2 cursor-pointer shadow-2xs group"
+                  >
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-3.5 w-3.5 text-slate-400 group-hover:text-emerald-700" />
+                      <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 group-hover:text-emerald-950 dark:group-hover:text-emerald-100">
+                        Workstation {machines[0]?.id || "603011"} (16h)
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-mono text-slate-400 group-hover:text-emerald-700">
+                      Breakdown
+                    </span>
+                  </button>
+
+                  {/* Preset 3: 50% Setter Shortage */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      executeScenarioSimulation(
+                        {
+                          type: "resource_unavailable",
+                          resourceType: "setter",
+                          capacityReductionPct: 50,
+                          startDate: "2026-06-01",
+                        },
+                        "50% Setter Technician Shortage",
+                        "Simulate 50% capacity reduction in setup technicians.",
+                      );
+                    }}
+                    className="w-full text-left p-2 rounded-lg border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 hover:bg-emerald-50/70 dark:hover:bg-emerald-950/40 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all flex items-center justify-between gap-2 cursor-pointer shadow-2xs group"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Users className="h-3.5 w-3.5 text-slate-400 group-hover:text-emerald-700" />
+                      <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 group-hover:text-emerald-950 dark:group-hover:text-emerald-100">
+                        50% Setter Shortage
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-mono text-slate-400 group-hover:text-emerald-700">
+                      Staffing
+                    </span>
+                  </button>
+
+                  {/* Preset 4: Cancel Shift 2 */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      executeScenarioSimulation(
+                        {
+                          type: "shift_change",
+                          shiftOption: "no_shift_2",
+                          startDate: "2026-06-01",
+                        },
+                        "Shift 2 Cancellation",
+                        "Simulate shutting down shift 2 operating hours.",
+                      );
+                    }}
+                    className="w-full text-left p-2 rounded-lg border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 hover:bg-emerald-50/70 dark:hover:bg-emerald-950/40 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all flex items-center justify-between gap-2 cursor-pointer shadow-2xs group"
+                  >
+                    <div className="flex items-center gap-2">
+                      <CalendarOff className="h-3.5 w-3.5 text-slate-400 group-hover:text-emerald-700" />
+                      <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 group-hover:text-emerald-950 dark:group-hover:text-emerald-100">
+                        Cancel Shift 2
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-mono text-slate-400 group-hover:text-emerald-700">
+                      Shutdown
+                    </span>
+                  </button>
+
+                  {/* Preset 5: Rush Order Insertion */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      executeScenarioSimulation(
+                        {
+                          type: "rush_order",
+                          rushOrderId: orders[0]?.orderId || "1019015",
+                          startDate: "2026-06-01",
+                        },
+                        `Rush Order #${orders[0]?.orderId || "Priority"} Insertion`,
+                        "Simulate emergency high-priority rush order insertion.",
+                      );
+                    }}
+                    className="w-full text-left p-2 rounded-lg border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 hover:bg-emerald-50/70 dark:hover:bg-emerald-950/40 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all flex items-center justify-between gap-2 cursor-pointer shadow-2xs group"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Flame className="h-3.5 w-3.5 text-slate-400 group-hover:text-emerald-700" />
+                      <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 group-hover:text-emerald-950 dark:group-hover:text-emerald-100">
+                        Rush Order #{orders[0]?.orderId || "1023801"}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-mono text-slate-400 group-hover:text-emerald-700">
+                      Fast-Track
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Action Row: Info + Run AI Solver Button + Primary Simulate Button */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                <Zap className="h-3.5 w-3.5 text-slate-400" />
                 <span>
-                  {selectedType === "machine_group_delay" && "Configuring parameters for Machine Group Downtime / Line Delay"}
-                  {selectedType === "machine_stopped" && "Configuring parameters for Specific Workstation Breakdown / Repair"}
-                  {selectedType === "resource_unavailable" && "Configuring parameters for Staffing & Technician Shortage"}
-                  {selectedType === "shift_change" && "Configuring parameters for Shift Schedule & Operating Hours"}
-                  {selectedType === "rush_order" && "Configuring parameters for Emergency High-Priority Rush Order Insertion"}
+                  Simulates order runs without altering live master schedule until promoted.
                 </span>
               </div>
 
-              {/* CASE 1: Machine Group Delay */}
-              {selectedType === "machine_group_delay" && (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs animate-in fade-in duration-200">
-                  <div className="space-y-1">
-                    <Label className="font-bold text-xs">Target Machine Group *</Label>
-                    <select
-                      value={machineGroupId}
-                      onChange={(e) => setMachineGroupId(e.target.value)}
-                      className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs font-medium"
-                    >
-                      {machineGroups.map((g) => (
-                        <option key={g.id} value={g.id}>
-                          Group {g.name} (Line {g.id})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+              <div className="flex items-center gap-2.5">
+                <Button
+                  type="button"
+                  onClick={() => handleRunAiAnalysis()}
+                  disabled={isAiAnalyzing}
+                  variant="outline"
+                  className="h-8.5 px-3.5 text-xs font-medium gap-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 hover:bg-emerald-50/60 dark:hover:bg-emerald-950/40 hover:border-emerald-300 hover:text-emerald-950 cursor-pointer shadow-2xs"
+                >
+                  <Sparkles
+                    className={`h-4 w-4 text-emerald-700 dark:text-emerald-400 ${isAiAnalyzing ? "animate-spin" : ""}`}
+                  />
+                  {isAiAnalyzing ? "Analyzing AI Constraints..." : "Run AI Scenario Solver"}
+                </Button>
 
-                  <div className="space-y-1">
-                    <Label className="font-bold text-xs">Group Delay Duration</Label>
-                    <select
-                      value={groupDelayHours}
-                      onChange={(e) => setGroupDelayHours(Number(e.target.value))}
-                      className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs font-medium"
-                    >
-                      <option value={8}>8 Hours Delay</option>
-                      <option value={12}>12 Hours Delay</option>
-                      <option value={24}>24 Hours (1 Full Day Halt)</option>
-                      <option value={48}>48 Hours (2 Days Delay)</option>
-                      <option value={72}>72 Hours (3 Days Delay)</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label className="font-bold text-xs">Delay Effective Start Date</Label>
-                    <Input
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      className="h-9 text-xs"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* CASE 2: Machine Breakdown / Stopped */}
-              {selectedType === "machine_stopped" && (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs animate-in fade-in duration-200">
-                  <div className="space-y-1">
-                    <Label className="font-bold text-xs">Target Workstation / Machine *</Label>
-                    <select
-                      value={machineId}
-                      onChange={(e) => setMachineId(e.target.value)}
-                      className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs font-medium"
-                    >
-                      {machines.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          Workstation {m.name} (Group {m.machineGroupId})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label className="font-bold text-xs">Breakdown Downtime Duration</Label>
-                    <select
-                      value={downtimeHours}
-                      onChange={(e) => setDowntimeHours(Number(e.target.value))}
-                      className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs font-medium"
-                    >
-                      <option value={4}>4 Hours Quick Repair Stop</option>
-                      <option value={8}>8 Hours Shift Maintenance</option>
-                      <option value={12}>12 Hours Part Replacement</option>
-                      <option value={16}>16 Hours Unplanned Breakdown</option>
-                      <option value={24}>24 Hours Full Day Halt</option>
-                      <option value={48}>48 Hours Major Overhaul</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label className="font-bold text-xs">Breakdown Start Date</Label>
-                    <Input
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      className="h-9 text-xs"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* CASE 3: Resource Unavailability */}
-              {selectedType === "resource_unavailable" && (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs animate-in fade-in duration-200">
-                  <div className="space-y-1">
-                    <Label className="font-bold text-xs">Affected Technician Pool *</Label>
-                    <select
-                      value={resourceType}
-                      onChange={(e) => setResourceType(e.target.value as any)}
-                      className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs font-medium"
-                    >
-                      <option value="setter">Setup Technicians (Setters)</option>
-                      <option value="operator">Machine Operators</option>
-                      <option value="both">Both Setter & Operator Staffing</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label className="font-bold text-xs">Staffing Capacity Shortage</Label>
-                    <select
-                      value={capacityReductionPct}
-                      onChange={(e) => setCapacityReductionPct(Number(e.target.value))}
-                      className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs font-medium"
-                    >
-                      <option value={25}>25% Reduction (Minor Absenteeism)</option>
-                      <option value={50}>50% Reduction (Half Staffing)</option>
-                      <option value={75}>75% Severe Shortage</option>
-                      <option value={100}>100% Total Absence</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label className="font-bold text-xs">Shortage Effective Start Date</Label>
-                    <Input
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      className="h-9 text-xs"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* CASE 4: Shift Adjustments */}
-              {selectedType === "shift_change" && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs animate-in fade-in duration-200">
-                  <div className="space-y-1">
-                    <Label className="font-bold text-xs">Shift Operating Case *</Label>
-                    <select
-                      value={shiftOption}
-                      onChange={(e) => setShiftOption(e.target.value as any)}
-                      className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs font-medium"
-                    >
-                      <option value="no_shift_2">Cancel Shift 2 (13:00 - 20:00 Shutdown / 7h daily max)</option>
-                      <option value="weekend_overtime">Add Weekend Overtime Shift (Sat/Sun Operations)</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label className="font-bold text-xs">Effective Start Date</Label>
-                    <Input
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      className="h-9 text-xs"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* CASE 5: Rush Order Insertion */}
-              {selectedType === "rush_order" && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs animate-in fade-in duration-200">
-                  <div className="space-y-1">
-                    <Label className="font-bold text-xs">Select Order for Emergency Rush Insertion *</Label>
-                    <select
-                      value={rushOrderCode}
-                      onChange={(e) => setRushOrderCode(e.target.value)}
-                      className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs font-medium"
-                    >
-                      {orders.length > 0 ? (
-                        orders.map((o) => (
-                          <option key={o.id} value={o.orderId}>
-                            Order #{o.orderId} — Material: {o.material} (Qty: {o.orderQty})
-                          </option>
-                        ))
-                      ) : (
-                        <option value="1019015">Order #1019015 — Material 100-024-830.01-00</option>
-                      )}
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label className="font-bold text-xs">Rush Insertion Date</Label>
-                    <Input
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      className="h-9 text-xs"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Custom Titles (Optional) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <div className="space-y-1">
-                <Label className="font-semibold text-muted-foreground">Scenario Branch Title (Optional)</Label>
-                <Input
-                  type="text"
-                  placeholder="e.g. M1 Delay Adaptation Branch"
-                  value={customName}
-                  onChange={(e) => setCustomName(e.target.value)}
-                  className="h-9 text-xs"
-                />
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="bg-[#1e3f2e] hover:bg-[#27533d] text-white font-medium h-8.5 px-4 text-xs gap-2 shadow-xs cursor-pointer border border-[#27533d] rounded-lg"
+                >
+                  <GitBranch className="h-4 w-4" />
+                  Simulate Selected Case & Shift Orders
+                </Button>
               </div>
-              <div className="space-y-1">
-                <Label className="font-semibold text-muted-foreground">Notes / Target Objective</Label>
-                <Input
-                  type="text"
-                  placeholder="e.g. Evaluating shifted order timeline & OTD resilience"
-                  value={customDesc}
-                  onChange={(e) => setCustomDesc(e.target.value)}
-                  className="h-9 text-xs"
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Zap className="h-4 w-4 text-amber-500" />
-                <span>Runs against real active factory dispatch without altering live master plan until promoted.</span>
-              </div>
-
-              <Button 
-                type="submit" 
-                size="lg"
-                className="bg-primary text-primary-foreground font-bold h-10 text-xs gap-2 shadow-md hover:opacity-90 cursor-pointer"
-              >
-                <GitBranch className="h-4 w-4" />
-                Simulate Selected Case & Shift Orders
-              </Button>
             </div>
           </form>
-
-          {/* Quick-Preset Simulation Triggers on Live Data */}
-          <div className="pt-3 border-t border-border/60 space-y-2">
-            <span className="text-xs font-bold text-muted-foreground block">
-              Quick Presets (Run instant simulation on active workspace data):
-            </span>
-            <div className="flex flex-wrap gap-2 text-xs">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  executeScenarioSimulation(
-                    { type: "machine_group_delay", machineGroupId: machineGroups[0]?.id || "M1", groupDelayHours: 24, startDate: "2026-06-01" },
-                    `Machine Group ${machineGroups[0]?.id || "M1"} 24h Delay`,
-                    "Simulate 24-hour maintenance delay across group line."
-                  );
-                }}
-                className="h-8 text-xs gap-1.5 hover:border-amber-500 hover:text-amber-600 cursor-pointer"
-              >
-                <Factory className="h-3.5 w-3.5 text-amber-500" />
-                Simulate {machineGroups[0]?.id || "M1"} Group 24h Delay
-              </Button>
-
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  executeScenarioSimulation(
-                    { type: "machine_stopped", machineId: machines[0]?.id || "605001", machineStopped: true, downtimeHours: 16, startDate: "2026-06-01" },
-                    `Workstation ${machines[0]?.id || "605001"} Breakdown`,
-                    "Simulate 16-hour unplanned machine breakdown."
-                  );
-                }}
-                className="h-8 text-xs gap-1.5 hover:border-red-500 hover:text-red-600 cursor-pointer"
-              >
-                <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
-                Breakdown Workstation {machines[0]?.id || "605001"} (16h)
-              </Button>
-
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  executeScenarioSimulation(
-                    { type: "resource_unavailable", resourceType: "setter", capacityReductionPct: 50, startDate: "2026-06-01" },
-                    "50% Setter Technician Shortage",
-                    "Simulate 50% capacity reduction in setup technicians."
-                  );
-                }}
-                className="h-8 text-xs gap-1.5 hover:border-purple-500 hover:text-purple-600 cursor-pointer"
-              >
-                <UserX className="h-3.5 w-3.5 text-purple-500" />
-                50% Setter Staffing Shortage
-              </Button>
-
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  executeScenarioSimulation(
-                    { type: "shift_change", shiftOption: "no_shift_2", startDate: "2026-06-01" },
-                    "Shift 2 Cancellation",
-                    "Simulate shutting down shift 2 operating hours."
-                  );
-                }}
-                className="h-8 text-xs gap-1.5 hover:border-blue-500 hover:text-blue-600 cursor-pointer"
-              >
-                <CalendarOff className="h-3.5 w-3.5 text-blue-500" />
-                Cancel Shift 2
-              </Button>
-
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  executeScenarioSimulation(
-                    { type: "rush_order", rushOrderId: orders[0]?.orderId || "1019015", startDate: "2026-06-01" },
-                    `Rush Order #${orders[0]?.orderId || "Priority"} Insertion`,
-                    "Simulate emergency high-priority rush order insertion."
-                  );
-                }}
-                className="h-8 text-xs gap-1.5 hover:border-orange-500 hover:text-orange-600 cursor-pointer"
-              >
-                <Flame className="h-3.5 w-3.5 text-orange-500" />
-                Rush Order #{orders[0]?.orderId || "1019015"}
-              </Button>
-            </div>
-          </div>
         </CardContent>
       </Card>
 
-      {/* Unified AI Solver & Dynamic Scenario Countermeasure Engine */}
-      <Card className="border border-emerald-500/40 bg-emerald-500/5 dark:bg-emerald-950/20 shadow-md animate-in fade-in duration-200">
-        <CardHeader className="pb-3 border-b border-emerald-500/20">
-          <div className="flex flex-wrap justify-between items-center gap-2">
-            <div className="flex items-center gap-2.5">
-              <Sparkles className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-              <CardTitle className="text-base font-bold text-foreground">
-                {selectedType === "machine_stopped" && "AI Solver & Workstation Divert Engine (Machine Breakdown)"}
-                {selectedType === "resource_unavailable" && "AI Solver & Staffing Shortage Countermeasure Engine"}
-                {selectedType === "machine_group_delay" && "AI Solver & Line Capacity Rebalancing Engine"}
-                {selectedType === "shift_change" && "AI Solver & Shift Schedule Adaptation Engine"}
-                {selectedType === "rush_order" && "AI Solver & Rush Order Preemption Engine"}
-              </CardTitle>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="outline" className="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200 border-emerald-400 font-bold text-xs gap-1">
-                📍 Context: {aiResultContextName}
-              </Badge>
-              {aiResult && (
-                <Badge className="bg-slate-900 text-slate-100 dark:bg-slate-100 dark:text-slate-900 font-mono text-xs shadow-sm">
-                  Resilience Score: {aiResult.utilizationScore}% Util / {aiResult.otdScore}% OTD
-                </Badge>
-              )}
-            </div>
-          </div>
-          <CardDescription className="text-xs text-muted-foreground mt-0.5">
-            Evaluates scenario constraints and renders 1-click intelligent AI countermeasures tailored directly to {selectedType.replace(/_/g, " ")}.
-          </CardDescription>
-        </CardHeader>
-
-        <CardContent className="pt-4 space-y-4">
-          {/* AI Context Summary & Bottleneck Overview (if generated) */}
-          {aiResult && (
-            <div className="p-3.5 bg-card/90 rounded-xl border border-emerald-500/30 text-xs space-y-2 shadow-xs">
-              <p className="font-semibold text-foreground text-xs leading-relaxed">
-                {aiResult.summary}
-              </p>
-              {aiResult.bottlenecks.length > 0 && (
-                <div className="space-y-0.5 text-muted-foreground pt-1.5 border-t border-border/50">
-                  <span className="font-bold text-foreground text-[11px]">Observed Scenario Constraints & Vulnerabilities:</span>
-                  <ul className="list-disc list-inside space-y-0.5 text-[11px]">
-                    {aiResult.bottlenecks.map((b, idx) => (
-                      <li key={idx}>{b}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Dynamic Countermeasures Grid tailored for each selectedType */}
-          {/* CASE 1: MACHINE BREAKDOWN */}
-          {selectedType === "machine_stopped" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              <div className="p-4 rounded-xl bg-card border border-border shadow-xs space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-foreground flex items-center gap-1.5 text-xs">
-                    <ArrowRightLeft className="h-4 w-4 text-emerald-600" />
-                    Workstation Divert & Operation Re-routing
-                  </span>
-                  <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-300 font-bold">
-                    Recommended AI Fix
-                  </Badge>
-                </div>
-                <p className="text-muted-foreground text-[11px] leading-relaxed">
-                  If {currentMachineObj ? `Workstation ${currentMachineObj.name}` : "Machine 1"} suffers a breakdown, AI evaluates alternate workstations in Group {currentMachineObj?.machineGroupId || "M1"} and automatically re-routes active work order operations.
-                </p>
-
-                {alternateGroupMachines.length > 0 ? (
-                  <div className="space-y-2 pt-1">
-                    {alternateGroupMachines.map((altM) => (
-                      <Button
-                        key={altM.id}
-                        type="button"
-                        onClick={() => executeMachineDivertSimulation(currentMachineObj?.id || machineId, altM.id)}
-                        className="w-full h-9 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-2 cursor-pointer shadow-sm transition-all"
-                      >
-                        <Shuffle className="h-3.5 w-3.5" />
-                        Test AI Divert ({currentMachineObj?.name || "Machine 1"} → Workstation {altM.name})
-                      </Button>
-                    ))}
+      {/* ========================================================================= */}
+      {/* 3. 2-COLUMN SPLIT GRID LAYOUT (CANVAS + AI RECOMMENDATIONS/BRANCHES)       */}
+      {/* ========================================================================= */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* ----------------------------------------------------------------------- */}
+        {/* LEFT COLUMN: DYNAMIC PROJECTED IMPACT CANVAS (8 COLS)                   */}
+        {/* ----------------------------------------------------------------------- */}
+        <div className="lg:col-span-7 xl:col-span-8 space-y-6">
+          {/* CARD 2: PROJECTED IMPACT ANALYSIS & OUTCOME CANVAS */}
+          <Card className="border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs rounded-xl">
+            <CardHeader className="pb-3 border-b border-slate-200 dark:border-slate-800">
+              <div className="flex flex-wrap justify-between items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-slate-500" />
+                  <div>
+                    <CardTitle className="text-sm font-bold text-slate-900 dark:text-white">
+                      Projected Impact Analysis
+                    </CardTitle>
+                    <CardDescription className="text-xs text-slate-500 mt-0.5">
+                      Comparing live master baseline vs.{" "}
+                      <span className="font-semibold text-slate-700 dark:text-slate-300">
+                        {inspectedBranch.name}
+                      </span>
+                    </CardDescription>
                   </div>
-                ) : (
-                  <Button
+                </div>
+
+                {/* Canvas Sub-Tabs */}
+                <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-medium">
+                  <button
                     type="button"
-                    onClick={() => executeMachineDivertSimulation(machineId, machines[1]?.id || "605002")}
-                    className="w-full h-9 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-2 cursor-pointer shadow-sm transition-all"
+                    onClick={() => setImpactTab("overview")}
+                    className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
+                      impactTab === "overview"
+                        ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-semibold"
+                        : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                    }`}
                   >
-                    <Shuffle className="h-3.5 w-3.5" />
-                    Test AI Divert (Shift Work Orders to Alternate Machine)
-                  </Button>
-                )}
-              </div>
-
-              <div className="p-4 rounded-xl bg-card border border-border shadow-xs space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-foreground flex items-center gap-1.5 text-xs">
-                    <Zap className="h-4 w-4 text-amber-500" />
-                    Overtime & Capacity Countermeasure
-                  </span>
-                  <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-300 font-bold">
-                    Shift Adaptation
-                  </Badge>
+                    Overview
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setImpactTab("shifted")}
+                    className={`px-3 py-1 rounded-md transition-all cursor-pointer flex items-center gap-1.5 ${
+                      impactTab === "shifted"
+                        ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-semibold"
+                        : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                    }`}
+                  >
+                    <span>Shifted Order Runs</span>
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] px-1 py-0 h-4 bg-slate-100 dark:bg-slate-800 font-mono"
+                    >
+                      {inspectedBranch.shiftedOrders?.length || 0}
+                    </Badge>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setImpactTab("bottlenecks")}
+                    className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
+                      impactTab === "bottlenecks"
+                        ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-semibold"
+                        : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                    }`}
+                  >
+                    Bottlenecks
+                  </button>
                 </div>
-                <p className="text-muted-foreground text-[11px] leading-relaxed">
-                  Authorize weekend overtime operating hours to absorb breakdown backlog without re-routing operations.
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    executeScenarioSimulation(
-                      { type: "shift_change", shiftOption: "weekend_overtime", startDate },
-                      "AI Countermeasure: Weekend Overtime Shift",
-                      "Authorize weekend overtime operating hours to absorb breakdown backlog."
-                    );
-                  }}
-                  className="w-full h-9 border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 font-bold text-xs gap-2 cursor-pointer transition-all"
-                >
-                  <Zap className="h-3.5 w-3.5 text-amber-500" />
-                  Test AI Weekend Overtime Countermeasure
-                </Button>
               </div>
-            </div>
-          )}
+            </CardHeader>
 
-          {/* CASE 2: MACHINE GROUP DELAY */}
-          {selectedType === "machine_group_delay" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              <div className="p-4 rounded-xl bg-card border border-border shadow-xs space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-foreground flex items-center gap-1.5 text-xs">
-                    <ArrowRightLeft className="h-4 w-4 text-emerald-600" />
-                    Line Divert & Workstation Re-routing
+            <CardContent className="pt-4 space-y-4">
+              {/* Metric Delta Comparison Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs">
+                {/* 1. Makespan */}
+                <div className="bg-slate-50 dark:bg-slate-850 p-3 rounded-xl border border-slate-200/80 dark:border-slate-800">
+                  <span className="text-[10px] text-slate-500 font-bold block uppercase">
+                    TOTAL MAKESPAN
                   </span>
-                  <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-300 font-bold">
-                    Recommended AI Fix
-                  </Badge>
-                </div>
-                <p className="text-muted-foreground text-[11px] leading-relaxed">
-                  Machine Group {machineGroupId || "M1"} line delay ({groupDelayHours}h) active. AI evaluates re-routing process steps to alternate workstations in Group {machineGroupId || "M1"}.
-                </p>
-
-                {alternateGroupMachines.length > 0 ? (
-                  <div className="space-y-2 pt-1">
-                    {alternateGroupMachines.map((altM) => (
-                      <Button
-                        key={altM.id}
-                        type="button"
-                        onClick={() => executeMachineDivertSimulation(currentMachineObj?.id || machineId, altM.id)}
-                        className="w-full h-9 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-2 cursor-pointer shadow-sm transition-all"
+                  <div className="mt-1 flex items-baseline justify-between">
+                    <span className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-1">
+                      <Clock className="h-3.5 w-3.5 text-slate-500" />
+                      {inspectedBranch.makespanDays}d
+                    </span>
+                    {inspectedBranch.id !== "baseline" && (
+                      <span
+                        className={`text-[10.5px] font-mono font-semibold ${
+                          inspectedBranch.makespanDays > liveBaselineBranch.makespanDays
+                            ? "text-amber-600 dark:text-amber-400"
+                            : "text-emerald-600 dark:text-emerald-400"
+                        }`}
                       >
-                        <Shuffle className="h-3.5 w-3.5" />
-                        Test AI Divert ({currentMachineObj?.name || "Machine 1"} → Workstation {altM.name})
-                      </Button>
-                    ))}
+                        {inspectedBranch.makespanDays > liveBaselineBranch.makespanDays ? "+" : ""}
+                        {(inspectedBranch.makespanDays - liveBaselineBranch.makespanDays).toFixed(
+                          1,
+                        )}
+                        d
+                      </span>
+                    )}
                   </div>
-                ) : (
-                  <Button
-                    type="button"
-                    onClick={() => executeMachineDivertSimulation(machineId, machines[1]?.id || "605002")}
-                    className="w-full h-9 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-2 cursor-pointer shadow-sm transition-all"
-                  >
-                    <Shuffle className="h-3.5 w-3.5" />
-                    Test AI Line Divert (Re-route Group Work Orders to Workstation 2)
-                  </Button>
-                )}
-              </div>
-
-              <div className="p-4 rounded-xl bg-card border border-border shadow-xs space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-foreground flex items-center gap-1.5 text-xs">
-                    <Factory className="h-4 w-4 text-amber-500" />
-                    Adjacent Line Load Balancing
-                  </span>
-                  <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-300 font-bold">
-                    Line Rebalancing
-                  </Badge>
                 </div>
-                <p className="text-muted-foreground text-[11px] leading-relaxed">
-                  Transfer early SOP process steps across adjacent lines to reduce line halt duration from {groupDelayHours}h down to 8h.
-                </p>
-                <Button
-                  type="button"
-                  onClick={() => {
-                    executeScenarioSimulation(
-                      { type: "machine_group_delay", machineGroupId: machineGroupId || "M1", groupDelayHours: 8, startDate },
-                      `AI Countermeasure: Reduce Group ${machineGroupId || "M1"} Delay to 8h`,
-                      "Rebalance line loads to reduce group delay from 24h to 8h."
-                    );
-                  }}
-                  className="w-full h-9 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs gap-2 cursor-pointer shadow-sm transition-all"
-                >
-                  <Factory className="h-3.5 w-3.5" />
-                  Test AI Line Rebalancing (Reduce Group Halt to 8h)
-                </Button>
-              </div>
-            </div>
-          )}
 
-          {/* CASE 3: RESOURCE SHORTAGE / STAFF UN-AVAILABILITY */}
-          {selectedType === "resource_unavailable" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              <div className="p-4 rounded-xl bg-card border border-amber-500/40 shadow-xs space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-foreground flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
-                    <UserX className="h-4 w-4 text-amber-500" />
-                    Staffing Feasibility Warning & AI Advice
+                {/* 2. Setup Hours */}
+                <div className="bg-slate-50 dark:bg-slate-850 p-3 rounded-xl border border-slate-200/80 dark:border-slate-800">
+                  <span className="text-[10px] text-slate-500 font-bold block uppercase">
+                    SETUP HOURS
                   </span>
-                  <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-300 font-bold">
-                    Labor Constraint
-                  </Badge>
+                  <div className="mt-1 flex items-baseline justify-between">
+                    <span className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-1">
+                      <Zap className="h-3.5 w-3.5 text-amber-500" />
+                      {inspectedBranch.totalSetupHours}h
+                    </span>
+                    {inspectedBranch.id !== "baseline" && (
+                      <span className="text-[10.5px] font-mono font-semibold text-slate-500">
+                        {inspectedBranch.totalSetupHours >= liveBaselineBranch.totalSetupHours
+                          ? "+"
+                          : ""}
+                        {(
+                          inspectedBranch.totalSetupHours - liveBaselineBranch.totalSetupHours
+                        ).toFixed(1)}
+                        h
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <p className="text-muted-foreground text-[11px] leading-relaxed">
-                  ⚠️ <strong>Workstation machine re-routing alone is constrained by technician shortage</strong> ({capacityReductionPct}% {resourceType}). AI recommends enabling Operator Self-Setup Mode to bypass dedicated setter bottlenecks.
-                </p>
 
-                <Button
-                  type="button"
-                  onClick={() => {
-                    executeScenarioSimulation(
-                      { type: "resource_unavailable", resourceType: "operator", capacityReductionPct: 0, startDate },
-                      "AI Countermeasure: Enable Operator Self-Setup Mode",
-                      "Bypass dedicated technician shortage by routing setup changeovers directly into operator time."
-                    );
-                  }}
-                  className="w-full h-9 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs gap-2 cursor-pointer shadow-sm transition-all"
-                >
-                  <UserX className="h-3.5 w-3.5" />
-                  Test AI Fix: Enable Operator Self-Setup Mode (Bypass Setter Staff Constraint)
-                </Button>
-              </div>
-
-              <div className="p-4 rounded-xl bg-card border border-border shadow-xs space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-foreground flex items-center gap-1.5 text-xs">
-                    <ArrowRightLeft className="h-4 w-4 text-emerald-600" />
-                    Staff-Assigned Workstation Divert
+                {/* 3. Utilization */}
+                <div className="bg-slate-50 dark:bg-slate-850 p-3 rounded-xl border border-slate-200/80 dark:border-slate-800">
+                  <span className="text-[10px] text-slate-500 font-bold block uppercase">
+                    UTILIZATION %
                   </span>
-                  <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-300 font-bold">
-                    Staff Load Shift
-                  </Badge>
+                  <div className="mt-1 flex items-baseline justify-between">
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm flex items-center gap-1">
+                      <TrendingUp className="h-3.5 w-3.5" />
+                      {inspectedBranch.utilizationPct}%
+                    </span>
+                    <span className="text-[10.5px] font-mono text-slate-400">Target 85%</span>
+                  </div>
                 </div>
-                <p className="text-muted-foreground text-[11px] leading-relaxed">
-                  Consolidate active setup changeovers onto fully-staffed workstation lines to minimize total changeover delays.
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => executeMachineDivertSimulation(machineId, machines[1]?.id || "605002")}
-                  className="w-full h-9 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 font-bold text-xs gap-2 cursor-pointer transition-all"
-                >
-                  <Shuffle className="h-3.5 w-3.5 text-emerald-600" />
-                  Test AI Fix: Divert Work Orders to Fully-Staffed Line
-                </Button>
-              </div>
-            </div>
-          )}
 
-          {/* CASE 4: SHIFT ADJUSTMENTS */}
-          {selectedType === "shift_change" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              <div className="p-4 rounded-xl bg-card border border-border shadow-xs space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-foreground flex items-center gap-1.5 text-xs">
-                    <CalendarOff className="h-4 w-4 text-blue-500" />
-                    Shift 1 Overtime Extension
+                {/* 4. On-Time Delivery */}
+                <div className="bg-slate-50 dark:bg-slate-850 p-3 rounded-xl border border-slate-200/80 dark:border-slate-800">
+                  <span className="text-[10px] text-slate-500 font-bold block uppercase">
+                    ON-TIME DELIVERY
                   </span>
-                  <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-300 font-bold">
-                    Hours Extension
-                  </Badge>
+                  <div className="mt-1 flex items-baseline justify-between">
+                    <span className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-1">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-slate-500" />
+                      {inspectedBranch.otdPct}%
+                    </span>
+                    <span className="text-[10.5px] font-mono text-emerald-600">Optimal</span>
+                  </div>
                 </div>
-                <p className="text-muted-foreground text-[11px] leading-relaxed">
-                  Add 2 extra operating hours to Shift 1 to absorb order backlog from Shift 2 closure.
-                </p>
-                <Button
-                  type="button"
-                  onClick={() => {
-                    executeScenarioSimulation(
-                      { type: "shift_change", shiftOption: "weekend_overtime", startDate },
-                      "AI Countermeasure: Shift 1 Overtime Extension",
-                      "Extend Shift 1 operating hours to absorb unstaffed hours."
-                    );
-                  }}
-                  className="w-full h-9 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs gap-2 cursor-pointer shadow-sm transition-all"
-                >
-                  <CalendarOff className="h-3.5 w-3.5" />
-                  Test AI Fix: Extend Shift 1 Operating Hours
-                </Button>
-              </div>
 
-              <div className="p-4 rounded-xl bg-card border border-border shadow-xs space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-foreground flex items-center gap-1.5 text-xs">
-                    <ArrowRightLeft className="h-4 w-4 text-emerald-600" />
-                    Re-route Shift 2 Jobs to Active Shift 1 Workstations
+                {/* 5. Orders Shifted */}
+                <div className="bg-slate-50 dark:bg-slate-850 p-3 rounded-xl border border-slate-200/80 dark:border-slate-800">
+                  <span className="text-[10px] text-slate-500 font-bold block uppercase">
+                    ORDERS SHIFTED
                   </span>
-                  <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-300 font-bold">
-                    Line Shift
-                  </Badge>
+                  <div className="mt-1 flex items-baseline justify-between">
+                    <span
+                      className={`font-bold text-sm flex items-center gap-1 ${
+                        (inspectedBranch.shiftedOrders?.length || 0) > 0
+                          ? "text-amber-600 dark:text-amber-400"
+                          : "text-emerald-600"
+                      }`}
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" />
+                      {inspectedBranch.shiftedOrders?.length || 0} Runs
+                    </span>
+                  </div>
                 </div>
-                <p className="text-muted-foreground text-[11px] leading-relaxed">
-                  Divert process steps scheduled during closed Shift 2 hours onto high-throughput Shift 1 workstations.
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => executeMachineDivertSimulation(machineId, machines[1]?.id || "605002")}
-                  className="w-full h-9 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 font-bold text-xs gap-2 cursor-pointer transition-all"
-                >
-                  <Shuffle className="h-3.5 w-3.5 text-emerald-600" />
-                  Test AI Divert (Shift Work Orders to Active Shift 1 Line)
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* CASE 5: RUSH ORDER PRIORITY */}
-          {selectedType === "rush_order" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              <div className="p-4 rounded-xl bg-card border border-border shadow-xs space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-foreground flex items-center gap-1.5 text-xs">
-                    <Flame className="h-4 w-4 text-orange-500" />
-                    Rush Order Preemption & Fast-Track Route
-                  </span>
-                  <Badge variant="outline" className="text-[10px] bg-orange-50 text-orange-700 border-orange-300 font-bold">
-                    Priority Preemption
-                  </Badge>
-                </div>
-                <p className="text-muted-foreground text-[11px] leading-relaxed">
-                  Fast-track Rush Order #{rushOrderCode || orders[0]?.orderId || "Priority"} by pre-empting standard jobs on the fastest workstation line.
-                </p>
-                <Button
-                  type="button"
-                  onClick={() => {
-                    executeScenarioSimulation(
-                      { type: "rush_order", rushOrderId: rushOrderCode || orders[0]?.orderId || "1019015", startDate },
-                      `AI Countermeasure: Fast-Track Rush Order #${rushOrderCode || orders[0]?.orderId}`,
-                      "Fast-track emergency rush order with zero queue delay."
-                    );
-                  }}
-                  className="w-full h-9 bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs gap-2 cursor-pointer shadow-sm transition-all"
-                >
-                  <Flame className="h-3.5 w-3.5" />
-                  Test AI Fix: Fast-Track Rush Order Insertion
-                </Button>
               </div>
 
-              <div className="p-4 rounded-xl bg-card border border-border shadow-xs space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-foreground flex items-center gap-1.5 text-xs">
-                    <ArrowRightLeft className="h-4 w-4 text-emerald-600" />
-                    Divert Pre-empted Jobs to Alternate Line
-                  </span>
-                  <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-300 font-bold">
-                    Preemption Re-route
-                  </Badge>
-                </div>
-                <p className="text-muted-foreground text-[11px] leading-relaxed">
-                  Automatically re-route standard work orders pre-empted by Rush Order #{rushOrderCode || orders[0]?.orderId} onto alternate Machine 2.
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => executeMachineDivertSimulation(machineId, machines[1]?.id || "605002")}
-                  className="w-full h-9 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 font-bold text-xs gap-2 cursor-pointer transition-all"
-                >
-                  <Shuffle className="h-3.5 w-3.5 text-emerald-600" />
-                  Test AI Divert (Shift Pre-empted Work Orders to Machine 2)
-                </Button>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              {/* TAB 1: OVERVIEW & SYSTEM ADAPTATION */}
+              {impactTab === "overview" && (
+                <div className="space-y-3 pt-1 animate-in fade-in duration-150">
+                  {inspectedBranch.aiAdaptationAdvice &&
+                    inspectedBranch.aiAdaptationAdvice.length > 0 && (
+                      <div className="p-3.5 bg-slate-50 dark:bg-slate-850 rounded-xl border border-slate-200 dark:border-slate-800 text-xs space-y-1.5">
+                        <span className="font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
+                          <Sparkles className="h-3.5 w-3.5 text-slate-500" />
+                          System Adaptation & Mitigation Strategy:
+                        </span>
+                        <ul className="list-disc list-inside space-y-1 text-slate-600 dark:text-slate-400 pl-1 text-[11.5px]">
+                          {inspectedBranch.aiAdaptationAdvice.map((adv, idx) => (
+                            <li key={idx}>{adv}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
 
-      {/* Evaluated Scenario Sandbox Branches */}
-      <div className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
-              <Layers className="h-5 w-5 text-primary" />
-              Evaluated Scenario Sandbox Branches ({scenarios.length})
-            </h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Click any branch card to inspect dynamic shifted order runs and system adaptation details.
-            </p>
-          </div>
-
-          {userBranches.length > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleClearSandbox}
-              className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40 border-red-200 dark:border-red-900 gap-1.5 font-bold cursor-pointer transition-colors shadow-xs"
-              title="Clear all simulated scenario branches and reset to Master Live Schedule baseline"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              Clear Sandbox ({userBranches.length})
-            </Button>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 gap-4">
-          {scenarios.map((scen) => {
-            const isExpanded = expandedScenId === scen.id;
-            return (
-              <Card 
-                key={scen.id} 
-                className={`border transition-all shadow-sm ${
-                  scen.active 
-                    ? "border-primary/60 bg-primary/5" 
-                    : "border-border/80 bg-card hover:border-primary/40"
-                }`}
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex flex-wrap justify-between items-start gap-2">
+                  {/* Summary Callout Banner */}
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-xs">
                     <div className="flex items-center gap-2">
-                      <Badge className={scen.active ? "bg-primary text-primary-foreground font-bold" : "bg-muted text-muted-foreground"}>
-                        {scen.active ? "LIVE MASTER SCHEDULE" : "SANDBOX BRANCH"}
-                      </Badge>
-
-                      {scen.config?.type && (
-                        <Badge variant="outline" className="text-[10px] font-mono capitalize">
-                          {scen.config.type.replace(/_/g, " ")}
-                        </Badge>
-                      )}
+                      <ShieldCheck className="h-4 w-4 text-slate-500" />
+                      <span className="text-slate-700 dark:text-slate-300">
+                        {inspectedBranch.id === "baseline"
+                          ? "Inspecting Master Live Schedule baseline. All dispatch slots are optimal."
+                          : `Simulated constraint '${inspectedBranch.name}' shifts ${inspectedBranch.shiftedOrders?.length || 0} work orders while maintaining ${inspectedBranch.otdPct}% OTD.`}
+                      </span>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-muted-foreground font-mono">{scen.createdAt}</span>
+                    {inspectedBranch.id !== "baseline" && !inspectedBranch.active && (
+                      <Button
+                        size="sm"
+                        onClick={() => handlePromoteToMaster(inspectedBranch)}
+                        className="bg-[#1e3f2e] hover:bg-[#27533d] text-white font-medium text-xs h-7.5 px-3 gap-1.5 shadow-xs cursor-pointer border border-[#27533d]"
+                      >
+                        <ArrowRight className="h-3.5 w-3.5" />
+                        Promote to Master Schedule
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: SHIFTED ORDER RUNS TABLE */}
+              {impactTab === "shifted" && (
+                <div className="space-y-3 pt-1 animate-in fade-in duration-150">
+                  {inspectedBranch.shiftedOrders && inspectedBranch.shiftedOrders.length > 0 ? (
+                    <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-50 dark:bg-slate-850 text-slate-500 font-semibold text-[11px] border-b border-slate-200 dark:border-slate-800">
+                          <tr>
+                            <th className="p-2.5">Order Code</th>
+                            <th className="p-2.5">Material</th>
+                            <th className="p-2.5">Workstation</th>
+                            <th className="p-2.5">Original Start</th>
+                            <th className="p-2.5">Shifted Start</th>
+                            <th className="p-2.5">Shift Delay</th>
+                            <th className="p-2.5">Adaptation Reason</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-mono text-[11px]">
+                          {inspectedBranch.shiftedOrders.map((item, idx) => (
+                            <tr
+                              key={idx}
+                              className="hover:bg-slate-50/60 dark:hover:bg-slate-850/60"
+                            >
+                              <td className="p-2.5 font-bold text-slate-900 dark:text-white">
+                                {item.orderId}
+                              </td>
+                              <td className="p-2.5 text-slate-500 font-sans">{item.material}</td>
+                              <td className="p-2.5 text-slate-700 dark:text-slate-300">
+                                {item.affectedMachineId || "Line"}
+                              </td>
+                              <td className="p-2.5 text-slate-400 line-through decoration-rose-500/60">
+                                {item.originalStart.replace("T", " ").substring(0, 16)}
+                              </td>
+                              <td className="p-2.5 font-bold text-emerald-600 dark:text-emerald-400">
+                                {item.newStart.replace("T", " ").substring(0, 16)}
+                              </td>
+                              <td className="p-2.5">
+                                {item.impactType === "expedited" ? (
+                                  <Badge
+                                    variant="outline"
+                                    className="bg-emerald-50 text-emerald-700 border-emerald-300 font-semibold"
+                                  >
+                                    -{item.shiftHours}h (Expedited)
+                                  </Badge>
+                                ) : (
+                                  <Badge
+                                    variant="outline"
+                                    className="bg-amber-50 text-amber-700 border-amber-300 font-semibold"
+                                  >
+                                    +{item.shiftHours}h (Shifted)
+                                  </Badge>
+                                )}
+                              </td>
+                              <td className="p-2.5 text-slate-500 font-sans text-[11px]">
+                                {item.reason}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="p-6 bg-slate-50 dark:bg-slate-850 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-center text-xs text-slate-500">
+                      No order runs shifted. The schedule absorbed the constraint with 0 order
+                      delays.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 3: BOTTLENECKS & CONSTRAINTS */}
+              {impactTab === "bottlenecks" && (
+                <div className="space-y-3 pt-1 animate-in fade-in duration-150">
+                  {aiResult ? (
+                    <div className="p-3.5 bg-slate-50 dark:bg-slate-850 rounded-xl border border-slate-200 dark:border-slate-800 text-xs space-y-2">
+                      <span className="font-semibold text-slate-900 dark:text-white block">
+                        Observed Vulnerabilities & Bottlenecks:
+                      </span>
+                      {aiResult.bottlenecks.length > 0 ? (
+                        <ul className="list-disc list-inside space-y-1 text-slate-600 dark:text-slate-400 pl-1 text-[11.5px]">
+                          {aiResult.bottlenecks.map((b, idx) => (
+                            <li key={idx}>{b}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-slate-500 text-[11px]">
+                          No critical machine bottlenecks detected in this scenario.
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="p-6 bg-slate-50 dark:bg-slate-850 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-center text-xs text-slate-500">
+                      Run the AI Scenario Solver to evaluate real-time bottlenecks and resilience
+                      constraints.
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* ----------------------------------------------------------------------- */}
+        {/* RIGHT COLUMN: SOLVER ENGINE STATUS, AI MITIGATIONS & BRANCHES (4 COLS)  */}
+        {/* ----------------------------------------------------------------------- */}
+        <div className="lg:col-span-5 xl:col-span-4 space-y-6">
+          {/* CARD 3: SOLVER ENGINE STATUS CARD */}
+          <Card className="border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs rounded-xl">
+            <CardHeader className="pb-3 border-b border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Cpu className="h-4 w-4 text-slate-500" />
+                  <CardTitle className="text-sm font-bold text-slate-900 dark:text-white">
+                    Solver Engine Status
+                  </CardTitle>
+                </div>
+                <Badge className="bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[10.5px] font-medium">
+                  Active
+                </Badge>
+              </div>
+            </CardHeader>
+
+            <CardContent className="pt-3.5 space-y-3.5 text-xs">
+              {/* Engine Model info */}
+              <div className="p-3 bg-slate-50 dark:bg-slate-850 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold text-slate-900 dark:text-white text-xs">
+                    CapaSolve Core v4.2
+                  </span>
+                  <span className="font-mono text-[10.5px] text-slate-500">Predictive Engine</span>
+                </div>
+                <div className="flex justify-between items-center text-[11px] text-slate-500 pt-1 border-t border-slate-200/70 dark:border-slate-750">
+                  <span>Confidence Score</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-200">94.2%</span>
+                </div>
+                <div className="flex justify-between items-center text-[11px] text-slate-500">
+                  <span>Resilience Index</span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                    {aiResult
+                      ? `${aiResult.utilizationScore}% Util / ${aiResult.otdScore}% OTD`
+                      : "84% Util / 96% OTD"}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-[11px] text-slate-500">
+                  <span>Scenarios Evaluated</span>
+                  <span className="font-mono text-slate-700 dark:text-slate-300">12,408</span>
+                </div>
+              </div>
+
+              {/* Context Summary Callout */}
+              {aiResult && (
+                <div className="p-2.5 bg-slate-50/80 dark:bg-slate-850/80 rounded-lg border border-slate-200/80 dark:border-slate-800 text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
+                  <span className="font-semibold text-slate-900 dark:text-white block mb-0.5">
+                    AI Engine Context:
+                  </span>
+                  {aiResult.summary}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* CARD 4: AI RECOMMENDATIONS & INTELLIGENT COUNTERMEASURES */}
+          <Card className="border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs rounded-xl">
+            <CardHeader className="pb-3 border-b border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-slate-500" />
+                  <CardTitle className="text-sm font-bold text-slate-900 dark:text-white">
+                    AI Recommendations
+                  </CardTitle>
+                </div>
+                <Badge
+                  variant="outline"
+                  className="text-[10.5px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 font-medium"
+                >
+                  {selectedType.replace(/_/g, " ")}
+                </Badge>
+              </div>
+              <CardDescription className="text-xs text-slate-500">
+                1-Click automated countermeasures tailored to active constraints.
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="pt-3.5 space-y-3">
+              {/* CASE 1: MACHINE BREAKDOWN */}
+              {selectedType === "machine_stopped" && (
+                <div className="space-y-2.5">
+                  {/* High Impact: Re-route Divert */}
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-slate-900 dark:text-white flex items-center gap-1.5 text-xs">
+                        <ArrowRightLeft className="h-3.5 w-3.5 text-slate-500" />
+                        Re-route Operations
+                      </span>
+                      <Badge
+                        variant="outline"
+                        className="text-[9.5px] bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 font-semibold"
+                      >
+                        High Impact
+                      </Badge>
+                    </div>
+                    <p className="text-slate-500 text-[11px] leading-relaxed">
+                      Re-route active work orders from broken{" "}
+                      {currentMachineObj ? `Workstation ${currentMachineObj.name}` : "Machine"} to
+                      alternate line in Group {currentMachineObj?.machineGroupId || "M1"}.
+                    </p>
+
+                    {alternateGroupMachines.length > 0 ? (
+                      alternateGroupMachines.map((altM) => (
+                        <Button
+                          key={altM.id}
+                          type="button"
+                          onClick={() =>
+                            executeMachineDivertSimulation(
+                              currentMachineObj?.id || machineId,
+                              altM.id,
+                            )
+                          }
+                          className="w-full h-7.5 bg-[#1e3f2e] hover:bg-[#27533d] text-white font-medium text-xs gap-1.5 cursor-pointer shadow-xs border border-[#27533d]"
+                        >
+                          <Shuffle className="h-3 w-3" />
+                          Test AI Divert (→ Workstation {altM.name})
+                        </Button>
+                      ))
+                    ) : (
+                      <Button
+                        type="button"
+                        onClick={() =>
+                          executeMachineDivertSimulation(machineId, machines[1]?.id || "605002")
+                        }
+                        className="w-full h-7.5 bg-[#1e3f2e] hover:bg-[#27533d] text-white font-medium text-xs gap-1.5 cursor-pointer shadow-xs border border-[#27533d]"
+                      >
+                        <Shuffle className="h-3 w-3" />
+                        Test AI Divert (Shift Work Orders)
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Medium Impact: Weekend Overtime */}
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-slate-900 dark:text-white flex items-center gap-1.5 text-xs">
+                        <Zap className="h-3.5 w-3.5 text-slate-500" />
+                        Weekend Overtime
+                      </span>
+                      <Badge
+                        variant="outline"
+                        className="text-[9.5px] bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 font-semibold"
+                      >
+                        Medium Impact
+                      </Badge>
+                    </div>
+                    <p className="text-slate-500 text-[11px] leading-relaxed">
+                      Authorize weekend overtime shift hours to absorb breakdown backlog.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        executeScenarioSimulation(
+                          { type: "shift_change", shiftOption: "weekend_overtime", startDate },
+                          "AI Countermeasure: Weekend Overtime Shift",
+                          "Authorize weekend overtime operating hours to absorb breakdown backlog.",
+                        );
+                      }}
+                      className="w-full h-7.5 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium text-xs gap-1.5 cursor-pointer"
+                    >
+                      <Zap className="h-3 w-3 text-slate-500" />
+                      Apply Weekend Overtime
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* CASE 2: MACHINE GROUP DELAY */}
+              {selectedType === "machine_group_delay" && (
+                <div className="space-y-2.5">
+                  {/* High Impact: Divert to Group Alt */}
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-slate-900 dark:text-white flex items-center gap-1.5 text-xs">
+                        <ArrowRightLeft className="h-3.5 w-3.5 text-slate-500" />
+                        Line Divert
+                      </span>
+                      <Badge
+                        variant="outline"
+                        className="text-[9.5px] bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 font-semibold"
+                      >
+                        High Impact
+                      </Badge>
+                    </div>
+                    <p className="text-slate-500 text-[11px] leading-relaxed">
+                      Re-route group work orders across available alternate workstations in Group{" "}
+                      {machineGroupId || "M1"}.
+                    </p>
+                    <Button
+                      type="button"
+                      onClick={() =>
+                        executeMachineDivertSimulation(machineId, machines[1]?.id || "605002")
+                      }
+                      className="w-full h-7.5 bg-[#1e3f2e] hover:bg-[#27533d] text-white font-medium text-xs gap-1.5 cursor-pointer shadow-xs border border-[#27533d]"
+                    >
+                      <Shuffle className="h-3 w-3" />
+                      Test AI Divert
+                    </Button>
+                  </div>
+
+                  {/* Medium Impact: Line Rebalancing */}
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-slate-900 dark:text-white flex items-center gap-1.5 text-xs">
+                        <Factory className="h-3.5 w-3.5 text-slate-500" />
+                        Line Rebalancing
+                      </span>
+                      <Badge
+                        variant="outline"
+                        className="text-[9.5px] bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 font-semibold"
+                      >
+                        Medium Impact
+                      </Badge>
+                    </div>
+                    <p className="text-slate-500 text-[11px] leading-relaxed">
+                      Rebalance line loads to reduce halt duration from {groupDelayHours}h down to
+                      8h.
+                    </p>
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        executeScenarioSimulation(
+                          {
+                            type: "machine_group_delay",
+                            machineGroupId: machineGroupId || "M1",
+                            groupDelayHours: 8,
+                            startDate,
+                          },
+                          `AI Countermeasure: Reduce Group ${machineGroupId || "M1"} Delay to 8h`,
+                          "Rebalance line loads to reduce group delay from 24h to 8h.",
+                        );
+                      }}
+                      className="w-full h-7.5 bg-[#1e3f2e] hover:bg-[#27533d] text-white font-medium text-xs gap-1.5 cursor-pointer shadow-xs border border-[#27533d]"
+                    >
+                      <Factory className="h-3 w-3" />
+                      Rebalance Group Load (Reduce to 8h)
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* CASE 3: RESOURCE SHORTAGE */}
+              {selectedType === "resource_unavailable" && (
+                <div className="space-y-2.5">
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-slate-900 dark:text-white flex items-center gap-1.5 text-xs">
+                        <UserX className="h-3.5 w-3.5 text-slate-500" />
+                        Operator Self-Setup Mode
+                      </span>
+                      <Badge
+                        variant="outline"
+                        className="text-[9.5px] bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 font-semibold"
+                      >
+                        High Impact
+                      </Badge>
+                    </div>
+                    <p className="text-slate-500 text-[11px] leading-relaxed">
+                      Bypass setter shortages by allowing machine operators to perform machine
+                      changeover setups.
+                    </p>
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        executeScenarioSimulation(
+                          {
+                            type: "resource_unavailable",
+                            resourceType: "operator",
+                            capacityReductionPct: 0,
+                            startDate,
+                          },
+                          "AI Countermeasure: Enable Operator Self-Setup Mode",
+                          "Bypass dedicated technician shortage by routing setup changeovers directly into operator time.",
+                        );
+                      }}
+                      className="w-full h-7.5 bg-[#1e3f2e] hover:bg-[#27533d] text-white font-medium text-xs gap-1.5 cursor-pointer shadow-xs border border-[#27533d]"
+                    >
+                      <UserX className="h-3 w-3" />
+                      Enable Operator Self-Setup
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* CASE 4: SHIFT ADJUSTMENTS */}
+              {selectedType === "shift_change" && (
+                <div className="space-y-2.5">
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-slate-900 dark:text-white flex items-center gap-1.5 text-xs">
+                        <CalendarOff className="h-3.5 w-3.5 text-slate-500" />
+                        Shift 1 Extension
+                      </span>
+                      <Badge
+                        variant="outline"
+                        className="text-[9.5px] bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 font-semibold"
+                      >
+                        Shift Adaptation
+                      </Badge>
+                    </div>
+                    <p className="text-slate-500 text-[11px] leading-relaxed">
+                      Extend Shift 1 operating hours by 2h to absorb closed Shift 2 order volume.
+                    </p>
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        executeScenarioSimulation(
+                          { type: "shift_change", shiftOption: "weekend_overtime", startDate },
+                          "AI Countermeasure: Shift 1 Overtime Extension",
+                          "Extend Shift 1 operating hours to absorb unstaffed hours.",
+                        );
+                      }}
+                      className="w-full h-7.5 bg-[#1e3f2e] hover:bg-[#27533d] text-white font-medium text-xs gap-1.5 cursor-pointer shadow-xs border border-[#27533d]"
+                    >
+                      <CalendarOff className="h-3 w-3" />
+                      Extend Shift 1 Hours
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* CASE 5: RUSH ORDER PRIORITY */}
+              {selectedType === "rush_order" && (
+                <div className="space-y-2.5">
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-slate-900 dark:text-white flex items-center gap-1.5 text-xs">
+                        <Flame className="h-3.5 w-3.5 text-slate-500" />
+                        Priority Preemption
+                      </span>
+                      <Badge
+                        variant="outline"
+                        className="text-[9.5px] bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 font-semibold"
+                      >
+                        Fast-Track
+                      </Badge>
+                    </div>
+                    <p className="text-slate-500 text-[11px] leading-relaxed">
+                      Fast-track Rush Order #{rushOrderCode || orders[0]?.orderId || "Priority"} by
+                      pre-empting standard jobs on the fastest workstation line.
+                    </p>
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        executeScenarioSimulation(
+                          {
+                            type: "rush_order",
+                            rushOrderId: rushOrderCode || orders[0]?.orderId || "1019015",
+                            startDate,
+                          },
+                          `AI Countermeasure: Fast-Track Rush Order #${rushOrderCode || orders[0]?.orderId}`,
+                          "Fast-track emergency rush order with zero queue delay.",
+                        );
+                      }}
+                      className="w-full h-7.5 bg-[#1e3f2e] hover:bg-[#27533d] text-white font-medium text-xs gap-1.5 cursor-pointer shadow-xs border border-[#27533d]"
+                    >
+                      <Flame className="h-3 w-3" />
+                      Fast-Track Rush Order
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* CARD 5: EVALUATED SCENARIO BRANCHES (BRANCH MANAGER) */}
+          <Card className="border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs rounded-xl">
+            <CardHeader className="pb-3 border-b border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-slate-500" />
+                  <CardTitle className="text-sm font-bold text-slate-900 dark:text-white">
+                    Scenario Branches ({scenarios.length})
+                  </CardTitle>
+                </div>
+
+                {userBranches.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleClearSandbox}
+                    className="h-6 px-2 text-[11px] text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 gap-1 cursor-pointer font-medium"
+                    title="Reset all branches to Master Live Schedule baseline"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                    Reset
+                  </Button>
+                )}
+              </div>
+              <CardDescription className="text-xs text-slate-500">
+                Click any branch to inspect metrics and shifted orders on the left canvas.
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="pt-3.5 space-y-2.5">
+              {scenarios.map((scen) => {
+                const isSelected = activeBranchId === scen.id;
+                return (
+                  <div
+                    key={scen.id}
+                    onClick={() => setActiveBranchId(scen.id)}
+                    className={`p-3 rounded-xl border transition-all text-xs cursor-pointer space-y-2 ${
+                      isSelected
+                        ? "border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-850 shadow-xs ring-1 ring-slate-900/5"
+                        : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50/60 dark:hover:bg-slate-850/60"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-slate-900 dark:text-white text-xs leading-tight">
+                            {scen.name}
+                          </span>
+                          {scen.id === "baseline" ? (
+                            <Badge className="bg-slate-800 text-white text-[9.5px] px-1.5 py-0 h-4">
+                              MASTER
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className="text-[9.5px] px-1.5 py-0 h-4 bg-slate-100 text-slate-700 border-slate-200"
+                            >
+                              BRANCH
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-500 line-clamp-1">
+                          {scen.description}
+                        </p>
+                      </div>
+
                       {scen.id !== "baseline" && (
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleDeleteBranch(scen.id)}
-                          className="h-6 w-6 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 cursor-pointer rounded-md"
-                          title="Delete this scenario branch"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteBranch(scen.id);
+                          }}
+                          className="h-5 w-5 text-slate-400 hover:text-rose-600 rounded cursor-pointer"
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Trash2 className="h-3 w-3" />
                         </Button>
                       )}
                     </div>
-                  </div>
 
-                  <div className="flex items-center justify-between mt-2">
-                    <div>
-                      <CardTitle className="text-lg font-bold text-foreground">{scen.name}</CardTitle>
-                      <CardDescription className="text-xs mt-0.5">{scen.description}</CardDescription>
-                    </div>
-
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setExpandedScenId(isExpanded ? null : scen.id)}
-                      className="text-xs gap-1 text-muted-foreground cursor-pointer"
-                    >
-                      {isExpanded ? "Hide Shifted Orders" : "View Shifted Orders"}
-                      {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                </CardHeader>
-
-                <CardContent className="space-y-4">
-                  {/* Key KPI Metrics Grid */}
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
-                    <div className="bg-muted/40 p-3 rounded-xl border border-border/40">
-                      <span className="text-[10px] text-muted-foreground block font-bold">TOTAL MAKESPAN</span>
-                      <span className="font-extrabold text-foreground text-sm flex items-center gap-1 mt-0.5">
-                        <Clock className="h-3.5 w-3.5 text-primary" />
-                        {scen.makespanDays} Days
+                    {/* Compact Metrics Row */}
+                    <div className="flex items-center justify-between text-[10.5px] pt-1.5 border-t border-slate-200/70 dark:border-slate-750 text-slate-600 dark:text-slate-400">
+                      <span>
+                        Makespan:{" "}
+                        <b className="text-slate-900 dark:text-white font-mono">
+                          {scen.makespanDays}d
+                        </b>
+                      </span>
+                      <span>
+                        Util:{" "}
+                        <b className="text-emerald-600 dark:text-emerald-400 font-mono">
+                          {scen.utilizationPct}%
+                        </b>
+                      </span>
+                      <span>
+                        Shifted:{" "}
+                        <b className="font-mono text-slate-900 dark:text-white">
+                          {scen.shiftedOrders?.length || 0}
+                        </b>
                       </span>
                     </div>
 
-                    <div className="bg-muted/40 p-3 rounded-xl border border-border/40">
-                      <span className="text-[10px] text-muted-foreground block font-bold">SETUP HOURS</span>
-                      <span className="font-extrabold text-foreground text-sm flex items-center gap-1 mt-0.5">
-                        <Zap className="h-3.5 w-3.5 text-amber-500" />
-                        {scen.totalSetupHours} hrs
-                      </span>
-                    </div>
-
-                    <div className="bg-muted/40 p-3 rounded-xl border border-border/40">
-                      <span className="text-[10px] text-muted-foreground block font-bold">UTILIZATION %</span>
-                      <span className="font-extrabold text-emerald-600 dark:text-emerald-400 text-sm flex items-center gap-1 mt-0.5">
-                        <TrendingUp className="h-3.5 w-3.5" />
-                        {scen.utilizationPct}%
-                      </span>
-                    </div>
-
-                    <div className="bg-muted/40 p-3 rounded-xl border border-border/40">
-                      <span className="text-[10px] text-muted-foreground block font-bold">ON-TIME DELIVERY</span>
-                      <span className="font-extrabold text-primary text-sm flex items-center gap-1 mt-0.5">
-                        <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
-                        {scen.otdPct}%
-                      </span>
-                    </div>
-
-                    <div className="bg-muted/40 p-3 rounded-xl border border-border/40">
-                      <span className="text-[10px] text-muted-foreground block font-bold">ORDERS SHIFTED</span>
-                      <span className={`font-extrabold text-sm flex items-center gap-1 mt-0.5 ${
-                        (scen.shiftedOrders?.length || 0) > 0 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600"
-                      }`}>
-                        <RefreshCw className="h-3.5 w-3.5" />
-                        {scen.shiftedOrders?.length || 0} Shifted
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Expanded Shifted Orders Impact Drawer */}
-                  {isExpanded && (
-                    <div className="space-y-4 pt-3 border-t border-border/60 animate-in fade-in duration-200">
-                      {/* AI System Adaptation Notes */}
-                      {scen.aiAdaptationAdvice && scen.aiAdaptationAdvice.length > 0 && (
-                        <div className="p-3 bg-primary/10 rounded-xl border border-primary/20 text-xs space-y-1">
-                          <span className="font-bold text-primary flex items-center gap-1.5">
-                            <Sparkles className="h-4 w-4 text-primary" />
-                            System Adaptation Analysis & Countermeasures:
-                          </span>
-                          <ul className="list-disc list-inside space-y-0.5 text-foreground/90 pl-1">
-                            {scen.aiAdaptationAdvice.map((adv, idx) => (
-                              <li key={idx}>{adv}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      {/* Shifted Orders Table */}
-                      <div>
-                        <h4 className="text-xs font-bold text-foreground mb-2 flex items-center gap-1.5">
-                          <RefreshCw className="h-3.5 w-3.5 text-amber-500" />
-                          Order Runs Shifted by System Adaptation ({scen.shiftedOrders?.length || 0}):
-                        </h4>
-
-                        {scen.shiftedOrders && scen.shiftedOrders.length > 0 ? (
-                          <div className="overflow-x-auto rounded-xl border border-border/60">
-                            <table className="w-full text-left text-xs">
-                              <thead className="bg-muted/60 text-muted-foreground font-semibold text-[11px] border-b border-border/60">
-                                <tr>
-                                  <th className="p-2.5">Order Code</th>
-                                  <th className="p-2.5">Material</th>
-                                  <th className="p-2.5">Workstation</th>
-                                  <th className="p-2.5">Original Start</th>
-                                  <th className="p-2.5">Shifted Start</th>
-                                  <th className="p-2.5">Shift Delay</th>
-                                  <th className="p-2.5">Adaptation Reason</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-border/40 font-mono text-[11px]">
-                                {scen.shiftedOrders.map((item, idx) => (
-                                  <tr key={idx} className="hover:bg-muted/30">
-                                    <td className="p-2.5 font-bold text-foreground">{item.orderId}</td>
-                                    <td className="p-2.5 text-muted-foreground">{item.material}</td>
-                                    <td className="p-2.5 text-primary">{item.affectedMachineId || "Line"}</td>
-                                    <td className="p-2.5 text-muted-foreground line-through decoration-red-500/60">
-                                      {item.originalStart.replace("T", " ").substring(0, 16)}
-                                    </td>
-                                    <td className="p-2.5 font-bold text-emerald-600 dark:text-emerald-400">
-                                      {item.newStart.replace("T", " ").substring(0, 16)}
-                                    </td>
-                                    <td className="p-2.5">
-                                      {item.impactType === "expedited" ? (
-                                        <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-bold">
-                                          -{item.shiftHours} hrs (Expedited)
-                                        </Badge>
-                                      ) : (
-                                        <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20 font-bold">
-                                          +{item.shiftHours} hrs (Shifted)
-                                        </Badge>
-                                      )}
-                                    </td>
-                                    <td className="p-2.5 text-muted-foreground not-italic font-sans text-[11px]">
-                                      {item.reason}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        ) : (
-                          <div className="p-4 bg-muted/20 rounded-xl border border-dashed border-border/80 text-center text-xs text-muted-foreground">
-                            No order runs shifted. The schedule absorbed the constraint without delaying order start times.
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Actions */}
-                  <div className="flex items-center justify-end gap-3 pt-2">
-                    {scen.id !== "baseline" && (
+                    {/* Promote Button */}
+                    {scen.id !== "baseline" && !scen.active && (
                       <Button
-                        variant="outline"
                         size="sm"
-                        onClick={() => handleDeleteBranch(scen.id)}
-                        className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40 border-red-200 dark:border-red-900 gap-1.5 cursor-pointer font-medium"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handlePromoteToMaster(scen);
+                        }}
+                        className="w-full h-7 text-[11px] bg-[#1e3f2e] hover:bg-[#27533d] text-white font-medium gap-1 shadow-xs border border-[#27533d]"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        Remove Branch
+                        <ArrowRight className="h-3 w-3" />
+                        Promote to Master Schedule
                       </Button>
-                    )}
-
-                    {!scen.active ? (
-                      <Button
-                        onClick={() => handlePromoteToMaster(scen)}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-2 shadow-sm cursor-pointer"
-                      >
-                        <ArrowRight className="h-4 w-4" />
-                        Promote Shifted Plan to Master Live Schedule
-                      </Button>
-                    ) : (
-                      <div className="p-2 px-4 bg-primary/10 text-primary font-bold text-xs rounded-xl border border-primary/20 flex items-center gap-2">
-                        <Check className="h-4 w-4 text-primary" />
-                        Active Master Dispatch Schedule
-                      </div>
                     )}
                   </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                );
+              })}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

@@ -19,25 +19,30 @@ export const translations = {
     "marketing.login": "Sign In",
     "marketing.trial": "Start Free Trial",
     "marketing.dashboard": "Go to App",
-    "marketing.footerDesc": "AI-powered constraint-based manufacturing scheduling and capacity optimization platform.",
+    "marketing.footerDesc":
+      "AI-powered constraint-based manufacturing scheduling and capacity optimization platform.",
 
     // Analytics Dashboard
     "analytics.title": "OEE & Performance Analytics",
-    "analytics.subtitle": "Analyze overall equipment effectiveness, workstation bottlenecks, and operator load trends.",
+    "analytics.subtitle":
+      "Analyze overall equipment effectiveness, workstation bottlenecks, and operator load trends.",
     "analytics.totalTime": "Total Scheduled Time",
     "analytics.avgUtilization": "Avg Workstation OEE/Utilization",
     "analytics.warningsCount": "Active Overload & Collision Alerts",
     "analytics.manpowerMin": "Total Operator Load",
     "analytics.oeeBreakdown": "Workstation OEE & Time Allocation Breakdown",
-    "analytics.oeeBreakdownDesc": "Setup (R) vs Machining (M) minutes compared to the total active planning duration.",
+    "analytics.oeeBreakdownDesc":
+      "Setup (R) vs Machining (M) minutes compared to the total active planning duration.",
     "analytics.setupMinutes": "Setup Time (R)",
     "analytics.machiningMinutes": "Machining Time (M)",
     "analytics.idleMinutes": "Idle / Unallocated Time",
     "analytics.bottleneckAnalysis": "Bottleneck & Load Rate Analysis",
-    "analytics.bottleneckDesc": "Percentage of active production time allocated vs total available capacity hours.",
+    "analytics.bottleneckDesc":
+      "Percentage of active production time allocated vs total available capacity hours.",
     "analytics.utilizationRate": "OEE / Utilization Rate",
     "analytics.manpowerTrends": "Global Manpower Loading & Capacity Ceilings",
-    "analytics.manpowerTrendsDesc": "Daily technician setup and machining operator loading compared to set capacity limits.",
+    "analytics.manpowerTrendsDesc":
+      "Daily technician setup and machining operator loading compared to set capacity limits.",
     "analytics.operatorLoad": "Machining Operator Load",
     "analytics.operatorCap": "Machining Operator Capacity",
     "analytics.setterLoad": "Setup Technician Load",
@@ -75,7 +80,8 @@ export const translations = {
     "common.cloudSaveFailed": "Failed to save schedule to cloud storage.",
     "common.cloudLoadSuccess": "Successfully loaded schedule from cloud storage!",
     "common.cloudLoadFailed": "Failed to load schedule from cloud storage or no saved state found.",
-    "common.cloudConfigError": "Cloud storage configuration error. Ensure environment variables are set.",
+    "common.cloudConfigError":
+      "Cloud storage configuration error. Ensure environment variables are set.",
 
     // Dashboard
     "dashboard.title": "Dashboard",
@@ -88,7 +94,8 @@ export const translations = {
     "dashboard.activeWarnings": "active warnings",
     "dashboard.notGenerated": "Not generated",
     "dashboard.ordersCardTitle": "Orders",
-    "dashboard.ordersCardDesc": "Import via CSV or manage existing manufacturing orders from process.csv.",
+    "dashboard.ordersCardDesc":
+      "Import via CSV or manage existing manufacturing orders from process.csv.",
     "dashboard.ordersCardButton": "Open orders",
     "dashboard.ganttCardTitle": "Gantt",
     "dashboard.ganttCardDesc": "Visualize the schedule with hour-level cells, 2 shifts per day.",
@@ -98,7 +105,8 @@ export const translations = {
     "orders.title": "Orders & CSV Imports",
     "orders.subtitle": "Current schedule is seeded directly from the workspace's process.csv.",
     "orders.activeDatasets": "Active Datasets ({orders} Orders, {processes} Processes)",
-    "orders.summaryRollup": "Summary rollup grouped by Order ID. Processes are sequenced within each order.",
+    "orders.summaryRollup":
+      "Summary rollup grouped by Order ID. Processes are sequenced within each order.",
     "orders.tabSummary": "Summary by Orders",
     "orders.tabExcel": "All CSV Values (Excel View)",
     "orders.searchPlaceholder": "Search Excel View...",
@@ -112,7 +120,8 @@ export const translations = {
     "orders.noActive": "No active orders found.",
     "orders.uploadPrompt": "Upload a CSV or reset to import process.csv",
     "orders.excelTitle": "Raw Spreadsheet Replica Grid",
-    "orders.excelDesc": "Full list of all process steps directly from the CSV. Red and Yellow columns highlight the key scheduling inputs.",
+    "orders.excelDesc":
+      "Full list of all process steps directly from the CSV. Red and Yellow columns highlight the key scheduling inputs.",
     "orders.excelOrderQty": "Order QTY",
     "orders.excelBaseQty": "Base-Qty",
     "orders.excelSetupTime": "Setup Time R",
@@ -125,13 +134,15 @@ export const translations = {
     "orders.toastResetSuccess": "Successfully reset database to process.csv!",
     "orders.toastResetFailed": "Failed to reload process.csv",
     "orders.toastImportSuccess": "Imported new CSV dataset!",
-    "orders.toastImportFailed": "Failed to parse CSV file. Ensure columns match the standard process.csv headers.",
+    "orders.toastImportFailed":
+      "Failed to parse CSV file. Ensure columns match the standard process.csv headers.",
     "orders.toastUpgraded": "Successfully upgraded dataset and calculated all confirmed formulas!",
     "orders.toastAutoloaded": "Successfully auto-loaded process.csv from workspace!",
 
     // Gantt
     "gantt.title": "Workstation Schedule Gantt Chart",
-    "gantt.subtitle": "Drag and drop process steps across lines to reschedule. Highlighting setup (R) and machining (M).",
+    "gantt.subtitle":
+      "Drag and drop process steps across lines to reschedule. Highlighting setup (R) and machining (M).",
     "gantt.regenerate": "Regenerate schedule",
     "gantt.toastRegen": "Regenerated optimal constraint-based schedule!",
     "gantt.toastResched": "Rescheduled step successfully to machine {machine}!",
@@ -141,7 +152,8 @@ export const translations = {
     "gantt.alerts": "Scheduling & Stacking Overloads detected in selected range:",
     "gantt.noAlerts": "No scheduling alerts",
     "gantt.timeline": "Timeline",
-    "gantt.dragTip": "Drag and drop process blocks horizontally to shift hours, or vertically to assign to alternative compatible machines.",
+    "gantt.dragTip":
+      "Drag and drop process blocks horizontally to shift hours, or vertically to assign to alternative compatible machines.",
     "gantt.overloadedHours": "Overloaded Hours",
     "gantt.operator": "Operator",
     "gantt.setupTech": "Setup Tech",
@@ -158,20 +170,25 @@ export const translations = {
     "gantt.duration": "Total Duration",
     "gantt.manpowerNeeded": "Manpower Needed",
     "gantt.alternativeMachines": "Alternative Machines",
-    "gantt.alternativeDesc": "This step can also be scheduled on alternative machines in the same group:",
+    "gantt.alternativeDesc":
+      "This step can also be scheduled on alternative machines in the same group:",
     "gantt.reassign": "Reassign to",
     "gantt.allowOverlap": "Allow Process Overlap",
     "gantt.allowSopOverride": "Allow SOP Override",
     "gantt.maxUtilize": "Max Utilize (Shift in Group)",
-    "gantt.allowOverlapDesc": "(Allows multiple processes to occupy the same machine simultaneously)",
-    "gantt.allowSopOverrideDesc": "(Bypasses parent order SOP start date constraint to schedule processes earlier when resources are free)",
-    "gantt.maxUtilizeDesc": "(Allows shifting processes to other machines in same group, strictly respecting capacities)",
+    "gantt.allowOverlapDesc":
+      "(Allows multiple processes to occupy the same machine simultaneously)",
+    "gantt.allowSopOverrideDesc":
+      "(Bypasses parent order SOP start date constraint to schedule processes earlier when resources are free)",
+    "gantt.maxUtilizeDesc":
+      "(Allows shifting processes to other machines in same group, strictly respecting capacities)",
 
     // Pivot
     "pivot.title": "Pivot Spreadsheet Rollup",
     "pivot.subtitle": "Group scheduled production load and capacity metrics dynamically.",
     "pivot.filterTitle": "Scheduler Filter & Configuration",
-    "pivot.filterDesc": "Refine the scheduled datasets in the pivot rollup. Live filters synchronize constraints immediately.",
+    "pivot.filterDesc":
+      "Refine the scheduled datasets in the pivot rollup. Live filters synchronize constraints immediately.",
     "pivot.selectGroup": "Select Machine Group:",
     "pivot.allGroups": "All Groups",
     "pivot.searchOrder": "Search Order ID:",
@@ -186,7 +203,8 @@ export const translations = {
 
     // Planner / Capacity
     "planner.title": "Daily Capacity & Resource Planner",
-    "planner.subtitle": "Configure custom resource ceilings for a specific day, run optimizations, and review day-level Gantt timelines, pivot sheets, and load charts.",
+    "planner.subtitle":
+      "Configure custom resource ceilings for a specific day, run optimizations, and review day-level Gantt timelines, pivot sheets, and load charts.",
     "planner.chooseDate": "Wähle ein Datum",
     "planner.togglePanels": "Toggle Panels:",
     "planner.settings": "Settings",
@@ -206,15 +224,19 @@ export const translations = {
     "planner.usedAvailable": "Used: {used} min / Available: {avail} min",
     "planner.optimierungsmodus": "Optimierungsmodus",
     "planner.ganttTitle": "Hourly Day Gantt Chart ({date})",
-    "planner.ganttDesc": "Drag and drop process steps across workstation lines to reschedule. R = Setup (steel blue), M = Machining (green).",
+    "planner.ganttDesc":
+      "Drag and drop process steps across workstation lines to reschedule. R = Setup (steel blue), M = Machining (green).",
     "planner.pivotTitle": "Hourly Day Pivot Worksheet ({date})",
-    "planner.pivotDesc": "Workstation allocations by hour. Setup technician and operator loading percentages.",
+    "planner.pivotDesc":
+      "Workstation allocations by hour. Setup technician and operator loading percentages.",
     "planner.chartTitle": "Resource Loading Composed Load Chart ({date})",
-    "planner.chartDesc": "Aggregated load comparison by hour for the selected day. Visualizes global setups and group operator loading against capacity ceilings.",
+    "planner.chartDesc":
+      "Aggregated load comparison by hour for the selected day. Visualizes global setups and group operator loading against capacity ceilings.",
     "planner.chartRoleOperator": "Show Machining Operator Load",
     "planner.chartRoleSetter": "Show Setup Technician Load",
     "planner.sopTitle": "SOP Incoming Orders Panel ({date})",
-    "planner.sopDesc": "Incoming manufacturing orders that have their parent SOP start date set to today.",
+    "planner.sopDesc":
+      "Incoming manufacturing orders that have their parent SOP start date set to today.",
     "planner.sopIncomingCount": "{count} orders starting today",
     "planner.sopNoIncoming": "No incoming orders start today",
     "planner.sopTableOrderId": "Order ID",
@@ -223,7 +245,8 @@ export const translations = {
     "planner.sopTableTime": "SOP Start Time",
     "planner.sopTableStatus": "Scheduler Status",
     "gantt.maxPreponeLimit": "Max Preponement Limit",
-    "gantt.maxPreponeDesc": "(Restricts how far in advance a process can be scheduled before its SOP date)",
+    "gantt.maxPreponeDesc":
+      "(Restricts how far in advance a process can be scheduled before its SOP date)",
     "gantt.maxPreponeNoLimit": "No Limit",
     "gantt.maxPreponeWeeks": "{weeks} Weeks",
     "gantt.maxPreponeWeek": "{weeks} Week",

@@ -15,9 +15,9 @@ export interface Machine {
 export interface SetupMatrixRule {
   id: string;
   fromMaterial: string; // Material pattern or "*" for any
-  toMaterial: string;   // Material pattern or "*" for any
+  toMaterial: string; // Material pattern or "*" for any
   machineGroupId?: string; // Optional machine group filter
-  setupTimeMin: number;   // Dynamic setup time in minutes
+  setupTimeMin: number; // Dynamic setup time in minutes
   description?: string;
 }
 
@@ -82,7 +82,7 @@ export const SHIFT_2_START = 13;
 export const SHIFT_2_END = 20;
 export const WORKING_HOURS_PER_DAY = 14; // 6am - 8pm
 
-export type ScenarioType = 
+export type ScenarioType =
   | "machine_group_delay"
   | "machine_stopped"
   | "resource_unavailable"
@@ -91,16 +91,16 @@ export type ScenarioType =
 
 export interface ScenarioConfig {
   type: ScenarioType;
-  machineGroupId?: string;    // e.g. "M1" or "M2"
-  groupDelayHours?: number;   // e.g. 8, 16, 24, 48
-  machineId?: string;         // e.g. "603012", "605001"
+  machineGroupId?: string; // e.g. "M1" or "M2"
+  groupDelayHours?: number; // e.g. 8, 16, 24, 48
+  machineId?: string; // e.g. "603012", "605001"
   machineStopped?: boolean;
-  downtimeHours?: number;     // e.g. 8, 12, 24, 48
+  downtimeHours?: number; // e.g. 8, 12, 24, 48
   resourceType?: "setter" | "operator" | "both";
   capacityReductionPct?: number; // e.g. 50 (50% reduction)
   shiftOption?: "no_shift_2" | "weekend_overtime";
-  rushOrderId?: string;       // e.g. "ord-1019015_10"
-  startDate?: string;         // YYYY-MM-DD
+  rushOrderId?: string; // e.g. "ord-1019015_10"
+  startDate?: string; // YYYY-MM-DD
 }
 
 export interface ShiftedOrderImpact {
@@ -130,4 +130,3 @@ export interface ScenarioBranch {
   shiftedOrders: ShiftedOrderImpact[];
   aiAdaptationAdvice?: string[];
 }
-

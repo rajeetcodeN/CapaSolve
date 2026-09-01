@@ -36,7 +36,7 @@ export function getRegisteredWebhooks(): WebhookEndpointConfig[] {
 export async function dispatchWebhookEvent(
   event: WebhookEventPayload["event"],
   orgId: string,
-  data: Record<string, any>
+  data: Record<string, any>,
 ): Promise<{ dispatchedCount: number; errors: string[] }> {
   const payload: WebhookEventPayload = {
     event,
@@ -46,7 +46,7 @@ export async function dispatchWebhookEvent(
   };
 
   const activeWebhooks = registeredEndpoints.filter(
-    (ep) => ep.active && (ep.events.includes("*") || ep.events.includes(event))
+    (ep) => ep.active && (ep.events.includes("*") || ep.events.includes(event)),
   );
 
   let dispatchedCount = 0;
@@ -79,7 +79,7 @@ export async function dispatchWebhookEvent(
       } catch (err: any) {
         errors.push(`Webhook ${ep.url} failed: ${err.message}`);
       }
-    })
+    }),
   );
 
   return { dispatchedCount, errors };

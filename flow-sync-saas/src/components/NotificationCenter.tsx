@@ -77,13 +77,18 @@ export function NotificationCenter() {
                 onClick={() => markNotificationAsRead(n.id)}
                 className={cn(
                   "p-3 flex items-start gap-3 transition-colors cursor-pointer hover:bg-accent/30 text-left",
-                  !n.read && "bg-primary/5"
+                  !n.read && "bg-primary/5",
                 )}
               >
                 {getIcon(n.type)}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <p className={cn("text-xs font-semibold leading-none", !n.read ? "text-foreground font-bold" : "text-muted-foreground")}>
+                    <p
+                      className={cn(
+                        "text-xs font-semibold leading-none",
+                        !n.read ? "text-foreground font-bold" : "text-muted-foreground",
+                      )}
+                    >
                       {n.title}
                     </p>
                     <span className="text-[9px] text-muted-foreground shrink-0">{n.timestamp}</span>
@@ -92,9 +97,7 @@ export function NotificationCenter() {
                     {n.message}
                   </p>
                 </div>
-                {!n.read && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0 mt-1" />
-                )}
+                {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0 mt-1" />}
               </div>
             ))
           )}

@@ -21,13 +21,14 @@ export function getSequenceSetupTime(
   toMaterial: string,
   machineGroupId: string,
   baseSetupMin: number,
-  rules: SetupMatrixRule[] = []
+  rules: SetupMatrixRule[] = [],
 ): number {
   if (!fromMaterial || rules.length === 0) return baseSetupMin;
 
   const rule = rules.find((r) => {
     const matchGroup = !r.machineGroupId || r.machineGroupId === machineGroupId;
-    const matchFrom = r.fromMaterial === "*" || r.fromMaterial.toLowerCase() === fromMaterial.toLowerCase();
+    const matchFrom =
+      r.fromMaterial === "*" || r.fromMaterial.toLowerCase() === fromMaterial.toLowerCase();
     const matchTo = r.toMaterial === "*" || r.toMaterial.toLowerCase() === toMaterial.toLowerCase();
     return matchGroup && matchFrom && matchTo;
   });
@@ -61,8 +62,18 @@ export function parseSOPDate(dateStr: string, timeStr: string): Date {
 
   // Format 2: "01 July 2026" or "1 July 2026" (d MMMM yyyy)
   const months = [
-    "january", "february", "march", "april", "may", "june",
-    "july", "august", "september", "october", "november", "december"
+    "january",
+    "february",
+    "march",
+    "april",
+    "may",
+    "june",
+    "july",
+    "august",
+    "september",
+    "october",
+    "november",
+    "december",
   ];
 
   const words = dateClean.toLowerCase().split(/\s+/);
@@ -125,7 +136,7 @@ export function generateSchedule(
   globalOperatorCapacity = 200,
   maxPreponeWeeks = 0,
   setupMatrixRules: SetupMatrixRule[] = [],
-  scenarioConfig?: ScenarioConfig
+  scenarioConfig?: ScenarioConfig,
 ): ScheduleResult {
   const warnings: string[] = [];
   const slots: ScheduleSlot[] = [];
@@ -211,14 +222,18 @@ export function generateSchedule(
       const aOrder = orderMap.get(a.p.orderId);
       const bOrder = orderMap.get(b.p.orderId);
 
-      const aIsRush = 
-        a.p.orderId.toLowerCase().includes(targetRush) || 
+      const aIsRush =
+        a.p.orderId.toLowerCase().includes(targetRush) ||
         a.p.id.toLowerCase().includes(targetRush) ||
-        (aOrder && (aOrder.orderId.toLowerCase().includes(targetRush) || aOrder.id.toLowerCase().includes(targetRush)));
-      const bIsRush = 
-        b.p.orderId.toLowerCase().includes(targetRush) || 
+        (aOrder &&
+          (aOrder.orderId.toLowerCase().includes(targetRush) ||
+            aOrder.id.toLowerCase().includes(targetRush)));
+      const bIsRush =
+        b.p.orderId.toLowerCase().includes(targetRush) ||
         b.p.id.toLowerCase().includes(targetRush) ||
-        (bOrder && (bOrder.orderId.toLowerCase().includes(targetRush) || bOrder.id.toLowerCase().includes(targetRush)));
+        (bOrder &&
+          (bOrder.orderId.toLowerCase().includes(targetRush) ||
+            bOrder.id.toLowerCase().includes(targetRush)));
 
       if (aIsRush && !bIsRush) return -1;
       if (!aIsRush && bIsRush) return 1;
@@ -279,7 +294,7 @@ export function generateSchedule(
       const shift = hour < SHIFT_1_END ? 1 : 2;
 
       const minutesInSlot = Math.min(60, remainingMin);
-      
+
       // Consume Setup first, then Machining
       if (remainingSetupMin > 0) {
         const setupInSlot = Math.min(minutesInSlot, remainingSetupMin);
@@ -302,7 +317,7 @@ export function generateSchedule(
         const globalKey = `${dateStr}_${hour}`;
         globalHourSetupMinutes.set(
           globalKey,
-          (globalHourSetupMinutes.get(globalKey) || 0) + setupInSlot * 1.0
+          (globalHourSetupMinutes.get(globalKey) || 0) + setupInSlot * 1.0,
         );
 
         remainingSetupMin -= setupInSlot;
@@ -328,7 +343,8 @@ export function generateSchedule(
           const globalOperatorKey = `${dateStr}_${hour}`;
           globalHourMachiningOperatorMinutes.set(
             globalOperatorKey,
-            (globalHourMachiningOperatorMinutes.get(globalOperatorKey) || 0) + machMins * proc.manpowerPct
+            (globalHourMachiningOperatorMinutes.get(globalOperatorKey) || 0) +
+              machMins * proc.manpowerPct,
           );
         }
       } else {
@@ -350,7 +366,8 @@ export function generateSchedule(
         const globalOperatorKey = `${dateStr}_${hour}`;
         globalHourMachiningOperatorMinutes.set(
           globalOperatorKey,
-          (globalHourMachiningOperatorMinutes.get(globalOperatorKey) || 0) + minutesInSlot * proc.manpowerPct
+          (globalHourMachiningOperatorMinutes.get(globalOperatorKey) || 0) +
+            minutesInSlot * proc.manpowerPct,
         );
       }
 
@@ -362,7 +379,7 @@ export function generateSchedule(
     }
 
     const endIso = new Date(currentPointer.getTime());
-    
+
     // Write scheduled date ranges back to the process
     proc.scheduledStart = startIso.toISOString();
     proc.scheduledEnd = endIso.toISOString();
@@ -380,14 +397,18 @@ export function generateSchedule(
 
   // Two-pass scheduling:
   // PASS 1: Allocate and register manual overrides first so they lock their hours
-  const manualOverrides = sortedProcesses.filter(item => item.p.status === "SCHEDULED" && item.p.scheduledStart);
+  const manualOverrides = sortedProcesses.filter(
+    (item) => item.p.status === "SCHEDULED" && item.p.scheduledStart,
+  );
   for (const item of manualOverrides) {
     const proc = item.p;
     allocateSlotsForProcess(proc, new Date(proc.scheduledStart!));
   }
 
   // PASS 2: Dynamically schedule unscheduled processes around locked manual slots
-  const dynamicItems = sortedProcesses.filter(item => !(item.p.status === "SCHEDULED" && item.p.scheduledStart));
+  const dynamicItems = sortedProcesses.filter(
+    (item) => !(item.p.status === "SCHEDULED" && item.p.scheduledStart),
+  );
   for (const item of dynamicItems) {
     const proc = item.p;
     const order = orderMap.get(proc.orderId);
@@ -397,7 +418,9 @@ export function generateSchedule(
     const orderSopStart = parseSOPDate(order.sopStartDate, order.sopStartTime);
 
     // Sequence dependency: Step N waits for Step N-1 to fully complete (both R & M)
-    let earliestStart = allowSopOverride ? new Date(horizonStart.getTime()) : new Date(orderSopStart.getTime());
+    let earliestStart = allowSopOverride
+      ? new Date(horizonStart.getTime())
+      : new Date(orderSopStart.getTime());
 
     // Enforce maximum preponement limit
     if (allowSopOverride && maxPreponeWeeks > 0) {
@@ -473,7 +496,10 @@ export function generateSchedule(
           }
 
           // 0b. Machine Group delay constraint check
-          if (scenarioConfig?.type === "machine_group_delay" && scenarioConfig.machineGroupId === targetMGroupId) {
+          if (
+            scenarioConfig?.type === "machine_group_delay" &&
+            scenarioConfig.machineGroupId === targetMGroupId
+          ) {
             const currentMs = testPointer.getTime();
             if (currentMs >= groupDelayStartMs && currentMs < groupDelayEndMs) {
               conflict = true;
@@ -482,7 +508,10 @@ export function generateSchedule(
           }
 
           // 0c. Shift change constraint check (e.g. Shift 2 canceled)
-          if (scenarioConfig?.type === "shift_change" && scenarioConfig.shiftOption === "no_shift_2") {
+          if (
+            scenarioConfig?.type === "shift_change" &&
+            scenarioConfig.shiftOption === "no_shift_2"
+          ) {
             if (hour >= SHIFT_2_START) {
               conflict = true;
               break;
@@ -496,7 +525,11 @@ export function generateSchedule(
           }
 
           // 1b. Group occupancy constraint check (if groupSerialization or full optimizeMode is enabled, unless process overlap is allowed)
-          if (((groupSerialization || optimizeMode === "full") && !allowProcessOverlap) && targetMGroupId) {
+          if (
+            (groupSerialization || optimizeMode === "full") &&
+            !allowProcessOverlap &&
+            targetMGroupId
+          ) {
             const gKey = `${targetMGroupId}_${dateStr}_${hour}`;
             if (groupHourOccupants.has(gKey) && groupHourOccupants.get(gKey)!.length > 0) {
               conflict = true;
@@ -525,13 +558,31 @@ export function generateSchedule(
             const machiningUsedInSlot = minutesUsedInSlot - setupUsedInSlot;
 
             const rawDayCap = dailyCapacities?.[dateStr];
-            const baseSetter = scenarioConfig?.type === "resource_unavailable" ? effectiveSetterCapacity : globalSetterCapacity;
-            const baseProcess = scenarioConfig?.type === "resource_unavailable" ? effectiveOperatorCapacity : globalOperatorCapacity;
-            const dayCap = rawDayCap 
-              ? { 
-                  setter: scenarioConfig?.type === "resource_unavailable" ? Math.round(rawDayCap.setter * (effectiveSetterCapacity / Math.max(1, globalSetterCapacity))) : rawDayCap.setter, 
-                  process: scenarioConfig?.type === "resource_unavailable" ? Math.round(rawDayCap.process * (effectiveOperatorCapacity / Math.max(1, globalOperatorCapacity))) : rawDayCap.process 
-                } 
+            const baseSetter =
+              scenarioConfig?.type === "resource_unavailable"
+                ? effectiveSetterCapacity
+                : globalSetterCapacity;
+            const baseProcess =
+              scenarioConfig?.type === "resource_unavailable"
+                ? effectiveOperatorCapacity
+                : globalOperatorCapacity;
+            const dayCap = rawDayCap
+              ? {
+                  setter:
+                    scenarioConfig?.type === "resource_unavailable"
+                      ? Math.round(
+                          rawDayCap.setter *
+                            (effectiveSetterCapacity / Math.max(1, globalSetterCapacity)),
+                        )
+                      : rawDayCap.setter,
+                  process:
+                    scenarioConfig?.type === "resource_unavailable"
+                      ? Math.round(
+                          rawDayCap.process *
+                            (effectiveOperatorCapacity / Math.max(1, globalOperatorCapacity)),
+                        )
+                      : rawDayCap.process,
+                }
               : { setter: baseSetter, process: baseProcess };
 
             const setterCapMin = (dayCap.setter / 100) * 60;
@@ -549,7 +600,8 @@ export function generateSchedule(
               } else {
                 // 0% Setter mode (No Dedicated Setter / Self-Setup): Setup is routed directly to operator capacity
                 const globalOperatorKey = `${dateStr}_${hour}`;
-                const existingOperator = globalHourMachiningOperatorMinutes.get(globalOperatorKey) || 0;
+                const existingOperator =
+                  globalHourMachiningOperatorMinutes.get(globalOperatorKey) || 0;
                 if (existingOperator + setupUsedInSlot > processCapMin + 0.01) {
                   conflict = true;
                   break;
@@ -563,7 +615,8 @@ export function generateSchedule(
               const cappedProposed = Math.min(60, proposedOperatorMinutes);
 
               const globalOperatorKey = `${dateStr}_${hour}`;
-              const existingMachining = globalHourMachiningOperatorMinutes.get(globalOperatorKey) || 0;
+              const existingMachining =
+                globalHourMachiningOperatorMinutes.get(globalOperatorKey) || 0;
 
               if (existingMachining + cappedProposed > processCapMin + 0.01) {
                 conflict = true;
@@ -595,13 +648,13 @@ export function generateSchedule(
       if (optimizeMode === "full" && maxUtilizeResources && mGroupId) {
         // Find all machines in the same machine group
         const groupMachines = machines.filter((m) => m.machineGroupId === mGroupId);
-        
+
         let bestMachineId = proc.machineId;
         let earliestMachineStart = new Date(findEarliestStartForMachine(proc.machineId).getTime());
 
         for (const candMachine of groupMachines) {
           if (candMachine.id === proc.machineId) continue;
-          
+
           const candStart = findEarliestStartForMachine(candMachine.id);
           if (candStart.getTime() < earliestMachineStart.getTime()) {
             earliestMachineStart = candStart;
@@ -634,12 +687,12 @@ export function generateSchedule(
   slots.forEach((s) => {
     if (s.slotType === "M") {
       const key = `${s.date}_${s.hourStart}`;
-      
+
       if (!groupHourOperatorMinutes.has(key)) {
         groupHourOperatorMinutes.set(key, 0);
         groupHourActiveSlots.set(key, []);
       }
-      
+
       const loadContribution = s.minutesUsed * s.manpowerPct;
       groupHourOperatorMinutes.set(key, groupHourOperatorMinutes.get(key)! + loadContribution);
       groupHourActiveSlots.get(key)!.push(s);
@@ -660,7 +713,10 @@ export function generateSchedule(
   // 5.1 Machining Operator overload warnings
   groupHourOperatorMinutes.forEach((demandedMinutes, key) => {
     const [dateStr, hourStartStr] = key.split("_");
-    const dayCap = dailyCapacities?.[dateStr] || { setter: globalSetterCapacity, process: globalOperatorCapacity };
+    const dayCap = dailyCapacities?.[dateStr] || {
+      setter: globalSetterCapacity,
+      process: globalOperatorCapacity,
+    };
     const processCapMin = (dayCap.process / 100) * 60;
 
     if (demandedMinutes > processCapMin) {
@@ -670,12 +726,12 @@ export function generateSchedule(
       });
 
       const hourStart = parseInt(hourStartStr, 10);
-      
+
       const formattedAlertDate = formatDateToGerman(dateStr);
       const timeIntervalStr = `${formattedAlertDate} ${String(hourStart).padStart(2, "0")}:00–${String(hourStart + 1).padStart(2, "0")}:00`;
-      
+
       const loadPct = Math.round((demandedMinutes / processCapMin) * 100);
-      
+
       const orderMinMap = new Map<string, number>();
       activeSlots.forEach((s) => {
         const orderCode = s.processId.split("-")[1] || s.processId;
@@ -689,8 +745,8 @@ export function generateSchedule(
 
       warningsSet.add(
         `Operator overload — Shop-wide | ${timeIntervalStr}\n` +
-        `Demanded: ${demandedMinutes.toFixed(0)} operator-min | Available: ${processCapMin.toFixed(0)} operator-min (${dayCap.process}% capacity) | Load: ${loadPct}%\n` +
-        `Orders involved: ${ordersInvolvedStr}`
+          `Demanded: ${demandedMinutes.toFixed(0)} operator-min | Available: ${processCapMin.toFixed(0)} operator-min (${dayCap.process}% capacity) | Load: ${loadPct}%\n` +
+          `Orders involved: ${ordersInvolvedStr}`,
       );
     }
   });
@@ -698,7 +754,10 @@ export function generateSchedule(
   // 5.2 Setup Technician overload warnings (Global)
   globalHourSetupMinutesMap.forEach((demandedMinutes, key) => {
     const [dateStr, hourStartStr] = key.split("_");
-    const dayCap = dailyCapacities?.[dateStr] || { setter: globalSetterCapacity, process: globalOperatorCapacity };
+    const dayCap = dailyCapacities?.[dateStr] || {
+      setter: globalSetterCapacity,
+      process: globalOperatorCapacity,
+    };
     const setterCapMin = (dayCap.setter / 100) * 60;
 
     if (demandedMinutes > setterCapMin) {
@@ -708,12 +767,12 @@ export function generateSchedule(
       });
 
       const hourStart = parseInt(hourStartStr, 10);
-      
+
       const formattedAlertDate = formatDateToGerman(dateStr);
       const timeIntervalStr = `${formattedAlertDate} ${String(hourStart).padStart(2, "0")}:00–${String(hourStart + 1).padStart(2, "0")}:00`;
-      
+
       const loadPct = Math.round((demandedMinutes / setterCapMin) * 100);
-      
+
       const orderMinMap = new Map<string, number>();
       const orderMachineMap = new Map<string, string>();
       activeSlots.forEach((s) => {
@@ -723,13 +782,16 @@ export function generateSchedule(
       });
 
       const setupsInvolvedStr = Array.from(orderMinMap.entries())
-        .map(([orderCode, min]) => `${orderMachineMap.get(orderCode)} [Order ${orderCode}] (${min.toFixed(0)} min)`)
+        .map(
+          ([orderCode, min]) =>
+            `${orderMachineMap.get(orderCode)} [Order ${orderCode}] (${min.toFixed(0)} min)`,
+        )
         .join(" + ");
 
       warningsSet.add(
         `Setup Technician Overload | ${timeIntervalStr}\n` +
-        `Demanded: ${demandedMinutes.toFixed(0)} setup-min | Available: ${setterCapMin.toFixed(0)} setup-min (${dayCap.setter}% capacity) | Load: ${loadPct}%\n` +
-        `Setup tasks overlapping simultaneously across machines: ${setupsInvolvedStr}`
+          `Demanded: ${demandedMinutes.toFixed(0)} setup-min | Available: ${setterCapMin.toFixed(0)} setup-min (${dayCap.setter}% capacity) | Load: ${loadPct}%\n` +
+          `Setup tasks overlapping simultaneously across machines: ${setupsInvolvedStr}`,
       );
     }
   });
@@ -741,9 +803,9 @@ export function generateSchedule(
     if (occupants.length > 1) {
       s.collision = true;
       const timeStr = `${s.date} ${String(s.hourStart).padStart(2, "0")}:00`;
-      const orderIds = occupants.map(pid => pid.split("-")[1] || pid);
+      const orderIds = occupants.map((pid) => pid.split("-")[1] || pid);
       warningsSet.add(
-        `Collision on workstation ${s.machineId} at ${timeStr}: Orders ${orderIds.join(" & ")} scheduled simultaneously!`
+        `Collision on workstation ${s.machineId} at ${timeStr}: Orders ${orderIds.join(" & ")} scheduled simultaneously!`,
       );
     }
   });
@@ -754,12 +816,16 @@ export function generateSchedule(
     if (mGroupId) {
       const groupHourKey = `${mGroupId}_${s.date}_${s.hourStart}`;
       const occupants = groupHourOccupants.get(groupHourKey) || [];
-      if (((groupSerialization || optimizeMode === "full") && !allowProcessOverlap) && occupants.length > 1) {
+      if (
+        (groupSerialization || optimizeMode === "full") &&
+        !allowProcessOverlap &&
+        occupants.length > 1
+      ) {
         s.collision = true;
         const timeStr = `${s.date} ${String(s.hourStart).padStart(2, "0")}:00`;
-        const orderIds = occupants.map(pid => pid.split("-")[1] || pid);
+        const orderIds = occupants.map((pid) => pid.split("-")[1] || pid);
         warningsSet.add(
-          `Group collision on ${mGroupId} at ${timeStr}: Orders ${orderIds.join(" & ")} scheduled simultaneously in the same group!`
+          `Group collision on ${mGroupId} at ${timeStr}: Orders ${orderIds.join(" & ")} scheduled simultaneously in the same group!`,
         );
       }
     }
@@ -777,7 +843,20 @@ function formatDateToGerman(dateStr: string): string {
     const y = parts[0];
     const mIdx = parseInt(parts[1], 10) - 1;
     const d = parts[2];
-    const months = ["Jan", "Feb", "Mrz", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
+    const months = [
+      "Jan",
+      "Feb",
+      "Mrz",
+      "Apr",
+      "Mai",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Okt",
+      "Nov",
+      "Dez",
+    ];
     return `${d} ${months[mIdx] || "Jun"} ${y}`;
   }
   return dateStr;
@@ -800,7 +879,7 @@ export function simulateScenario(
     globalOperatorCapacity?: number;
     maxPreponeWeeks?: number;
     setupMatrixRules?: SetupMatrixRule[];
-  }
+  },
 ): {
   scenarioResult: ScheduleResult;
   shiftedOrders: ShiftedOrderImpact[];
@@ -822,15 +901,52 @@ export function simulateScenario(
   const setupRules = options?.setupMatrixRules || [];
 
   // Clone processes to isolate baseline and scenario state mutations
-  const baselineProcs = processes.map((p) => ({ ...p, status: "UNSCHEDULED" as const, scheduledStart: null, scheduledEnd: null }));
-  const scenarioProcs = processes.map((p) => ({ ...p, status: "UNSCHEDULED" as const, scheduledStart: null, scheduledEnd: null }));
+  const baselineProcs = processes.map((p) => ({
+    ...p,
+    status: "UNSCHEDULED" as const,
+    scheduledStart: null,
+    scheduledEnd: null,
+  }));
+  const scenarioProcs = processes.map((p) => ({
+    ...p,
+    status: "UNSCHEDULED" as const,
+    scheduledStart: null,
+    scheduledEnd: null,
+  }));
 
-  const baseline = baseResult || generateSchedule(
-    orders, baselineProcs, machines, optMode, grpSer, procOv, sopOv, maxRes, dailyCaps, setterCap, opCap, maxPrep, setupRules
-  );
+  const baseline =
+    baseResult ||
+    generateSchedule(
+      orders,
+      baselineProcs,
+      machines,
+      optMode,
+      grpSer,
+      procOv,
+      sopOv,
+      maxRes,
+      dailyCaps,
+      setterCap,
+      opCap,
+      maxPrep,
+      setupRules,
+    );
 
   const scenarioResult = generateSchedule(
-    orders, scenarioProcs, machines, optMode, grpSer, procOv, sopOv, maxRes, dailyCaps, setterCap, opCap, maxPrep, setupRules, scenarioConfig
+    orders,
+    scenarioProcs,
+    machines,
+    optMode,
+    grpSer,
+    procOv,
+    sopOv,
+    maxRes,
+    dailyCaps,
+    setterCap,
+    opCap,
+    maxPrep,
+    setupRules,
+    scenarioConfig,
   );
 
   // Map baseline process scheduled start/end dates by orderId
@@ -867,11 +983,12 @@ export function simulateScenario(
       } else if (scenarioConfig.type === "resource_unavailable") {
         reasonStr = `Resource Shortage: ${(scenarioConfig.resourceType || "Setter").toUpperCase()} capacity reduced by ${scenarioConfig.capacityReductionPct || 50}%`;
       } else if (scenarioConfig.type === "shift_change") {
-        reasonStr = scenarioConfig.shiftOption === "no_shift_2" 
-          ? "Shift 2 Canceled (Operating window reduced to 7h/day)"
-          : "Weekend Overtime Shift Added (+4h extended daily capacity)";
+        reasonStr =
+          scenarioConfig.shiftOption === "no_shift_2"
+            ? "Shift 2 Canceled (Operating window reduced to 7h/day)"
+            : "Weekend Overtime Shift Added (+4h extended daily capacity)";
       } else if (scenarioConfig.type === "rush_order") {
-        reasonStr = isExpedited 
+        reasonStr = isExpedited
           ? `Expedited: Prioritized to Top Position for Emergency Rush Order #${scenarioConfig.rushOrderId}`
           : `Shifted: Yielded schedule slot to accommodate Rush Order #${scenarioConfig.rushOrderId}`;
       }
@@ -906,7 +1023,8 @@ export function simulateScenario(
     }
   });
 
-  const makespanMs = (maxEndMs > minStartMs && minStartMs !== Infinity) ? maxEndMs - minStartMs : 14 * 24 * 3600000;
+  const makespanMs =
+    maxEndMs > minStartMs && minStartMs !== Infinity ? maxEndMs - minStartMs : 14 * 24 * 3600000;
   const makespanDays = Math.round((makespanMs / (24 * 3600000)) * 10) / 10;
   const totalSetupHours = Math.round((totalSetupMinutes / 60) * 10) / 10;
   const utilizationPct = Math.min(98, Math.max(62, Math.round(84 - shiftedOrders.length * 1.5)));
@@ -915,31 +1033,59 @@ export function simulateScenario(
   // AI Adaptation Advice tailored to all 5 scenario types
   const aiAdaptationAdvice: string[] = [];
   if (shiftedOrders.length > 0) {
-    aiAdaptationAdvice.push(`System adapted dynamically: ${shiftedOrders.length} order run(s) shifted or expedited across line timeline.`);
+    aiAdaptationAdvice.push(
+      `System adapted dynamically: ${shiftedOrders.length} order run(s) shifted or expedited across line timeline.`,
+    );
   } else {
-    aiAdaptationAdvice.push(`System absorbed constraint cleanly without shifting order target dates.`);
+    aiAdaptationAdvice.push(
+      `System absorbed constraint cleanly without shifting order target dates.`,
+    );
   }
 
   if (scenarioConfig.type === "machine_group_delay") {
-    aiAdaptationAdvice.push(`Machine Group ${scenarioConfig.machineGroupId || "M1"} delay (+${scenarioConfig.groupDelayHours || 24}h) handled by holding pending steps until maintenance clear.`);
-    aiAdaptationAdvice.push(`AI Action Plan: Enable 'Max Utilize Alternative Resources' to automatically re-route jobs to alternate parallel workcenters.`);
+    aiAdaptationAdvice.push(
+      `Machine Group ${scenarioConfig.machineGroupId || "M1"} delay (+${scenarioConfig.groupDelayHours || 24}h) handled by holding pending steps until maintenance clear.`,
+    );
+    aiAdaptationAdvice.push(
+      `AI Action Plan: Enable 'Max Utilize Alternative Resources' to automatically re-route jobs to alternate parallel workcenters.`,
+    );
   } else if (scenarioConfig.type === "machine_stopped") {
-    aiAdaptationAdvice.push(`Workstation ${scenarioConfig.machineId || "Line"} breakdown (${scenarioConfig.downtimeHours || 16}h) absorbed; dependent process steps rescheduled.`);
-    aiAdaptationAdvice.push(`AI Action Plan: Dispatch maintenance crew for fast repair and reallocate urgent setups to adjacent group machines.`);
+    aiAdaptationAdvice.push(
+      `Workstation ${scenarioConfig.machineId || "Line"} breakdown (${scenarioConfig.downtimeHours || 16}h) absorbed; dependent process steps rescheduled.`,
+    );
+    aiAdaptationAdvice.push(
+      `AI Action Plan: Dispatch maintenance crew for fast repair and reallocate urgent setups to adjacent group machines.`,
+    );
   } else if (scenarioConfig.type === "resource_unavailable") {
-    aiAdaptationAdvice.push(`Resource capacity shortage (${scenarioConfig.capacityReductionPct || 50}% for ${scenarioConfig.resourceType || "Setter"}) resolved by staggering setups sequentially across shifts.`);
-    aiAdaptationAdvice.push(`AI Action Plan: Temporarily enable Operator Self-Setup Mode to bypass dedicated technician setup queuing.`);
+    aiAdaptationAdvice.push(
+      `Resource capacity shortage (${scenarioConfig.capacityReductionPct || 50}% for ${scenarioConfig.resourceType || "Setter"}) resolved by staggering setups sequentially across shifts.`,
+    );
+    aiAdaptationAdvice.push(
+      `AI Action Plan: Temporarily enable Operator Self-Setup Mode to bypass dedicated technician setup queuing.`,
+    );
   } else if (scenarioConfig.type === "shift_change") {
     if (scenarioConfig.shiftOption === "no_shift_2") {
-      aiAdaptationAdvice.push(`Shift 2 Cancellation restricted daily working hours from 14h to 7h. Jobs extended over additional days.`);
-      aiAdaptationAdvice.push(`AI Action Plan: Review high-priority SOP target dates and consider selective overtime on critical path bottleneck steps.`);
+      aiAdaptationAdvice.push(
+        `Shift 2 Cancellation restricted daily working hours from 14h to 7h. Jobs extended over additional days.`,
+      );
+      aiAdaptationAdvice.push(
+        `AI Action Plan: Review high-priority SOP target dates and consider selective overtime on critical path bottleneck steps.`,
+      );
     } else {
-      aiAdaptationAdvice.push(`Weekend Overtime added extended daily operating hours, pulling order completion timelines forward.`);
-      aiAdaptationAdvice.push(`AI Action Plan: Capitalize on extra capacity window to clear pending backlogged order runs.`);
+      aiAdaptationAdvice.push(
+        `Weekend Overtime added extended daily operating hours, pulling order completion timelines forward.`,
+      );
+      aiAdaptationAdvice.push(
+        `AI Action Plan: Capitalize on extra capacity window to clear pending backlogged order runs.`,
+      );
     }
   } else if (scenarioConfig.type === "rush_order") {
-    aiAdaptationAdvice.push(`Emergency Rush Order #${scenarioConfig.rushOrderId || "Priority"} inserted at Top Priority position #1.`);
-    aiAdaptationAdvice.push(`AI Action Plan: Stage raw material immediately for Rush Order run and notify operators of sequence bump.`);
+    aiAdaptationAdvice.push(
+      `Emergency Rush Order #${scenarioConfig.rushOrderId || "Priority"} inserted at Top Priority position #1.`,
+    );
+    aiAdaptationAdvice.push(
+      `AI Action Plan: Stage raw material immediately for Rush Order run and notify operators of sequence bump.`,
+    );
   }
 
   return {
@@ -952,4 +1098,3 @@ export function simulateScenario(
     aiAdaptationAdvice,
   };
 }
-

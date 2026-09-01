@@ -1,5 +1,12 @@
 import React, { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -137,7 +144,9 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-[11px] font-medium text-muted-foreground">Step Number (Vorgang)</Label>
+                <Label className="text-[11px] font-medium text-muted-foreground">
+                  Step Number (Vorgang)
+                </Label>
                 <Input
                   type="number"
                   value={processId}
@@ -149,7 +158,9 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
               </div>
 
               <div className="space-y-1">
-                <Label className="text-[11px] font-medium text-muted-foreground">Assigned Workcenter / Machine</Label>
+                <Label className="text-[11px] font-medium text-muted-foreground">
+                  Assigned Workcenter / Machine
+                </Label>
                 <select
                   value={machineId}
                   onChange={(e) => setMachineId(e.target.value)}
@@ -164,7 +175,9 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
               </div>
 
               <div className="col-span-2 space-y-1">
-                <Label className="text-[11px] font-medium text-muted-foreground">Process Description</Label>
+                <Label className="text-[11px] font-medium text-muted-foreground">
+                  Process Description
+                </Label>
                 <Input
                   value={processText}
                   onChange={(e) => setProcessText(e.target.value)}
@@ -174,7 +187,9 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
               </div>
 
               <div className="space-y-1">
-                <Label className="text-[11px] font-medium text-muted-foreground">Setup Time (mins)</Label>
+                <Label className="text-[11px] font-medium text-muted-foreground">
+                  Setup Time (mins)
+                </Label>
                 <Input
                   type="number"
                   value={setupTimeMin}
@@ -185,7 +200,9 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
               </div>
 
               <div className="space-y-1">
-                <Label className="text-[11px] font-medium text-muted-foreground">Process Time / Unit (mins)</Label>
+                <Label className="text-[11px] font-medium text-muted-foreground">
+                  Process Time / Unit (mins)
+                </Label>
                 <Input
                   type="number"
                   value={processTimeMin}
@@ -199,10 +216,20 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
           </div>
 
           <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" size="sm" onClick={onClose} className="text-xs h-9">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onClose}
+              className="text-xs h-9"
+            >
               Cancel
             </Button>
-            <Button type="submit" size="sm" className="text-xs h-9 bg-primary text-primary-foreground hover:bg-primary/95">
+            <Button
+              type="submit"
+              size="sm"
+              className="text-xs h-9 bg-primary text-primary-foreground hover:bg-primary/95"
+            >
               Add Work Order
             </Button>
           </DialogFooter>
