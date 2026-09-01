@@ -1,61 +1,74 @@
-# Nosta Scheduler
+# CapaSolve — Flow Sync SaaS Application
 
-A highly responsive, dynamic scheduler and analytics dashboard featuring Gantt charting, Pivot tables, and Order tracking, built using **TanStack Start**, **React**, and **TypeScript**.
-
-## Features
-
-- 📊 **Interactive Gantt Chart**: Detailed, visual task scheduling and timeline management.
-- 🔄 **Pivot Analysis**: Dynamic data pivoting, aggregation, and filtering.
-- 📋 **Order Tracker**: Production ordering status, queue management, and synchronization.
-- ⚡ **SSR-Ready Engine**: Powered by **TanStack Start** and **Nitro** with streaming and full-document SSR.
-
-## Tech Stack
-
-- **Framework**: TanStack Start (React 19 + Vite)
-- **Styling**: Tailwind CSS
-- **State Management & Routing**: TanStack Router & React Query
-- **Deployment**: Configured for seamless deployment via Vercel Build Output API
+**CapaSolve (flow-sync-saas)** is the web application interface and serverless engine for industrial manufacturing scheduling, finite capacity planning, shop-floor OEE execution tracking, and automated ERP CSV ingestion.
 
 ---
 
-## Getting Started
+## 🚀 Key Modules & Pages
 
-### Prerequisites
+- 📊 **Master Schedule & Timeline ([/dashboard](file:///d:/schedulersaas/flow-sync-saas/src/routes/dashboard.tsx))**: Real-time Gantt schedule with drag-and-drop dispatching, machine group sorting, and conflict resolution.
+- ⚡ **Finite Capacity & Workcenters ([/capacity](file:///d:/schedulersaas/flow-sync-saas/src/routes/capacity.tsx))**: Workstation workload distribution, setter vs. operator staffing ceiling controls, and daily capacity overrides.
+- 🗓️ **Monthly Production Calendar ([/monthly](file:///d:/schedulersaas/flow-sync-saas/src/routes/monthly.tsx))**: Plant-wide monthly overview with shift visualization and holiday planning.
+- 🔄 **Pivot Analytics ([/pivot](file:///d:/schedulersaas/flow-sync-saas/src/routes/pivot.tsx))**: Multi-dimensional pivot table with aggregated machine hours, material volumes, and customer lead times.
+- 🧪 **What-If Scenario Lab ([/sandbox](file:///d:/schedulersaas/flow-sync-saas/src/routes/sandbox.tsx))**: Simulation environment for testing machine breakdowns, technician staffing cuts, shift changes, and rush order pre-emption without affecting the live master dispatch.
+- 🧹 **ERP Data Cleaning Hub ([/orders](file:///d:/schedulersaas/flow-sync-saas/src/routes/orders.tsx))**: Ingest and auto-correct dirty CSV files with fuzzy column mapping and schema validation.
+- 🤖 **Industrial AI Assistant**: Automated bottleneck detection and root cause explanations powered by Mistral AI server functions.
 
-Make sure you have Node.js installed (v18+ recommended).
+---
 
-### Installation
+## 💻 Tech Stack
 
-```bash
-npm install
-```
+- **Framework**: [TanStack Start](https://tanstack.com/start) (React 19 + TypeScript)
+- **Routing & Data**: [TanStack Router](https://tanstack.com/router) & [TanStack Query](https://tanstack.com/query)
+- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/)
+- **UI Components**: [Radix UI Primitives](https://www.radix-ui.com/), [Lucide React](https://lucide.dev/), [Sonner Toasts](https://sonner.emilkowal.ski/)
+- **State Management**: [Zustand](https://github.com/pmndrs/zustand)
+- **Database & Auth**: [Supabase](https://supabase.com/) (PostgreSQL + RLS + Storage)
+- **Deployment & SSR**: [Vite 7](https://vitejs.dev/) + [Nitro](https://nitro.unjs.io/) (Vercel Serverless Output)
 
-### Local Development
+---
 
-Run the development server locally:
+## 🛠️ Development & Build Commands
 
-```bash
-npm run dev
-```
+| Command | Description |
+| :--- | :--- |
+| `npm run dev` | Starts Vite development server at `http://localhost:8080` |
+| `npm run build` | Compiles client assets and generates Vercel serverless bundle in `.vercel/output` |
+| `npm run preview` | Previews the compiled production build locally |
+| `npm run lint` | Runs ESLint checks across the codebase |
+| `npm run format` | Formats all files with Prettier |
+| `npx tsc --noEmit` | Runs static TypeScript type checking |
 
-Open [http://localhost:8080](http://localhost:8080) in your browser.
+---
 
-### Building for Production
+## 🔑 Environment Setup
 
-To compile static assets and prepare the serverless functions for deployment:
+Create a `.env` file in this directory:
 
-```bash
-npm run build
+```ini
+# Supabase Client & Server Credentials
+VITE_SUPABASE_PROJECT_ID=your-project-id
+VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+SUPABASE_PROJECT_ID=your-project-id
+SUPABASE_ANON_KEY=your-supabase-anon-key
+SUPABASE_BUCKET_NAME=scheduler
+
+# Mistral AI (Kept secure on server)
+MISTRAL_API_KEY=your-mistral-api-key
+MISTRAL_MODEL=mistral-small-latest
+
+# Environment
+NODE_ENV=development
 ```
 
 ---
 
-## Deployment to Vercel
+## 🚢 Deployment to Vercel
 
-This project is pre-configured to output build artifacts conforming to the **Vercel Build Output API specification** under the `.vercel/output` directory.
-
-### Quick Deploy
+This repository outputs build artifacts conforming to the **Vercel Build Output API specification** under the `.vercel/output` directory.
 
 1. Connect your repository to **Vercel**.
-2. Vercel will automatically auto-detect the configuration and build your project.
-3. Your app is live!
+2. Set Root Directory to `flow-sync-saas`.
+3. Add the environment variables from `.env`.
+4. Deploy!
+
