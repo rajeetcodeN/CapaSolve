@@ -4,6 +4,14 @@ import { useAppStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -55,6 +63,8 @@ import { analyzeScheduleWithAI, AIAnalysisResult, ScenarioContextInfo } from "@/
 import { ScenarioConfig, ScenarioType, ScenarioBranch, ShiftedOrderImpact } from "@/lib/types";
 import { simulateScenario } from "@/lib/scheduler";
 import { DatePickerField } from "@/components/ui/date-picker";
+import { QuickOverviewPopover } from "@/components/QuickOverviewPopover";
+import { InfoTooltip } from "@/components/InfoTooltip";
 
 export const Route = createFileRoute("/sandbox")({
   component: SandboxPage,
@@ -78,6 +88,9 @@ function SandboxPage() {
     maxPreponeWeeks,
     setupMatrixRules,
     runScheduler,
+    setGlobalSetterCapacity,
+    setGlobalOperatorCapacity,
+    updateOrderPriority,
   } = useAppStore();
 
   // Dynamic Baseline computed from active live store state (No static dummy data)
@@ -140,10 +153,10 @@ function SandboxPage() {
   const [customName, setCustomName] = useState<string>("");
   const [customDesc, setCustomDesc] = useState<string>("");
 
-  // Sub-tabs for Projected Impact Card
   const [impactTab, setImpactTab] = useState<"overview" | "shifted" | "bottlenecks">("overview");
 
   // UI state
+  const [isCommitModalOpen, setIsCommitModalOpen] = useState(false);
   const [isAiAnalyzing, setIsAiAnalyzing] = useState(false);
   const [aiResult, setAiResult] = useState<AIAnalysisResult | null>(null);
   const [aiResultContextName, setAiResultContextName] = useState<string>(
@@ -448,6 +461,43 @@ function SandboxPage() {
     toast.success(`Promoted '${scen.name}' to Master Live Schedule! Dispatch sequence updated.`);
   };
 
+  const handleCommitScenario = () => {
+    if (inspectedBranch.id === "baseline") return;
+
+    if (inspectedBranch.config?.type === "rush_order" && inspectedBranch.config.rushOrderId) {
+      const targetOrder = orders.find(
+        (o) =>
+          o.orderId.toLowerCase() === inspectedBranch.config.rushOrderId?.toLowerCase() ||
+          o.id.toLowerCase() === inspectedBranch.config.rushOrderId?.toLowerCase(),
+      );
+      if (targetOrder) {
+        updateOrderPriority(targetOrder.id, "Urgent");
+      }
+    }
+
+    if (inspectedBranch.config?.type === "resource_unavailable") {
+      const redFactor = 1 - (inspectedBranch.config.capacityReductionPct || 50) / 100;
+      if (
+        inspectedBranch.config.resourceType === "setter" ||
+        inspectedBranch.config.resourceType === "both"
+      ) {
+        setGlobalSetterCapacity(Math.max(10, Math.round(globalSetterCapacity * redFactor)));
+      }
+      if (
+        inspectedBranch.config.resourceType === "operator" ||
+        inspectedBranch.config.resourceType === "both"
+      ) {
+        setGlobalOperatorCapacity(Math.max(10, Math.round(globalOperatorCapacity * redFactor)));
+      }
+    }
+
+    runScheduler();
+    setIsCommitModalOpen(false);
+    toast.success(
+      `Scenario "${inspectedBranch.name}" successfully committed to live factory master schedule!`,
+    );
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300 pb-12">
       {/* ========================================================================= */}
@@ -465,6 +515,15 @@ function SandboxPage() {
             Test shopfloor disruptions, machine breakdowns, and rush orders against live schedule
             data.
           </p>
+        </div>
+
+        {/* Context Help (i) at the end */}
+        <div className="flex items-center gap-2">
+          <QuickOverviewPopover
+            align="end"
+            side="bottom"
+            className="h-8 w-8 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-foreground shadow-2xs shrink-0"
+          />
         </div>
       </div>
 
@@ -499,11 +558,14 @@ function SandboxPage() {
                   <Factory className="h-4 w-4" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <span
-                    className={`block text-xs font-semibold leading-tight truncate ${selectedType === "machine_group_delay" ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300"}`}
-                  >
-                    Machine Group Delay
-                  </span>
+                  <div className="flex items-center gap-1">
+                    <span
+                      className={`block text-xs font-semibold leading-tight truncate ${selectedType === "machine_group_delay" ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300"}`}
+                    >
+                      Machine Group Delay
+                    </span>
+                    <InfoTooltip content="Simulates a complete line stoppage (e.g. material conveyor halt). Tests buffer capacity and downstream workstation starvation." />
+                  </div>
                   <span
                     className={`block text-[10px] mt-0.5 truncate ${selectedType === "machine_group_delay" ? "text-emerald-800 dark:text-emerald-400 font-medium" : "text-slate-400"}`}
                   >
@@ -535,11 +597,14 @@ function SandboxPage() {
                   <Wrench className="h-4 w-4" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <span
-                    className={`block text-xs font-semibold leading-tight truncate ${selectedType === "machine_stopped" ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300"}`}
-                  >
-                    Machine Breakdown
-                  </span>
+                  <div className="flex items-center gap-1">
+                    <span
+                      className={`block text-xs font-semibold leading-tight truncate ${selectedType === "machine_stopped" ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300"}`}
+                    >
+                      Machine Breakdown
+                    </span>
+                    <InfoTooltip content="Simulates an unexpected tool or spindle outage on a specific workstation for a set duration. Evaluates alternative machine routing." />
+                  </div>
                   <span
                     className={`block text-[10px] mt-0.5 truncate ${selectedType === "machine_stopped" ? "text-emerald-800 dark:text-emerald-400 font-medium" : "text-slate-400"}`}
                   >
@@ -571,11 +636,14 @@ function SandboxPage() {
                   <Users className="h-4 w-4" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <span
-                    className={`block text-xs font-semibold leading-tight truncate ${selectedType === "resource_unavailable" ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300"}`}
-                  >
-                    Resource Shortage
-                  </span>
+                  <div className="flex items-center gap-1">
+                    <span
+                      className={`block text-xs font-semibold leading-tight truncate ${selectedType === "resource_unavailable" ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300"}`}
+                    >
+                      Resource Shortage
+                    </span>
+                    <InfoTooltip content="Simulates technician or tooling operator absenteeism (e.g. 50% deficit). Tests if machines stand idle waiting for setup changes." />
+                  </div>
                   <span
                     className={`block text-[10px] mt-0.5 truncate ${selectedType === "resource_unavailable" ? "text-emerald-800 dark:text-emerald-400 font-medium" : "text-slate-400"}`}
                   >
@@ -607,11 +675,14 @@ function SandboxPage() {
                   <CalendarClock className="h-4 w-4" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <span
-                    className={`block text-xs font-semibold leading-tight truncate ${selectedType === "shift_change" ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300"}`}
-                  >
-                    Shift Adjustments
-                  </span>
+                  <div className="flex items-center gap-1">
+                    <span
+                      className={`block text-xs font-semibold leading-tight truncate ${selectedType === "shift_change" ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300"}`}
+                    >
+                      Shift Adjustments
+                    </span>
+                    <InfoTooltip content="Simulates cancelling a night shift or scheduling weekend overtime to observe throughput changes." />
+                  </div>
                   <span
                     className={`block text-[10px] mt-0.5 truncate ${selectedType === "shift_change" ? "text-emerald-800 dark:text-emerald-400 font-medium" : "text-slate-400"}`}
                   >
@@ -643,11 +714,14 @@ function SandboxPage() {
                   <Flame className="h-4 w-4" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <span
-                    className={`block text-xs font-semibold leading-tight truncate ${selectedType === "rush_order" ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300"}`}
-                  >
-                    Rush Order Priority
-                  </span>
+                  <div className="flex items-center gap-1">
+                    <span
+                      className={`block text-xs font-semibold leading-tight truncate ${selectedType === "rush_order" ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300"}`}
+                    >
+                      Rush Order Priority
+                    </span>
+                    <InfoTooltip content="Preempts production by inserting an Urgent order immediately. Reveals which existing scheduled customer orders will be displaced." />
+                  </div>
                   <span
                     className={`block text-[10px] mt-0.5 truncate ${selectedType === "rush_order" ? "text-emerald-800 dark:text-emerald-400 font-medium" : "text-slate-400"}`}
                   >
@@ -1194,47 +1268,61 @@ function SandboxPage() {
                   </div>
                 </div>
 
-                {/* Canvas Sub-Tabs */}
-                <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-medium">
-                  <button
-                    type="button"
-                    onClick={() => setImpactTab("overview")}
-                    className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
-                      impactTab === "overview"
-                        ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-semibold"
-                        : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
-                    }`}
-                  >
-                    Overview
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setImpactTab("shifted")}
-                    className={`px-3 py-1 rounded-md transition-all cursor-pointer flex items-center gap-1.5 ${
-                      impactTab === "shifted"
-                        ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-semibold"
-                        : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
-                    }`}
-                  >
-                    <span>Shifted Order Runs</span>
-                    <Badge
-                      variant="outline"
-                      className="text-[10px] px-1 py-0 h-4 bg-slate-100 dark:bg-slate-800 font-mono"
+                <div className="flex items-center gap-2">
+                  {inspectedBranch.id !== "baseline" && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => setIsCommitModalOpen(true)}
+                      className="bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs h-7.5 px-3 rounded-lg shadow-sm gap-1.5 cursor-pointer"
                     >
-                      {inspectedBranch.shiftedOrders?.length || 0}
-                    </Badge>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setImpactTab("bottlenecks")}
-                    className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
-                      impactTab === "bottlenecks"
-                        ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-semibold"
-                        : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
-                    }`}
-                  >
-                    Bottlenecks
-                  </button>
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Commit to Live Production
+                    </Button>
+                  )}
+
+                  {/* Canvas Sub-Tabs */}
+                  <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-medium">
+                    <button
+                      type="button"
+                      onClick={() => setImpactTab("overview")}
+                      className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
+                        impactTab === "overview"
+                          ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-semibold"
+                          : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                    >
+                      Overview
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setImpactTab("shifted")}
+                      className={`px-3 py-1 rounded-md transition-all cursor-pointer flex items-center gap-1.5 ${
+                        impactTab === "shifted"
+                          ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-semibold"
+                          : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                    >
+                      <span>Shifted Order Runs</span>
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] px-1 py-0 h-4 bg-slate-100 dark:bg-slate-800 font-mono"
+                      >
+                        {inspectedBranch.shiftedOrders?.length || 0}
+                      </Badge>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setImpactTab("bottlenecks")}
+                      className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
+                        impactTab === "bottlenecks"
+                          ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-semibold"
+                          : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                    >
+                      Bottlenecks
+                    </button>
+                  </div>
                 </div>
               </div>
             </CardHeader>
@@ -1244,9 +1332,12 @@ function SandboxPage() {
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs">
                 {/* 1. Makespan */}
                 <div className="bg-slate-50 dark:bg-slate-850 p-3 rounded-xl border border-slate-200/80 dark:border-slate-800">
-                  <span className="text-[10px] text-slate-500 font-bold block uppercase">
-                    TOTAL MAKESPAN
-                  </span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-slate-500 font-bold block uppercase">
+                      TOTAL MAKESPAN
+                    </span>
+                    <InfoTooltip content="Total elapsed calendar duration from the first job setup to the final operation completion." />
+                  </div>
                   <div className="mt-1 flex items-baseline justify-between">
                     <span className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-1">
                       <Clock className="h-3.5 w-3.5 text-slate-500" />
@@ -1272,16 +1363,25 @@ function SandboxPage() {
 
                 {/* 2. Setup Hours */}
                 <div className="bg-slate-50 dark:bg-slate-850 p-3 rounded-xl border border-slate-200/80 dark:border-slate-800">
-                  <span className="text-[10px] text-slate-500 font-bold block uppercase">
-                    SETUP HOURS
-                  </span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-slate-500 font-bold block uppercase">
+                      SETUP HOURS
+                    </span>
+                    <InfoTooltip content="Cumulative tool changeover and machine setup hours consumed across all workstations." />
+                  </div>
                   <div className="mt-1 flex items-baseline justify-between">
                     <span className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-1">
                       <Zap className="h-3.5 w-3.5 text-amber-500" />
                       {inspectedBranch.totalSetupHours}h
                     </span>
                     {inspectedBranch.id !== "baseline" && (
-                      <span className="text-[10.5px] font-mono font-semibold text-slate-500">
+                      <span
+                        className={`text-[10.5px] font-mono font-semibold ${
+                          inspectedBranch.totalSetupHours >= liveBaselineBranch.totalSetupHours
+                            ? "text-slate-500"
+                            : "text-emerald-600"
+                        }`}
+                      >
                         {inspectedBranch.totalSetupHours >= liveBaselineBranch.totalSetupHours
                           ? "+"
                           : ""}
@@ -1296,9 +1396,12 @@ function SandboxPage() {
 
                 {/* 3. Utilization */}
                 <div className="bg-slate-50 dark:bg-slate-850 p-3 rounded-xl border border-slate-200/80 dark:border-slate-800">
-                  <span className="text-[10px] text-slate-500 font-bold block uppercase">
-                    UTILIZATION %
-                  </span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-slate-500 font-bold block uppercase">
+                      UTILIZATION %
+                    </span>
+                    <InfoTooltip content="Percentage of available workstation hours spent in active production vs. idling or changeovers." />
+                  </div>
                   <div className="mt-1 flex items-baseline justify-between">
                     <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm flex items-center gap-1">
                       <TrendingUp className="h-3.5 w-3.5" />
@@ -1310,9 +1413,12 @@ function SandboxPage() {
 
                 {/* 4. On-Time Delivery */}
                 <div className="bg-slate-50 dark:bg-slate-850 p-3 rounded-xl border border-slate-200/80 dark:border-slate-800">
-                  <span className="text-[10px] text-slate-500 font-bold block uppercase">
-                    ON-TIME DELIVERY
-                  </span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-slate-500 font-bold block uppercase">
+                      ON-TIME DELIVERY
+                    </span>
+                    <InfoTooltip content="Percentage of production orders scheduled to complete on or before customer SOP target dates." />
+                  </div>
                   <div className="mt-1 flex items-baseline justify-between">
                     <span className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-1">
                       <CheckCircle2 className="h-3.5 w-3.5 text-slate-500" />
@@ -1324,9 +1430,12 @@ function SandboxPage() {
 
                 {/* 5. Orders Shifted */}
                 <div className="bg-slate-50 dark:bg-slate-850 p-3 rounded-xl border border-slate-200/80 dark:border-slate-800">
-                  <span className="text-[10px] text-slate-500 font-bold block uppercase">
-                    ORDERS SHIFTED
-                  </span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-slate-500 font-bold block uppercase">
+                      ORDERS SHIFTED
+                    </span>
+                    <InfoTooltip content="Number of work order operations that were moved in time or transferred to alternative machines." />
+                  </div>
                   <div className="mt-1 flex items-baseline justify-between">
                     <span
                       className={`font-bold text-sm flex items-center gap-1 ${
@@ -1359,6 +1468,161 @@ function SandboxPage() {
                         </ul>
                       </div>
                     )}
+
+                  {/* Side-by-Side Scenario Variance Diff Matrix */}
+                  <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-2xs">
+                    <div className="bg-slate-50 dark:bg-slate-850 px-4 py-2.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                        <ArrowRightLeft className="h-3.5 w-3.5 text-emerald-600" />
+                        Side-by-Side Scenario Variance Diff Matrix
+                      </span>
+                      <Badge variant="outline" className="text-[10px] font-mono">
+                        Master Baseline vs {inspectedBranch.name}
+                      </Badge>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs text-left">
+                        <thead className="bg-slate-100/60 dark:bg-slate-800/60 text-slate-500 uppercase text-[10px] font-bold border-b border-slate-200 dark:border-slate-800">
+                          <tr>
+                            <th className="py-2.5 px-4">Production Metric</th>
+                            <th className="py-2.5 px-4 text-center">Master Baseline</th>
+                            <th className="py-2.5 px-4 text-center">Simulated Scenario</th>
+                            <th className="py-2.5 px-4 text-center">Variance / Delta</th>
+                            <th className="py-2.5 px-4">Operational Assessment</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800 font-mono text-[11.5px]">
+                          <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-850/50 transition-colors">
+                            <td className="py-2.5 px-4 font-sans font-semibold text-slate-900 dark:text-white">
+                              Total Factory Makespan
+                            </td>
+                            <td className="py-2.5 px-4 text-center text-slate-500">
+                              {liveBaselineBranch.makespanDays} Days
+                            </td>
+                            <td className="py-2.5 px-4 text-center font-bold text-slate-900 dark:text-white">
+                              {inspectedBranch.makespanDays} Days
+                            </td>
+                            <td className="py-2.5 px-4 text-center">
+                              <span
+                                className={`px-2 py-0.5 rounded font-bold ${
+                                  inspectedBranch.makespanDays <= liveBaselineBranch.makespanDays
+                                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                                    : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                                }`}
+                              >
+                                {inspectedBranch.makespanDays > liveBaselineBranch.makespanDays
+                                  ? "+"
+                                  : ""}
+                                {(
+                                  inspectedBranch.makespanDays - liveBaselineBranch.makespanDays
+                                ).toFixed(1)}
+                                d
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-4 font-sans text-xs text-slate-500">
+                              {inspectedBranch.makespanDays <= liveBaselineBranch.makespanDays
+                                ? "Schedule duration compressed or on target"
+                                : "Delivery completion delayed across lines"}
+                            </td>
+                          </tr>
+
+                          <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-850/50 transition-colors">
+                            <td className="py-2.5 px-4 font-sans font-semibold text-slate-900 dark:text-white">
+                              Setup & Changeover Waste
+                            </td>
+                            <td className="py-2.5 px-4 text-center text-slate-500">
+                              {liveBaselineBranch.totalSetupHours} Hours
+                            </td>
+                            <td className="py-2.5 px-4 text-center font-bold text-slate-900 dark:text-white">
+                              {inspectedBranch.totalSetupHours} Hours
+                            </td>
+                            <td className="py-2.5 px-4 text-center">
+                              <span
+                                className={`px-2 py-0.5 rounded font-bold ${
+                                  inspectedBranch.totalSetupHours <=
+                                  liveBaselineBranch.totalSetupHours
+                                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                                    : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                                }`}
+                              >
+                                {inspectedBranch.totalSetupHours >
+                                liveBaselineBranch.totalSetupHours
+                                  ? "+"
+                                  : ""}
+                                {(
+                                  inspectedBranch.totalSetupHours -
+                                  liveBaselineBranch.totalSetupHours
+                                ).toFixed(1)}
+                                h
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-4 font-sans text-xs text-slate-500">
+                              {inspectedBranch.totalSetupHours <= liveBaselineBranch.totalSetupHours
+                                ? "Changeovers streamlined via sequence clustering"
+                                : "Additional tool changeover friction introduced"}
+                            </td>
+                          </tr>
+
+                          <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-850/50 transition-colors">
+                            <td className="py-2.5 px-4 font-sans font-semibold text-slate-900 dark:text-white">
+                              Workstation Capacity Utilization
+                            </td>
+                            <td className="py-2.5 px-4 text-center text-slate-500">
+                              {liveBaselineBranch.utilizationPct}%
+                            </td>
+                            <td className="py-2.5 px-4 text-center font-bold text-slate-900 dark:text-white">
+                              {inspectedBranch.utilizationPct}%
+                            </td>
+                            <td className="py-2.5 px-4 text-center">
+                              <span className="px-2 py-0.5 rounded font-bold text-slate-800 dark:text-slate-200">
+                                {inspectedBranch.utilizationPct -
+                                  liveBaselineBranch.utilizationPct >=
+                                0
+                                  ? "+"
+                                  : ""}
+                                {inspectedBranch.utilizationPct - liveBaselineBranch.utilizationPct}
+                                %
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-4 font-sans text-xs text-slate-500">
+                              {inspectedBranch.utilizationPct >= 80
+                                ? "Healthy industrial asset utilization rate"
+                                : "Capacity underutilized or bottlenecked"}
+                            </td>
+                          </tr>
+
+                          <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-850/50 transition-colors">
+                            <td className="py-2.5 px-4 font-sans font-semibold text-slate-900 dark:text-white">
+                              Projected On-Time Delivery (OTD)
+                            </td>
+                            <td className="py-2.5 px-4 text-center text-slate-500">
+                              {liveBaselineBranch.otdPct}%
+                            </td>
+                            <td className="py-2.5 px-4 text-center font-bold text-slate-900 dark:text-white">
+                              {inspectedBranch.otdPct}%
+                            </td>
+                            <td className="py-2.5 px-4 text-center">
+                              <span
+                                className={`px-2 py-0.5 rounded font-bold ${
+                                  inspectedBranch.otdPct >= 95
+                                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                                    : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                                }`}
+                              >
+                                {inspectedBranch.otdPct - liveBaselineBranch.otdPct >= 0 ? "+" : ""}
+                                {inspectedBranch.otdPct - liveBaselineBranch.otdPct}%
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-4 font-sans text-xs text-slate-500">
+                              {inspectedBranch.otdPct >= 95
+                                ? "Meets high-reliability delivery SLA target"
+                                : "Delivery delay risk flagged for customer orders"}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
 
                   {/* Summary Callout Banner */}
                   <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-xs">
@@ -1981,6 +2245,67 @@ function SandboxPage() {
           </Card>
         </div>
       </div>
+
+      {/* Commit Scenario to Live Schedule Confirmation Dialog */}
+      <Dialog open={isCommitModalOpen} onOpenChange={setIsCommitModalOpen}>
+        <DialogContent className="sm:max-w-md bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xl rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2 text-slate-900 dark:text-white">
+              <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+              Commit Scenario to Live Production?
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              This will overwrite the active factory master plan with the parameters of &ldquo;
+              {inspectedBranch.name}&rdquo;. All machine queues and shop floor dispatch schedules
+              will update immediately.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="p-3 bg-slate-50 dark:bg-slate-850 rounded-xl border border-slate-200 dark:border-slate-800 text-xs space-y-2 font-mono">
+            <div className="flex justify-between">
+              <span className="text-slate-500">Target Scenario:</span>
+              <span className="font-bold text-slate-900 dark:text-white font-sans">
+                {inspectedBranch.name}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Projected Makespan:</span>
+              <span className="text-slate-800 dark:text-slate-200">
+                {inspectedBranch.makespanDays} Days
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Work Orders Shifted:</span>
+              <span className="text-amber-600 font-bold">
+                {inspectedBranch.shiftedOrders?.length || 0} Runs
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Target OTD:</span>
+              <span className="text-emerald-600 font-bold">{inspectedBranch.otdPct}%</span>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsCommitModalOpen(false)}
+              className="text-xs"
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleCommitScenario}
+              className="text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold gap-1.5"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Confirm & Overwrite Master Schedule
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -57,13 +57,16 @@ const defaultMaterials: MaterialItem[] = [
   },
 ];
 
+import { useAppStore } from "@/lib/store";
+import { MaterialInventoryItem } from "@/lib/types";
+
 interface MaterialInventoryModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
 export function MaterialInventoryModal({ open, onOpenChange }: MaterialInventoryModalProps) {
-  const [materials, setMaterials] = useState<MaterialItem[]>(defaultMaterials);
+  const { materialsInventory, setMaterialsInventory } = useAppStore();
   const [sku, setSku] = useState("");
   const [desc, setDesc] = useState("");
   const [avail, setAvail] = useState(1000);
@@ -73,15 +76,16 @@ export function MaterialInventoryModal({ open, onOpenChange }: MaterialInventory
     e.preventDefault();
     if (!sku.trim()) return toast.error("Material SKU code is required.");
 
-    const newItem: MaterialItem = {
+    const newItem: MaterialInventoryItem = {
       sku: sku.trim().toUpperCase(),
       description: desc.trim() || "Raw Material Component",
       availableQty: avail,
       reservedQty: 0,
       leadTimeDays: leadDays,
+      unit: "pcs",
     };
 
-    setMaterials([...materials, newItem]);
+    setMaterialsInventory([...materialsInventory, newItem]);
     setSku("");
     setDesc("");
     setAvail(1000);
@@ -159,7 +163,7 @@ export function MaterialInventoryModal({ open, onOpenChange }: MaterialInventory
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {materials.map((m) => {
+                {materialsInventory.map((m) => {
                   const isShortage = m.availableQty < m.reservedQty;
                   return (
                     <TableRow key={m.sku}>

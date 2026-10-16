@@ -57,11 +57,12 @@ function LoginPage() {
       }
 
       // Fetch organization membership details
-      let { data: memberData, error: memberError } = await supabase
+      const { data: initialMemberData, error: memberError } = await supabase
         .from("organization_members")
         .select("org_id, role, organizations(name, plan)")
         .eq("user_id", authData.user.id)
         .maybeSingle();
+      let memberData = initialMemberData;
 
       if (memberError) {
         console.error("Failed to load membership details:", memberError);

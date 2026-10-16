@@ -10,6 +10,14 @@ export interface AuthContext {
   plan: string;
 }
 
+async function hashApiKey(key: string): Promise<string> {
+  const enc = new TextEncoder();
+  const hashBuf = await crypto.subtle.digest("SHA-256", enc.encode(key));
+  return Array.from(new Uint8Array(hashBuf))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 /**
  * Validates request authentication (Supabase JWT token or Enterprise API Key)
  * and retrieves user role and organization context.
@@ -28,11 +36,27 @@ export async function authenticateRequest(
 
     // Check if it's an Enterprise API Key (cap_live_...)
     if (token.startsWith("cap_live_")) {
-      const { data: apiKeyData, error: keyError } = await supabase
+      const hashedKey = await hashApiKey(token);
+
+      // Query database by SHA-256 key_hash
+      let { data: apiKeyData, error: keyError } = await supabase
         .from("api_keys")
-        .select("org_id, organizations(plan)")
-        .eq("key_hash", token)
+        .select("org_id, key_hash, organizations(plan)")
+        .eq("key_hash", hashedKey)
         .maybeSingle();
+
+      // Fallback for legacy dev records where the raw token was stored in key_hash
+      if (!apiKeyData && !keyError) {
+        const legacy = await supabase
+          .from("api_keys")
+          .select("org_id, key_hash, organizations(plan)")
+          .eq("key_hash", token)
+          .maybeSingle();
+        if (legacy.data) {
+          apiKeyData = legacy.data;
+          keyError = null;
+        }
+      }
 
       if (keyError || !apiKeyData) {
         return { error: "Invalid API Key", status: 401 };
@@ -42,7 +66,7 @@ export async function authenticateRequest(
       supabase
         .from("api_keys")
         .update({ last_used_at: new Date().toISOString() })
-        .eq("key_hash", token)
+        .eq("key_hash", apiKeyData.key_hash)
         .then();
 
       const orgData = apiKeyData.organizations as unknown as { plan: string } | null;
@@ -98,8 +122,9 @@ export async function authenticateRequest(
         plan: orgObj?.plan || "FREE",
       },
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Auth Middleware Error:", err);
     return { error: "Internal server authentication error", status: 500 };
   }
 }
+

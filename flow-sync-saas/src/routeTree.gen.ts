@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as StatusRouteImport } from './routes/status'
 import { Route as SignupRouteImport } from './routes/signup'
@@ -24,6 +25,7 @@ import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as MonthlyRouteImport } from './routes/monthly'
 import { Route as MachinesRouteImport } from './routes/machines'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as KioskRouteImport } from './routes/kiosk'
 import { Route as GanttRouteImport } from './routes/gantt'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as DocumentationRouteImport } from './routes/documentation'
@@ -35,6 +37,11 @@ import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SupportRoute = SupportRouteImport.update({
   id: '/support',
   path: '/support',
@@ -110,6 +117,11 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const KioskRoute = KioskRouteImport.update({
+  id: '/kiosk',
+  path: '/kiosk',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GanttRoute = GanttRouteImport.update({
   id: '/gantt',
   path: '/gantt',
@@ -172,6 +184,7 @@ export interface FileRoutesByFullPath {
   '/documentation': typeof DocumentationRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/gantt': typeof GanttRoute
+  '/kiosk': typeof KioskRoute
   '/login': typeof LoginRoute
   '/machines': typeof MachinesRoute
   '/monthly': typeof MonthlyRoute
@@ -187,6 +200,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/status': typeof StatusRoute
   '/support': typeof SupportRoute
+  '/terms': typeof TermsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -199,6 +213,7 @@ export interface FileRoutesByTo {
   '/documentation': typeof DocumentationRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/gantt': typeof GanttRoute
+  '/kiosk': typeof KioskRoute
   '/login': typeof LoginRoute
   '/machines': typeof MachinesRoute
   '/monthly': typeof MonthlyRoute
@@ -214,6 +229,7 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/status': typeof StatusRoute
   '/support': typeof SupportRoute
+  '/terms': typeof TermsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -227,6 +243,7 @@ export interface FileRoutesById {
   '/documentation': typeof DocumentationRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/gantt': typeof GanttRoute
+  '/kiosk': typeof KioskRoute
   '/login': typeof LoginRoute
   '/machines': typeof MachinesRoute
   '/monthly': typeof MonthlyRoute
@@ -242,6 +259,7 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/status': typeof StatusRoute
   '/support': typeof SupportRoute
+  '/terms': typeof TermsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -256,6 +274,7 @@ export interface FileRouteTypes {
     | '/documentation'
     | '/forgot-password'
     | '/gantt'
+    | '/kiosk'
     | '/login'
     | '/machines'
     | '/monthly'
@@ -271,6 +290,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/status'
     | '/support'
+    | '/terms'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -283,6 +303,7 @@ export interface FileRouteTypes {
     | '/documentation'
     | '/forgot-password'
     | '/gantt'
+    | '/kiosk'
     | '/login'
     | '/machines'
     | '/monthly'
@@ -298,6 +319,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/status'
     | '/support'
+    | '/terms'
   id:
     | '__root__'
     | '/'
@@ -310,6 +332,7 @@ export interface FileRouteTypes {
     | '/documentation'
     | '/forgot-password'
     | '/gantt'
+    | '/kiosk'
     | '/login'
     | '/machines'
     | '/monthly'
@@ -325,6 +348,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/status'
     | '/support'
+    | '/terms'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -338,6 +362,7 @@ export interface RootRouteChildren {
   DocumentationRoute: typeof DocumentationRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   GanttRoute: typeof GanttRoute
+  KioskRoute: typeof KioskRoute
   LoginRoute: typeof LoginRoute
   MachinesRoute: typeof MachinesRoute
   MonthlyRoute: typeof MonthlyRoute
@@ -353,10 +378,18 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   StatusRoute: typeof StatusRoute
   SupportRoute: typeof SupportRoute
+  TermsRoute: typeof TermsRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/support': {
       id: '/support'
       path: '/support'
@@ -462,6 +495,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/kiosk': {
+      id: '/kiosk'
+      path: '/kiosk'
+      fullPath: '/kiosk'
+      preLoaderRoute: typeof KioskRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/gantt': {
       id: '/gantt'
       path: '/gantt'
@@ -546,6 +586,7 @@ const rootRouteChildren: RootRouteChildren = {
   DocumentationRoute: DocumentationRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   GanttRoute: GanttRoute,
+  KioskRoute: KioskRoute,
   LoginRoute: LoginRoute,
   MachinesRoute: MachinesRoute,
   MonthlyRoute: MonthlyRoute,
@@ -561,6 +602,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   StatusRoute: StatusRoute,
   SupportRoute: SupportRoute,
+  TermsRoute: TermsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

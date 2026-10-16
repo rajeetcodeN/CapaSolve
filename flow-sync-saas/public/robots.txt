@@ -1,0 +1,33 @@
+# robots.txt for CapaSolve / FlowSync SaaS Production
+
+User-agent: *
+Allow: /
+Allow: /about
+Allow: /pricing
+Allow: /documentation
+Allow: /api-reference
+Allow: /contact
+Allow: /security
+Allow: /privacy
+Allow: /terms
+Allow: /support
+
+# Disallow private tenant, execution, and dashboard routes
+Disallow: /dashboard
+Disallow: /gantt
+Disallow: /capacity
+Disallow: /monthly
+Disallow: /status
+Disallow: /kiosk
+Disallow: /sandbox
+Disallow: /machines
+Disallow: /orders
+Disallow: /pivot
+Disallow: /analytics
+Disallow: /shifts
+Disallow: /settings
+Disallow: /api/
+Disallow: /reset-password
+Disallow: /forgot-password
+
+Sitemap: https://capasolve.com/sitemap.xml

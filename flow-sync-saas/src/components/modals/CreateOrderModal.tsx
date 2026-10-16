@@ -13,7 +13,8 @@ import { Label } from "@/components/ui/label";
 import { useAppStore } from "@/lib/store";
 import { useTranslations } from "@/lib/translations";
 import { toast } from "sonner";
-import { PlusCircle, Layers, Calendar, Hash, Tag, Clock } from "lucide-react";
+import { PlusCircle, Layers, Calendar, Hash, Tag, Clock, Flame } from "lucide-react";
+import { OrderPriority } from "@/lib/types";
 
 interface CreateOrderModalProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
   const [orderId, setOrderId] = useState(`ORD-${Math.floor(100000 + Math.random() * 900000)}`);
   const [material, setMaterial] = useState("CASING-ALUM-304");
   const [orderQty, setOrderQty] = useState(100);
+  const [priority, setPriority] = useState<OrderPriority>("Med");
   const [sopStartDate, setSopStartDate] = useState(new Date().toISOString().split("T")[0]);
   const [processId, setProcessId] = useState(10);
   const [machineId, setMachineId] = useState(machines[0]?.id || "603010");
@@ -51,6 +53,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
       orderId: orderId.trim(),
       material: material.trim(),
       orderQty,
+      priority,
       sopStartDate: `${sopStartDate}T08:00:00Z`,
       processId,
       machineId,
@@ -133,6 +136,64 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
                 className="text-xs bg-background h-8"
                 required
               />
+            </div>
+
+            {/* Order Priority Selector */}
+            <div className="space-y-1 col-span-2 pt-1 border-t border-border/40">
+              <Label className="text-[11px] font-semibold text-muted-foreground flex items-center justify-between">
+                <span className="flex items-center gap-1">Order Priority</span>
+                <span className="text-[10px] text-muted-foreground font-normal">
+                  Higher priority orders schedule earlier on machines
+                </span>
+              </Label>
+              <div className="grid grid-cols-4 gap-2 pt-1">
+                {(
+                  [
+                    {
+                      id: "Urgent",
+                      label: "Urgent",
+                      dot: "bg-rose-500",
+                      active:
+                        "border-rose-500 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 ring-rose-500",
+                    },
+                    {
+                      id: "High",
+                      label: "High",
+                      dot: "bg-orange-500",
+                      active:
+                        "border-orange-500 bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 ring-orange-500",
+                    },
+                    {
+                      id: "Med",
+                      label: "Medium",
+                      dot: "bg-amber-500",
+                      active:
+                        "border-amber-500 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 ring-amber-500",
+                    },
+                    {
+                      id: "Low",
+                      label: "Low",
+                      dot: "bg-slate-400",
+                      active:
+                        "border-slate-400 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 ring-slate-400",
+                    },
+                  ] as const
+                ).map((tier) => (
+                  <button
+                    key={tier.id}
+                    type="button"
+                    onClick={() => setPriority(tier.id)}
+                    className={`inline-flex items-center justify-center gap-1.5 text-xs py-1.5 px-2 rounded-lg font-medium border transition-all text-center cursor-pointer ${
+                      priority === tier.id
+                        ? `${tier.active} ring-2 shadow-xs font-semibold`
+                        : "border-border bg-background text-muted-foreground hover:bg-muted/50"
+                    }`}
+                  >
+                    <span className={`h-2 w-2 rounded-full ${tier.dot} shrink-0`} />
+                    {tier.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 

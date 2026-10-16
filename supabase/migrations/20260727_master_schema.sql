@@ -378,7 +378,7 @@ DECLARE
     user_name TEXT;
 BEGIN
     user_name := COALESCE(NEW.raw_user_meta_data->>'full_name', SPLIT_PART(NEW.email, '@', 1));
-    org_name := COALESCE(NEW.raw_user_meta_data->>'org_name', user_name || ' Factory');
+    org_name := COALESCE(NEW.raw_user_meta_data->>'company_name', NEW.raw_user_meta_data->>'org_name', user_name || ' Factory');
     
     -- Insert Profile
     INSERT INTO public.profiles (id, full_name)

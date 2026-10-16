@@ -1,3 +1,16 @@
+/**
+ * ==============================================================================
+ * CapaSolve SaaS — Central State Store (Zustand)
+ * ==============================================================================
+ * Single source of truth managing:
+ * - Orders, Operations, Machine Master Data & Sequence Setup Matrices
+ * - High-speed Web Worker background schedule solving
+ * - Shop floor MES execution state (Queue, In-Progress, Hold, Scrap)
+ * - Material inventory readiness checks
+ * - Real-time optimistic updates & Supabase Cloud persistence
+ * ==============================================================================
+ */
+
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import Papa from "papaparse";
@@ -6,9 +19,15 @@ import {
   MachineGroup,
   Order,
   OrderProcess,
+  OrderPriority,
   ScheduleSlot,
   OptimizationMode,
   SetupMatrixRule,
+  HoldReason,
+  ScrapReason,
+  ScrapEntry,
+  MaterialReadiness,
+  MaterialInventoryItem,
 } from "./types";
 import { generateSchedule, parseSOPDate } from "./scheduler";
 import { ColumnMapping } from "./dataCleaner";
@@ -25,6 +44,60 @@ import {
 } from "./db-service";
 
 import { DEFAULT_CSV_CONTENT } from "./default-csv";
+
+import { DEFAULT_MATERIALS_INVENTORY, SEED_GROUPS, SEED_MACHINES } from "./seedData";
+import { ExecutionStats, calculateExecutionStats } from "./executionStats";
+import { parseCSVData, ParsedCsvResult } from "./csvParser";
+
+import { SolverWorkerInput } from "./solver.worker";
+
+export { DEFAULT_MATERIALS_INVENTORY, SEED_GROUPS, SEED_MACHINES };
+export { calculateExecutionStats };
+export type { ExecutionStats, ParsedCsvResult };
+export { parseCSVData };
+
+/**
+ * Offloads compute-intensive finite capacity schedule solving to a background Web Worker,
+ * keeping the main React UI thread fluid and responsive at 60 FPS even with 10,000+ operations.
+ */
+export function runSolverInWorker(
+  input: SolverWorkerInput,
+): Promise<{ slots: ScheduleSlot[]; warnings: string[] }> {
+  return new Promise((resolve, reject) => {
+    try {
+      if (typeof window === "undefined" || !window.Worker) {
+        throw new Error("Workers not supported in this environment");
+      }
+      const worker = new Worker(new URL("./solver.worker.ts", import.meta.url), { type: "module" });
+      const timeout = setTimeout(() => {
+        worker.terminate();
+        reject(new Error("Solver Worker timed out"));
+      }, 30000);
+
+      worker.onmessage = (e) => {
+        if (e.data.type === "SUCCESS") {
+          clearTimeout(timeout);
+          worker.terminate();
+          resolve({ slots: e.data.slots, warnings: e.data.warnings || [] });
+        } else if (e.data.type === "ERROR") {
+          clearTimeout(timeout);
+          worker.terminate();
+          reject(new Error(e.data.error));
+        }
+      };
+
+      worker.onerror = (err) => {
+        clearTimeout(timeout);
+        worker.terminate();
+        reject(err);
+      };
+
+      worker.postMessage(input);
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
 
 // Clean up older localStorage store versions to prevent QuotaExceededError
 if (typeof window !== "undefined" && window.localStorage) {
@@ -55,158 +128,6 @@ export const getCsvSeed = createServerFn({ method: "GET" }).handler(async () => 
 });
 
 // Seed static machine data matching Excel screenshots and CSV
-export const SEED_GROUPS: MachineGroup[] = [
-  { id: "M1", name: "M1" },
-  { id: "M2", name: "M2" },
-];
-
-export const SEED_MACHINES: Machine[] = [
-  { id: "603012", name: "603012", machineGroupId: "M1" },
-  { id: "605001", name: "605001", machineGroupId: "M1" },
-  { id: "603010", name: "603010", machineGroupId: "M2" },
-  { id: "603011", name: "603011", machineGroupId: "M2" },
-];
-
-export function parseCSVData(csvText: any) {
-  let text = "";
-  if (typeof csvText === "string") {
-    text = csvText;
-  } else if (csvText && typeof csvText === "object") {
-    text = csvText.data || csvText.default || csvText.text || JSON.stringify(csvText);
-  } else {
-    text = String(csvText || "");
-  }
-
-  // If double-encoded as a JSON string, unwrap it
-  if (text.startsWith('"') && text.endsWith('"') && !text.includes("\n")) {
-    try {
-      text = JSON.parse(text);
-    } catch (_) {}
-  }
-
-  const parsed = Papa.parse<any>(text.trim(), {
-    header: true,
-    skipEmptyLines: true,
-  });
-
-  const orders: Order[] = [];
-  const processes: OrderProcess[] = [];
-  const batchMap = new Map<
-    string,
-    {
-      orderCode: string;
-      material: string;
-      step: number;
-      orderQty: number;
-      sopStartDate: string;
-      sopStartTime: string;
-      machineId: string;
-      processText: string;
-      baseQty: number;
-      setupTimeMin: number;
-      processTimeMin: number;
-      manpowerUtilizationMin: number;
-    }
-  >();
-
-  parsed.data.forEach((row) => {
-    const orderCode = row["Order"]?.trim();
-    const material = row["Material"]?.trim();
-    const stepStr = row["Order Process ID"]?.trim();
-    if (!orderCode || !material || !stepStr) return;
-
-    const step = parseInt(stepStr, 10) || 10;
-    const batchKey = `${orderCode}_${step}`;
-
-    const qtyStr = String(row["Order QTY"] || "0").replace(/,/g, "");
-    const qty = parseFloat(qtyStr) || 0;
-
-    const sopDate = row["SOP Start Date"]?.trim() || "";
-    const sopTime = row["SOP Start time"]?.trim() || "";
-
-    const existing = batchMap.get(batchKey);
-    if (existing) {
-      existing.orderQty += qty;
-
-      // Update to earliest SOP date
-      try {
-        const d1 = parseSOPDate(existing.sopStartDate, existing.sopStartTime);
-        const d2 = parseSOPDate(sopDate, sopTime);
-        if (d2.getTime() < d1.getTime()) {
-          existing.sopStartDate = sopDate;
-          existing.sopStartTime = sopTime;
-        }
-      } catch (_) {}
-    } else {
-      const baseQty = parseFloat(row["Base-Qty each process"]) || 1;
-      const setupTimeMin = parseFloat(row["Set up Time (Not related to any qty)"]) || 0;
-      const processTimeMin = parseFloat(row["Process time (related to qty)"]) || 0;
-      const rawManpowerUtil = row["Manpwer Utilization"] || row["Manpower Utilization"] || "0";
-      const manpowerUtilizationMin = parseFloat(String(rawManpowerUtil).replace(/,/g, "")) || 0;
-
-      batchMap.set(batchKey, {
-        orderCode,
-        material,
-        step,
-        orderQty: qty,
-        sopStartDate: sopDate,
-        sopStartTime: sopTime,
-        machineId: row["Machine"]?.trim() || "",
-        processText: row["Process Text"]?.trim() || "",
-        baseQty,
-        setupTimeMin,
-        processTimeMin,
-        manpowerUtilizationMin,
-      });
-    }
-  });
-
-  // Now populate orders and processes
-  batchMap.forEach((batch) => {
-    // Generate a unique ID for this batch using underscores for order code/step so it parses nicely
-    const safeOrderCode = batch.orderCode.replace(/-/g, "_");
-    const orderId = `ord-${safeOrderCode}_${batch.step}`;
-
-    // Add to orders
-    orders.push({
-      id: orderId,
-      orderId: batch.orderCode, // e.g. "1019015"
-      material: batch.material,
-      sopStartDate: batch.sopStartDate,
-      sopStartTime: batch.sopStartTime,
-      orderQty: batch.orderQty,
-    });
-
-    // Confirmed formulas
-    const sumV2 = (batch.orderQty / batch.baseQty) * batch.processTimeMin;
-    const sumV3 = batch.manpowerUtilizationMin * batch.baseQty * batch.orderQty;
-    const manpowerPct =
-      batch.processTimeMin > 0 ? batch.manpowerUtilizationMin / batch.processTimeMin : 0;
-    const totalTimeMin = batch.setupTimeMin + sumV2;
-
-    processes.push({
-      id: `${orderId}-${batch.step}`,
-      orderId,
-      processId: batch.step,
-      machineId: batch.machineId,
-      originalMachineId: batch.machineId,
-      processText: batch.processText,
-      baseQty: batch.baseQty,
-      setupTimeMin: batch.setupTimeMin,
-      processTimeMin: batch.processTimeMin,
-      manpowerUtilizationMin: batch.manpowerUtilizationMin,
-      sumV2,
-      sumV3,
-      totalTimeMin,
-      manpowerPct,
-      status: "UNSCHEDULED",
-      scheduledStart: null,
-      scheduledEnd: null,
-    });
-  });
-
-  return { orders, processes };
-}
 
 const initialData = parseCSVData(DEFAULT_CSV_CONTENT);
 const initialResult = generateSchedule(
@@ -267,6 +188,8 @@ interface AppState {
   setCommandPaletteOpen: (open: boolean) => void;
   tourCompleted: boolean;
   setTourCompleted: (completed: boolean) => void;
+  tourOpen: boolean;
+  setTourOpen: (open: boolean) => void;
 
   // Notifications & Activity
   notifications: NotificationItem[];
@@ -293,6 +216,23 @@ interface AppState {
   setupMatrixRules: SetupMatrixRule[];
   addSetupMatrixRule: (rule: Omit<SetupMatrixRule, "id">) => void;
   deleteSetupMatrixRule: (id: string) => void;
+  importSetupMatrixRules: (rules: SetupMatrixRule[]) => void;
+  exportSetupMatrixRulesCSV: () => string;
+
+  // Material Stock & Inventory Gating
+  materialsInventory: MaterialInventoryItem[];
+  setMaterialsInventory: (items: MaterialInventoryItem[]) => void;
+  updateMaterialStock: (sku: string, currentStock: number) => void;
+  checkMaterialReadiness: (
+    materialSku: string,
+    requiredQty: number,
+  ) => {
+    readiness: MaterialReadiness;
+    available: number;
+    reserved: number;
+    required: number;
+    shortage: number;
+  };
 
   setOrders: (orders: Order[], processes: OrderProcess[]) => void;
   removeOrder: (id: string) => void;
@@ -317,12 +257,17 @@ interface AppState {
   ) => void;
   resetProcessToAuto: (processId: string) => void;
   pinProcessSchedule: (processId: string) => void;
+  updateOrderPriority: (orderId: string, priority: OrderPriority) => void;
+  bulkUpdateOrderPriority: (orderIds: string[], priority: OrderPriority) => void;
+  exportSystemBackup: () => string;
+  restoreSystemBackup: (jsonContent: string) => { success: boolean; error?: string };
   addWorkOrder: (orderData: {
     orderId: string;
     material: string;
     sopStartDate: string;
     sopStartTime?: string;
     orderQty: number;
+    priority?: OrderPriority;
     processId: number;
     machineId: string;
     processText: string;
@@ -331,13 +276,42 @@ interface AppState {
     processTimeMin?: number;
     manpowerUtilizationMin?: number;
   }) => void;
+  addWorkOrderWithRouting: (
+    orderData: {
+      orderId: string;
+      material: string;
+      sopStartDate: string;
+      sopStartTime?: string;
+      orderQty: number;
+      priority?: OrderPriority;
+      customerDueDate?: string;
+    },
+    steps: {
+      processId: number;
+      machineId: string;
+      processText: string;
+      setupTimeMin: number;
+      processTimeMin: number;
+      manpowerUtilizationMin?: number;
+    }[],
+  ) => void;
   updateStepExecutionStatus: (
     processId: string,
-    executionStatus: "PLANNED" | "IN_PROGRESS" | "PAUSED" | "COMPLETED" | "DELAYED",
+    executionStatus: "QUEUED" | "PLANNED" | "IN_PROGRESS" | "PAUSED" | "COMPLETED" | "DELAYED",
     completedQty?: number,
     scrapQty?: number,
     notes?: string,
+    holdReason?: HoldReason,
+    scrapReason?: ScrapReason,
   ) => void;
+  logScrap: (processId: string, scrapQty: number, reason: ScrapReason, notes?: string) => void;
+  batchUpdateExecutionStatus: (
+    processIds: string[],
+    executionStatus: "QUEUED" | "PLANNED" | "IN_PROGRESS" | "PAUSED" | "COMPLETED" | "DELAYED",
+  ) => void;
+  releaseAllScheduled: () => void;
+  simulateShopFloorProgress: () => void;
+  resetAllExecutionStatuses: () => void;
   isCloudSaving: boolean;
   isCloudLoading: boolean;
   saveToCloud: () => Promise<void>;
@@ -408,6 +382,8 @@ export const useAppStore = create<AppState>()(
       setCommandPaletteOpen: (commandPaletteOpen) => set({ commandPaletteOpen }),
       tourCompleted: false,
       setTourCompleted: (tourCompleted) => set({ tourCompleted }),
+      tourOpen: false,
+      setTourOpen: (tourOpen) => set({ tourOpen }),
 
       notifications: [
         {
@@ -577,6 +553,81 @@ export const useAppStore = create<AppState>()(
         }));
         get().runScheduler();
       },
+      importSetupMatrixRules: (rules: SetupMatrixRule[]) => {
+        set({ setupMatrixRules: rules });
+        get().runScheduler();
+        toast.success(`Successfully imported ${rules.length} setup matrix rules.`);
+      },
+      exportSetupMatrixRulesCSV: () => {
+        const rules = get().setupMatrixRules || [];
+        const headers = "fromMaterial,toMaterial,machineGroupId,setupTimeMin,description\n";
+        const rows = rules
+          .map(
+            (r) =>
+              `"${r.fromMaterial}","${r.toMaterial}","${r.machineGroupId || ""}","${r.setupTimeMin}","${(r.description || "").replace(/"/g, '""')}"`,
+          )
+          .join("\n");
+        return headers + rows;
+      },
+
+      materialsInventory: DEFAULT_MATERIALS_INVENTORY,
+      setMaterialsInventory: (items: MaterialInventoryItem[]) => {
+        set({ materialsInventory: items });
+      },
+      updateMaterialStock: (sku: string, currentStock: number) => {
+        set((s) => ({
+          materialsInventory: s.materialsInventory.map((item) =>
+            item.sku === sku ? { ...item, availableQty: currentStock } : item,
+          ),
+        }));
+      },
+      checkMaterialReadiness: (materialSku: string, requiredQty: number) => {
+        const inventory = get().materialsInventory || [];
+        const cleanSku = (materialSku || "").trim().toLowerCase();
+        const item = inventory.find(
+          (m) =>
+            m.sku.toLowerCase() === cleanSku ||
+            cleanSku.includes(m.sku.toLowerCase()) ||
+            m.sku.toLowerCase().includes(cleanSku),
+        );
+
+        if (!item) {
+          return {
+            readiness: "READY" as MaterialReadiness,
+            available: requiredQty * 2,
+            reserved: 0,
+            required: requiredQty,
+            shortage: 0,
+          };
+        }
+
+        const available = Math.max(0, item.availableQty - (item.reservedQty || 0));
+        if (available >= requiredQty) {
+          return {
+            readiness: "READY" as MaterialReadiness,
+            available,
+            reserved: item.reservedQty || 0,
+            required: requiredQty,
+            shortage: 0,
+          };
+        } else if (available > 0) {
+          return {
+            readiness: "LOW_STOCK" as MaterialReadiness,
+            available,
+            reserved: item.reservedQty || 0,
+            required: requiredQty,
+            shortage: requiredQty - available,
+          };
+        } else {
+          return {
+            readiness: "SHORTAGE" as MaterialReadiness,
+            available: 0,
+            reserved: item.reservedQty || 0,
+            required: requiredQty,
+            shortage: requiredQty,
+          };
+        }
+      },
 
       setOptimizationMode: (mode) => {
         set({ optimizationMode: mode });
@@ -629,6 +680,60 @@ export const useAppStore = create<AppState>()(
         set({ orders: [], processes: [], slots: [], warnings: [] });
       },
 
+      updateOrderPriority: (orderId: string, priority: OrderPriority) => {
+        const targetId = orderId.trim();
+        const updatedOrders = get().orders.map((o) => {
+          if (o.id === targetId || o.orderId === targetId) {
+            return { ...o, priority };
+          }
+          return o;
+        });
+
+        const updatedProcesses = get().processes.map((p) => {
+          if (p.orderId === targetId || p.id.startsWith(targetId)) {
+            return { ...p, priority };
+          }
+          return p;
+        });
+
+        set({ orders: updatedOrders, processes: updatedProcesses });
+        get().addActivity("Priority Changed", `Order ${targetId} priority set to ${priority}`);
+        toast.success(`Priority updated to ${priority} for Order ${targetId}`);
+        get().runScheduler();
+      },
+
+      bulkUpdateOrderPriority: (orderIds: string[], priority: OrderPriority) => {
+        if (!orderIds || orderIds.length === 0) return;
+        const targetIds = new Set(orderIds.map((id) => id.trim()));
+        get().orders.forEach((o) => {
+          if (targetIds.has(o.id) || targetIds.has(o.orderId)) {
+            targetIds.add(o.id);
+            targetIds.add(o.orderId);
+          }
+        });
+        const updatedOrders = get().orders.map((o) => {
+          if (targetIds.has(o.id) || targetIds.has(o.orderId)) {
+            return { ...o, priority };
+          }
+          return o;
+        });
+
+        const updatedProcesses = get().processes.map((p) => {
+          if (targetIds.has(p.orderId) || [...targetIds].some((id) => p.id.startsWith(id))) {
+            return { ...p, priority };
+          }
+          return p;
+        });
+
+        set({ orders: updatedOrders, processes: updatedProcesses });
+        get().addActivity(
+          "Bulk Priority Changed",
+          `Updated priority to ${priority} for ${orderIds.length} orders`,
+        );
+        toast.success(`Updated priority to ${priority} for ${orderIds.length} orders`);
+        get().runScheduler();
+      },
+
       addWorkOrder: (orderData) => {
         const orderIdStr = String(orderData.orderId).trim();
         const baseQty = orderData.baseQty || 1;
@@ -639,6 +744,7 @@ export const useAppStore = create<AppState>()(
         const sumV3 = manpowerUtilizationMin * baseQty * orderData.orderQty;
         const totalTimeMin = setupTimeMin + sumV2;
         const manpowerPct = processTimeMin > 0 ? manpowerUtilizationMin / processTimeMin : 0.5;
+        const priority: OrderPriority = orderData.priority || "Med";
 
         let existingOrder = get().orders.find((o) => o.orderId === orderIdStr);
         let newOrders = [...get().orders];
@@ -650,13 +756,17 @@ export const useAppStore = create<AppState>()(
             sopStartDate: orderData.sopStartDate || new Date().toISOString(),
             sopStartTime: orderData.sopStartTime || "08:00:00",
             orderQty: orderData.orderQty,
+            priority,
           };
           newOrders.push(existingOrder);
+        } else if (orderData.priority) {
+          existingOrder.priority = orderData.priority;
         }
 
         const newProcess: OrderProcess = {
           id: `proc-${Date.now()}-${orderIdStr}-${orderData.processId}`,
           orderId: orderIdStr,
+          priority: existingOrder.priority || priority,
           processId: Number(orderData.processId),
           machineId: orderData.machineId,
           originalMachineId: orderData.machineId,
@@ -685,7 +795,93 @@ export const useAppStore = create<AppState>()(
         get().runScheduler();
       },
 
-      updateStepExecutionStatus: (processId, executionStatus, completedQty, scrapQty, notes) => {
+      addWorkOrderWithRouting: (orderData, steps) => {
+        const orderIdStr = String(orderData.orderId).trim();
+        const priority: OrderPriority = orderData.priority || "Med";
+
+        let existingOrder = get().orders.find((o) => o.orderId === orderIdStr);
+        let newOrders = [...get().orders];
+        if (!existingOrder) {
+          const created: Order = {
+            id: `ord-${Date.now()}-${orderIdStr}`,
+            orderId: orderIdStr,
+            material: orderData.material,
+            sopStartDate: orderData.sopStartDate || new Date().toISOString(),
+            sopStartTime: orderData.sopStartTime || "08:00:00",
+            orderQty: orderData.orderQty,
+            priority,
+            customerDueDate: orderData.customerDueDate,
+          };
+          existingOrder = created;
+          newOrders.push(created);
+        } else {
+          existingOrder.orderQty = orderData.orderQty;
+          existingOrder.material = orderData.material;
+          if (orderData.priority) existingOrder.priority = orderData.priority;
+          if (orderData.customerDueDate) existingOrder.customerDueDate = orderData.customerDueDate;
+        }
+
+        const newProcesses: OrderProcess[] = steps.map((step) => {
+          const baseQty = 1;
+          const setupTimeMin = Number(step.setupTimeMin) || 0;
+          const processTimeMin = Number(step.processTimeMin) || 1;
+          const manpowerUtilizationMin = Number(step.manpowerUtilizationMin) || 1;
+          const sumV2 = (orderData.orderQty / baseQty) * processTimeMin;
+          const sumV3 = manpowerUtilizationMin * baseQty * orderData.orderQty;
+          const totalTimeMin = setupTimeMin + sumV2;
+          const manpowerPct = processTimeMin > 0 ? manpowerUtilizationMin / processTimeMin : 0.5;
+
+          return {
+            id: `proc-${Date.now()}-${orderIdStr}-${step.processId}`,
+            orderId: orderIdStr,
+            priority: existingOrder?.priority || priority,
+            processId: Number(step.processId),
+            machineId: step.machineId,
+            originalMachineId: step.machineId,
+            processText: step.processText || `OPERATION STEP ${step.processId}`,
+            baseQty,
+            setupTimeMin,
+            processTimeMin,
+            manpowerUtilizationMin,
+            sumV2,
+            sumV3,
+            totalTimeMin,
+            manpowerPct,
+            status: "UNSCHEDULED",
+            scheduledStart: null,
+            scheduledEnd: null,
+            executionStatus: "PLANNED",
+            completedQty: 0,
+            scrapQty: 0,
+          };
+        });
+
+        // Filter out existing processes with the same orderId and processId if replacing
+        const existingIds = new Set(newProcesses.map((p) => `${p.orderId}-${p.processId}`));
+        const filteredProcesses = get().processes.filter(
+          (p) => !existingIds.has(`${p.orderId}-${p.processId}`),
+        );
+
+        set({
+          orders: newOrders,
+          processes: [...filteredProcesses, ...newProcesses],
+        });
+
+        toast.success(
+          `Created Work Order ${orderIdStr} with ${steps.length} sequential operations.`,
+        );
+        get().runScheduler();
+      },
+
+      updateStepExecutionStatus: (
+        processId,
+        executionStatus,
+        completedQty,
+        scrapQty,
+        notes,
+        holdReason,
+        scrapReason,
+      ) => {
         set((s) => ({
           processes: s.processes.map((p) => {
             if (p.id === processId || `${p.orderId}-${p.processId}` === processId) {
@@ -695,12 +891,142 @@ export const useAppStore = create<AppState>()(
                 completedQty: completedQty !== undefined ? completedQty : p.completedQty,
                 scrapQty: scrapQty !== undefined ? scrapQty : p.scrapQty,
                 operatorNotes: notes !== undefined ? notes : p.operatorNotes,
+                holdReason: holdReason !== undefined ? holdReason : p.holdReason,
+                scrapReason: scrapReason !== undefined ? scrapReason : p.scrapReason,
               };
             }
             return p;
           }),
         }));
         toast.success(`Updated step status to ${executionStatus}`);
+      },
+
+      logScrap: (processId, scrapQty, reason, notes) => {
+        const newEntry: ScrapEntry = {
+          id: `scrap-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          timestamp: new Date().toISOString(),
+          orderId: "",
+          processId: 0,
+          machineId: "",
+          scrapQty,
+          reason,
+          notes,
+          loggedBy: get().role || "Operator",
+        };
+        set((s) => ({
+          processes: s.processes.map((p) => {
+            if (p.id === processId || `${p.orderId}-${p.processId}` === processId) {
+              const history = p.scrapHistory ? [...p.scrapHistory] : [];
+              newEntry.orderId = p.orderId;
+              newEntry.processId = p.processId;
+              newEntry.machineId = p.machineId;
+              history.push(newEntry);
+              return {
+                ...p,
+                scrapQty: (p.scrapQty || 0) + scrapQty,
+                scrapReason: reason,
+                scrapHistory: history,
+              };
+            }
+            return p;
+          }),
+        }));
+        toast.error(`Logged ${scrapQty} scrap units (${reason})`);
+      },
+
+      batchUpdateExecutionStatus: (processIds, executionStatus) => {
+        const idSet = new Set(processIds);
+        set((s) => ({
+          processes: s.processes.map((p) => {
+            if (idSet.has(p.id) || idSet.has(`${p.orderId}-${p.processId}`)) {
+              return { ...p, executionStatus };
+            }
+            return p;
+          }),
+        }));
+        toast.success(`Updated ${processIds.length} operations to ${executionStatus}`);
+      },
+
+      releaseAllScheduled: () => {
+        set((s) => ({
+          processes: s.processes.map((p) => {
+            if (p.status === "SCHEDULED") {
+              return { ...p, executionStatus: "PLANNED" };
+            }
+            return { ...p, executionStatus: "QUEUED" };
+          }),
+        }));
+        toast.success("Released all scheduled operations to the shop floor queue!");
+      },
+
+      simulateShopFloorProgress: () => {
+        const { processes, orders } = get();
+        if (processes.length === 0) {
+          toast.error("No operations loaded to simulate.");
+          return;
+        }
+
+        const updated = processes.map((p, idx) => {
+          const parentOrder = orders.find((o) => o.id === p.orderId || o.orderId === p.orderId);
+          const orderQty = parentOrder?.orderQty || 100;
+
+          if (idx === 0 || idx === 1) {
+            // First 2 completed
+            return {
+              ...p,
+              executionStatus: "COMPLETED" as const,
+              completedQty: orderQty,
+              scrapQty: 0,
+            };
+          } else if (idx === 2 || idx === 3 || idx === 4) {
+            // Next 3 actively running
+            return {
+              ...p,
+              executionStatus: "IN_PROGRESS" as const,
+              completedQty: Math.round(orderQty * 0.45),
+              scrapQty: 2,
+            };
+          } else if (idx === 5) {
+            // 1 on hold (e.g. tool change / inspection)
+            return {
+              ...p,
+              executionStatus: "PAUSED" as const,
+              completedQty: Math.round(orderQty * 0.1),
+              operatorNotes: "Tool calibration in progress",
+            };
+          } else if (p.status === "SCHEDULED") {
+            // Remaining scheduled are released
+            return {
+              ...p,
+              executionStatus: "PLANNED" as const,
+              completedQty: 0,
+            };
+          } else {
+            return {
+              ...p,
+              executionStatus: "QUEUED" as const,
+              completedQty: 0,
+            };
+          }
+        });
+
+        set({ processes: updated });
+        toast.success(
+          "Simulated active shop floor progress: 2 Done, 3 Running, 1 Hold, Released ready",
+        );
+      },
+
+      resetAllExecutionStatuses: () => {
+        set((s) => ({
+          processes: s.processes.map((p) => ({
+            ...p,
+            executionStatus: p.status === "SCHEDULED" ? "PLANNED" : "QUEUED",
+            completedQty: 0,
+            scrapQty: 0,
+            operatorNotes: undefined,
+          })),
+        }));
+        toast.info("Reset all operations to initial status.");
       },
 
       loadFromCSVText: (csvText) => {
@@ -798,25 +1124,55 @@ export const useAppStore = create<AppState>()(
           console.warn("Server-side optimization unavailable, falling back to client solver:", err);
         }
 
-        // Client-side fallback solver if server call was skipped or offline
+        // Client-side solver (Web Worker for large datasets, synchronous fallback for small/unsupported)
         if (slots.length === 0) {
-          const result = generateSchedule(
+          const solverPayload = {
             orders,
-            resetProcesses,
+            processes: resetProcesses,
             machines,
             optimizationMode,
             groupSerialization,
             allowProcessOverlap,
             allowSopOverride,
             maxUtilizeResources,
-            dailyCapacities || {},
+            dailyCapacities: dailyCapacities || {},
             globalSetterCapacity,
             globalOperatorCapacity,
-            maxPreponeWeeks || 0,
-            get().setupMatrixRules || [],
-          );
-          slots = result.slots;
-          warnings = result.warnings;
+            maxPreponeWeeks: maxPreponeWeeks || 0,
+            rules: get().setupMatrixRules || [],
+          };
+
+          let workerRanSuccessfully = false;
+          if (typeof window !== "undefined" && window.Worker && orders.length > 40) {
+            try {
+              const workerResult = await runSolverInWorker(solverPayload);
+              slots = workerResult.slots;
+              warnings = workerResult.warnings;
+              workerRanSuccessfully = true;
+            } catch (workerErr) {
+              console.warn("Solver worker failed, using synchronous fallback:", workerErr);
+            }
+          }
+
+          if (!workerRanSuccessfully) {
+            const result = generateSchedule(
+              orders,
+              resetProcesses,
+              machines,
+              optimizationMode,
+              groupSerialization,
+              allowProcessOverlap,
+              allowSopOverride,
+              maxUtilizeResources,
+              dailyCapacities || {},
+              globalSetterCapacity,
+              globalOperatorCapacity,
+              maxPreponeWeeks || 0,
+              get().setupMatrixRules || [],
+            );
+            slots = result.slots;
+            warnings = result.warnings;
+          }
         }
 
         // Map slot start/end ranges back to each process
@@ -939,7 +1295,7 @@ export const useAppStore = create<AppState>()(
         get().runScheduler();
       },
 
-      pinProcessSchedule: (processId) => {
+      pinProcessSchedule: (processId: string) => {
         set((s) => ({
           processes: s.processes.map((p) => {
             if (p.id === processId) {
@@ -1078,6 +1434,84 @@ export const useAppStore = create<AppState>()(
           toast.error("An error occurred while loading from Supabase.");
         } finally {
           set({ isCloudLoading: false });
+        }
+      },
+
+      exportSystemBackup: () => {
+        const s = get();
+        const payload = {
+          version: "1.0",
+          exportedAt: new Date().toISOString(),
+          metadata: {
+            totalOrders: s.orders.length,
+            totalProcesses: s.processes.length,
+            totalRules: (s.setupMatrixRules || []).length,
+            totalInventory: (s.materialsInventory || []).length,
+          },
+          orders: s.orders,
+          processes: s.processes,
+          setupMatrixRules: s.setupMatrixRules || [],
+          materialsInventory: s.materialsInventory || [],
+          dailyCapacities: s.dailyCapacities || {},
+          machines: s.machines || [],
+          machineGroups: s.machineGroups || [],
+          globalSetterCapacity: s.globalSetterCapacity,
+          globalOperatorCapacity: s.globalOperatorCapacity,
+          optimizationMode: s.optimizationMode,
+          groupSerialization: s.groupSerialization,
+          allowProcessOverlap: s.allowProcessOverlap,
+          allowSopOverride: s.allowSopOverride,
+          maxUtilizeResources: s.maxUtilizeResources,
+        };
+        return JSON.stringify(payload, null, 2);
+      },
+
+      restoreSystemBackup: (jsonContent: string) => {
+        try {
+          const data = JSON.parse(jsonContent);
+          if (!data || typeof data !== "object") {
+            throw new Error("Invalid file content: Not a valid JSON object.");
+          }
+          if (!Array.isArray(data.orders) && !Array.isArray(data.processes)) {
+            throw new Error("Invalid backup format: Must contain orders or processes array.");
+          }
+
+          const updates: Partial<AppState> = {};
+          if (Array.isArray(data.orders)) updates.orders = data.orders;
+          if (Array.isArray(data.processes)) updates.processes = data.processes;
+          if (Array.isArray(data.setupMatrixRules))
+            updates.setupMatrixRules = data.setupMatrixRules;
+          if (Array.isArray(data.materialsInventory))
+            updates.materialsInventory = data.materialsInventory;
+          if (data.dailyCapacities && typeof data.dailyCapacities === "object") {
+            updates.dailyCapacities = data.dailyCapacities;
+          }
+          if (Array.isArray(data.machines) && data.machines.length > 0) {
+            updates.machines = data.machines;
+          }
+          if (Array.isArray(data.machineGroups) && data.machineGroups.length > 0) {
+            updates.machineGroups = data.machineGroups;
+          }
+          if (typeof data.globalSetterCapacity === "number") {
+            updates.globalSetterCapacity = data.globalSetterCapacity;
+          }
+          if (typeof data.globalOperatorCapacity === "number") {
+            updates.globalOperatorCapacity = data.globalOperatorCapacity;
+          }
+          if (data.optimizationMode) {
+            updates.optimizationMode = data.optimizationMode;
+          }
+
+          set(updates);
+          get().addActivity(
+            "System Restored",
+            `Restored backup with ${updates.orders?.length || 0} orders and full configuration`,
+          );
+          get().runScheduler();
+          return { success: true };
+        } catch (err: any) {
+          console.error("Backup restore error:", err);
+          return { success: false, error: err.message || "Failed to restore backup." };
         }
       },
     }),

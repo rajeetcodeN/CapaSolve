@@ -35,43 +35,43 @@ function ApiReferencePage() {
             <section className="space-y-3">
               <h3 className="font-bold text-base text-foreground flex items-center gap-2">
                 <Code2 className="h-4.5 w-4.5 text-primary" />
-                Authentication
+                Authentication & Rate Limits
               </h3>
               <p>
-                All API requests must contain an <code>Authorization</code> header containing your
-                Enterprise API token:
+                All API requests must contain an <code>X-API-Key</code> header containing your
+                Enterprise API token. Rate limit is 100 requests per minute.
               </p>
               <pre className="bg-muted p-3.5 rounded-lg text-xs text-foreground/90 font-mono border border-border/40 overflow-x-auto">
-                Authorization: Bearer cap_live_YOUR_SECRET_API_KEY
+                X-API-Key: cs_live_YOUR_SECRET_API_KEY
               </pre>
             </section>
 
             <section className="space-y-3">
               <h3 className="font-bold text-base text-foreground flex items-center gap-2">
                 <Terminal className="h-4.5 w-4.5 text-primary" />
-                1. Trigger Schedule Optimization
+                1. Trigger Finite Capacity Solve
               </h3>
               <p>
                 To trigger the constraint optimization engine programmatically, send a{" "}
                 <code>POST</code> request:
               </p>
               <pre className="bg-muted p-3.5 rounded-lg text-xs text-foreground/90 font-mono border border-border/40 overflow-x-auto">
-                POST https://api.capasolve.com/v1/schedule/optimize
+                POST /api/v1/schedule/solve
               </pre>
               <p className="text-xs text-muted-foreground">
-                Payload parameters: <code>organization_id</code>, <code>horizon_days</code>, and{" "}
-                <code>workstations</code> map details.
+                Payload parameters: <code>orders: Order[]</code>,{" "}
+                <code>processes: OrderProcess[]</code>, and optional solver configuration options.
               </p>
             </section>
 
             <section className="space-y-3">
               <h3 className="font-bold text-base text-foreground flex items-center gap-2">
                 <Link2 className="h-4.5 w-4.5 text-primary" />
-                2. Fetch Current Timeline
+                2. Fetch & Synchronize Work Orders
               </h3>
-              <p>To retrieve the currently active Gantt schedule entries:</p>
+              <p>To retrieve or push orders from your ERP system:</p>
               <pre className="bg-muted p-3.5 rounded-lg text-xs text-foreground/90 font-mono border border-border/40 overflow-x-auto">
-                GET https://api.capasolve.com/v1/schedule/active
+                GET /api/v1/orders?q=SEARCH_TERM POST /api/v1/orders
               </pre>
             </section>
           </CardContent>

@@ -338,10 +338,16 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
 
             <div className="border-t border-border/40 mt-8 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
               <div>&copy; 2026 Digital Biz Tech. All rights reserved.</div>
-              <div className="flex gap-6">
-                <span className="hover:text-foreground cursor-default">Terms of Service</span>
-                <span className="hover:text-foreground cursor-default">Privacy Policy</span>
-                <span className="hover:text-foreground cursor-default">Cookie Settings</span>
+              <div className="flex flex-wrap gap-6">
+                <Link to="/terms" className="hover:text-foreground transition-colors">
+                  Terms of Service
+                </Link>
+                <Link to="/privacy" className="hover:text-foreground transition-colors">
+                  Privacy Policy
+                </Link>
+                <Link to="/security" className="hover:text-foreground transition-colors">
+                  Security
+                </Link>
               </div>
             </div>
           </div>

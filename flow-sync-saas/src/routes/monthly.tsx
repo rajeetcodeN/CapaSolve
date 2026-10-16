@@ -45,6 +45,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
+import { formatDateStr } from "@/lib/dateUtils";
+
 export const Route = createFileRoute("/monthly")({
   head: () => ({
     meta: [
@@ -57,13 +59,6 @@ export const Route = createFileRoute("/monthly")({
   }),
   component: MonthlyPlannerPage,
 });
-
-function formatDateStr(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
 
 function MonthlyPlannerPage() {
   const {
@@ -115,7 +110,9 @@ function MonthlyPlannerPage() {
         if (!isNaN(d.getTime())) {
           return { year: d.getFullYear(), month: d.getMonth() };
         }
-      } catch (_) {}
+      } catch {
+        // Fall back to current date if timestamp parsing fails
+      }
     }
     const today = new Date();
     return { year: today.getFullYear(), month: today.getMonth() };
@@ -640,7 +637,7 @@ function MonthlyPlannerPage() {
 
       sortedOps.forEach((proc) => {
         // Align pointer to working hours (06:00 to 20:00)
-        let h = currentPointer.getHours();
+        const h = currentPointer.getHours();
         if (h < 6) {
           currentPointer.setHours(6, 0, 0, 0);
         } else if (h >= 20) {

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,8 +23,12 @@ import {
   Trash2,
   Clock,
   Layers,
+  FileJson,
+  Download,
+  Upload,
 } from "lucide-react";
 import { SetupMatrixConfig } from "@/components/SetupMatrixConfig";
+import { supabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -55,10 +59,76 @@ function ManagePage() {
     addSetupMatrixRule,
     deleteSetupMatrixRule,
     machineGroups,
+    exportSystemBackup,
+    restoreSystemBackup,
   } = useAppStore();
 
   const [userName, setUserName] = useState("");
   const [feedbackText, setFeedbackText] = useState("");
+
+  // System Backup & Restore (JSON) State
+  const backupFileRef = useRef<HTMLInputElement>(null);
+  const [isRestoring, setIsRestoring] = useState(false);
+
+  const handleExportBackup = () => {
+    try {
+      const jsonStr = exportSystemBackup();
+      const blob = new Blob([jsonStr], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const dateStr = new Date().toISOString().split("T")[0];
+      a.href = url;
+      a.download = `capasolve-mfg-backup-${dateStr}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success(
+        language === "de"
+          ? "Vollständiges System-Backup erfolgreich heruntergeladen!"
+          : "Full system backup exported and downloaded successfully!",
+      );
+    } catch (err: any) {
+      toast.error("Failed to export backup: " + err.message);
+    }
+  };
+
+  const handleRestoreBackupFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (role !== "DEVELOPER" && role !== "ADMIN") {
+      toast.error("Access Denied: Only Developers or Admins can restore system backups.");
+      return;
+    }
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsRestoring(true);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const content = event.target?.result as string;
+        const res = restoreSystemBackup(content);
+        if (res.success) {
+          toast.success(
+            language === "de"
+              ? "System-Backup erfolgreich wiederhergestellt! Zeitplan neu berechnet."
+              : "System backup restored successfully! Schedule re-optimized.",
+          );
+        } else {
+          toast.error(res.error || "Failed to restore backup file.");
+        }
+      } catch (err: any) {
+        toast.error("Error reading backup file: " + err.message);
+      } finally {
+        setIsRestoring(false);
+      }
+    };
+    reader.onerror = () => {
+      toast.error("Failed to read the backup file.");
+      setIsRestoring(false);
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
 
   // Setup Matrix Form State
   const [fromMat, setFromMat] = useState("*");
@@ -77,7 +147,7 @@ function ManagePage() {
     }
   }, [user]);
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userName.trim()) {
       toast.error("Name cannot be empty.");
@@ -91,6 +161,19 @@ function ManagePage() {
           full_name: userName,
         },
       });
+
+      try {
+        await supabase.auth.updateUser({
+          data: { full_name: userName },
+        });
+        await supabase
+          .from("profiles")
+          .update({ full_name: userName, updated_at: new Date().toISOString() })
+          .eq("id", user.id);
+      } catch (err) {
+        console.warn("Could not sync profile to backend:", err);
+      }
+
       toast.success(
         language === "de"
           ? "Benutzerprofil erfolgreich aktualisiert!"
@@ -284,6 +367,77 @@ function ManagePage() {
             >
               <CloudDownload className={`h-4 w-4 shrink-0 ${isCloudLoading && "animate-spin"}`} />
               <span>{isCloudLoading ? "Loading from Cloud..." : "Load Cloud Backup"}</span>
+            </Button>
+          </div>
+        </div>
+
+        {/* Block: System Backup & Restore (JSON) */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+            <div className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-white">
+              <FileJson className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              <div className="flex flex-col">
+                <span>
+                  {language === "de"
+                    ? "System-Backup & Wiederherstellung (JSON)"
+                    : "Full System Backup & Restore (JSON)"}
+                </span>
+                <span className="text-[11px] font-normal text-slate-500">
+                  {language === "de"
+                    ? "Exportieren oder importieren Sie alle Arbeitsaufträge, Fertigungsstufen, Rüstmatrizen und Arbeitsplatzkapazitäten."
+                    : "Export or import complete snapshot of orders, operations, setup changeover rules, and workstation capacities."}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 px-3 py-1 rounded-full border border-emerald-200/80 dark:border-emerald-800/60">
+                {orders.length} Orders • {processes.length} Ops
+              </span>
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+            {language === "de"
+              ? "Laden Sie eine unverschlüsselte JSON-Sicherungsdatei herunter, um Ihre Produktionsdaten zu archivieren, zwischen Umgebungen zu migrieren oder bei Bedarf vollständig wiederherzustellen."
+              : "Download a portable JSON backup file to archive plant operations, transfer state across development or production instances, or recover scheduling data instantly."}
+          </p>
+
+          <input
+            ref={backupFileRef}
+            type="file"
+            accept=".json"
+            className="hidden"
+            onChange={handleRestoreBackupFile}
+          />
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+            <Button
+              onClick={handleExportBackup}
+              className="w-full text-xs h-9 cursor-pointer gap-2 bg-[#1e3f2e] hover:bg-[#27533d] text-white shadow-xs border border-[#27533d] rounded-xl font-medium"
+            >
+              <Download className="h-4 w-4 shrink-0" />
+              <span>
+                {language === "de" ? "Backup exportieren (JSON)" : "Export System Backup (JSON)"}
+              </span>
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={() => backupFileRef.current?.click()}
+              disabled={isRestoring}
+              className="w-full text-xs h-9 cursor-pointer gap-2 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-850 rounded-xl font-medium text-slate-700 dark:text-slate-300"
+            >
+              <Upload className={`h-4 w-4 shrink-0 ${isRestoring ? "animate-spin" : ""}`} />
+              <span>
+                {isRestoring
+                  ? language === "de"
+                    ? "Wird wiederhergestellt..."
+                    : "Restoring Backup..."
+                  : language === "de"
+                    ? "Backup importieren (JSON)"
+                    : "Restore System Backup (JSON)"}
+              </span>
             </Button>
           </div>
         </div>

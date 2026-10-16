@@ -1,19 +1,21 @@
 import { generateSchedule } from "./scheduler";
+import { Machine, OptimizationMode, Order, OrderProcess, SetupMatrixRule } from "./types";
 
 export interface SolverWorkerInput {
-  orders: any[];
-  processes: any[];
-  machines?: any[];
-  optimizationMode: "full" | "workstation" | "pre-optimization";
-  groupSerialization: boolean;
-  allowProcessOverlap: boolean;
-  allowSopOverride: boolean;
-  maxUtilizeResources: boolean;
-  language: "en" | "de";
-  maxPreponeWeeks: number;
-  globalSetterCapacity: number;
-  globalOperatorCapacity: number;
-  dailyCapacities: Record<string, { setter: number; process: number; isHoliday?: boolean }>;
+  orders: Order[];
+  processes: OrderProcess[];
+  machines?: Machine[];
+  optimizationMode?: OptimizationMode;
+  groupSerialization?: boolean;
+  allowProcessOverlap?: boolean;
+  allowSopOverride?: boolean;
+  maxUtilizeResources?: boolean;
+  language?: "en" | "de";
+  maxPreponeWeeks?: number;
+  globalSetterCapacity?: number;
+  globalOperatorCapacity?: number;
+  dailyCapacities?: Record<string, { setter: number; process: number; isHoliday?: boolean }>;
+  rules?: SetupMatrixRule[];
 }
 
 self.onmessage = (event: MessageEvent<SolverWorkerInput>) => {
@@ -32,7 +34,7 @@ self.onmessage = (event: MessageEvent<SolverWorkerInput>) => {
       data.orders,
       data.processes,
       data.machines || [],
-      (data.optimizationMode as any) || "full",
+      data.optimizationMode || "full",
       data.groupSerialization,
       data.allowProcessOverlap,
       data.allowSopOverride,
@@ -41,6 +43,7 @@ self.onmessage = (event: MessageEvent<SolverWorkerInput>) => {
       data.globalSetterCapacity ?? 100,
       data.globalOperatorCapacity ?? 200,
       data.maxPreponeWeeks ?? 0,
+      data.rules || [],
     );
     const solveTimeMs = Math.round(performance.now() - startTime);
 
@@ -51,10 +54,11 @@ self.onmessage = (event: MessageEvent<SolverWorkerInput>) => {
       slots: result.slots,
       warnings: result.warnings,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Solver worker encountered an unexpected exception.";
     self.postMessage({
       type: "ERROR",
-      error: err?.message || "Solver worker encountered an unexpected exception.",
+      error: message,
     });
   }
 };

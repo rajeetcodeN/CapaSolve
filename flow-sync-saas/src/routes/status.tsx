@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useAppStore } from "@/lib/store";
 import { useTranslations } from "@/lib/translations";
+import { OrderPriority } from "@/lib/types";
 import { toast } from "sonner";
 import Papa from "papaparse";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -80,6 +81,7 @@ import {
 } from "lucide-react";
 import { parseSOPDate } from "@/lib/scheduler";
 import { cn } from "@/lib/utils";
+import { QuickOverviewPopover } from "@/components/QuickOverviewPopover";
 
 export const Route = createFileRoute("/status")({
   head: () => ({
@@ -95,53 +97,7 @@ export const Route = createFileRoute("/status")({
   component: ShopFloorStatusPage,
 });
 
-const MONTH_NAMES = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
-
-const MONTH_NAMES_SHORT = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
-
-function formatDateStr(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function getISOWeekNumber(d: Date): number {
-  const date = new Date(d.getTime());
-  date.setHours(0, 0, 0, 0);
-  date.setDate(date.getDate() + 3 - ((date.getDay() + 6) % 7));
-  const week1 = new Date(date.getFullYear(), 0, 4);
-  return (
-    1 +
-    Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7)
-  );
-}
+import { MONTH_NAMES, MONTH_NAMES_SHORT, formatDateStr, getISOWeekNumber } from "@/lib/dateUtils";
 
 function ShopFloorStatusPage() {
   const {
@@ -150,6 +106,7 @@ function ShopFloorStatusPage() {
     machines,
     machineGroups,
     updateStepExecutionStatus,
+    updateOrderPriority,
     addWorkOrder,
     loadDefaultCSV,
   } = useAppStore();
@@ -163,10 +120,28 @@ function ShopFloorStatusPage() {
   const [isMaterialModalOpen, setIsMaterialModalOpen] = useState(false);
   const [isOptimizing, setIsOptimizing] = useState(false);
 
+  // Dynamic Horizon Detection: Find the earliest scheduled order date so we never land on an empty month!
+  const defaultHorizonDate = useMemo(() => {
+    if (orders.length > 0) {
+      const timestamps = orders
+        .map((o) => parseSOPDate(o.sopStartDate, o.sopStartTime).getTime())
+        .filter((t) => !isNaN(t));
+      if (timestamps.length > 0) {
+        timestamps.sort((a, b) => a - b);
+        return new Date(timestamps[0]);
+      }
+    }
+    return new Date(2026, 5, 1); // June 1, 2026 (matching demo dataset)
+  }, [orders]);
+
   // Date Navigation State
-  const [currentDate, setCurrentDate] = useState<Date>(() => new Date(2026, 6, 27)); // Default July 27, 2026 (W31)
+  const [currentDate, setCurrentDate] = useState<Date>(() => defaultHorizonDate);
   const currentYear = currentDate.getFullYear();
   const currentMonth = currentDate.getMonth();
+
+  useEffect(() => {
+    setCurrentDate(defaultHorizonDate);
+  }, [defaultHorizonDate]);
 
   // Filter & Search states
   const [selectedMachine, setSelectedMachine] = useState<string>("ALL");
@@ -179,7 +154,7 @@ function ShopFloorStatusPage() {
   const [newStepId, setNewStepId] = useState("10");
   const [newMaterial, setNewMaterial] = useState("");
   const [newMachineId, setNewMachineId] = useState("");
-  const [newSopDate, setNewSopDate] = useState("2026-07-27");
+  const [newSopDate, setNewSopDate] = useState(() => formatDateStr(defaultHorizonDate));
   const [newOrderQty, setNewOrderQty] = useState("500");
   const [newProcessText, setNewProcessText] = useState("");
   const [newSetupMins, setNewSetupMins] = useState("30");
@@ -259,11 +234,13 @@ function ShopFloorStatusPage() {
       ];
 
       // Priority derivation
-      let priority: "High" | "Med" | "Low" = "Med";
-      if (orderQty >= 800 || executionStatus === "DELAYED") {
-        priority = "High";
-      } else if (orderQty <= 400 || executionStatus === "COMPLETED") {
-        priority = "Low";
+      let priority: OrderPriority = parentOrder?.priority || proc.priority || "Med";
+      if (!parentOrder?.priority && !proc.priority) {
+        if (orderQty >= 800 || executionStatus === "DELAYED") {
+          priority = "High";
+        } else if (orderQty <= 400 || executionStatus === "COMPLETED") {
+          priority = "Low";
+        }
       }
 
       // Display clean WO code
@@ -696,27 +673,33 @@ function ShopFloorStatusPage() {
   };
 
   // Helper for priority pill styling (Subtle semantic colors)
-  const renderPriorityBadge = (priority: "High" | "Med" | "Low") => {
-    switch (priority) {
-      case "High":
-        return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-rose-50 text-rose-700 border border-rose-200/80 dark:bg-rose-950/30 dark:text-rose-300 dark:border-rose-800/60">
-            High
-          </span>
-        );
-      case "Med":
-        return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200/80 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-800/60">
-            Med
-          </span>
-        );
-      case "Low":
-        return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-slate-50 text-slate-600 border border-slate-200/80 dark:bg-slate-850 dark:text-slate-300 dark:border-slate-700">
-            Low
-          </span>
-        );
-    }
+  const renderPriorityBadge = (priority: OrderPriority) => {
+    const dot =
+      priority === "Urgent"
+        ? "bg-rose-500"
+        : priority === "High"
+          ? "bg-orange-500"
+          : priority === "Low"
+            ? "bg-slate-400"
+            : "bg-amber-500";
+
+    const badgeStyle =
+      priority === "Urgent"
+        ? "bg-rose-50 text-rose-700 border-rose-200/90 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/60"
+        : priority === "High"
+          ? "bg-orange-50 text-orange-700 border-orange-200/90 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800/60"
+          : priority === "Low"
+            ? "bg-slate-100 text-slate-700 border-slate-200/90 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700"
+            : "bg-amber-50 text-amber-700 border-amber-200/90 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60";
+
+    return (
+      <span
+        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium border ${badgeStyle}`}
+      >
+        <span className={`h-1.5 w-1.5 rounded-full ${dot} shrink-0`} />
+        {priority === "Med" ? "Medium" : priority}
+      </span>
+    );
   };
 
   // Helper for status badge styling (Enterprise Semantic status system)
@@ -1027,6 +1010,13 @@ function ShopFloorStatusPage() {
           <MaterialInventoryModal
             open={isMaterialModalOpen}
             onOpenChange={setIsMaterialModalOpen}
+          />
+
+          {/* Context Help (i) at the end */}
+          <QuickOverviewPopover
+            align="end"
+            side="bottom"
+            className="h-8 w-8 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-foreground shadow-2xs shrink-0"
           />
         </div>
       </div>
@@ -1577,7 +1567,43 @@ function ShopFloorStatusPage() {
 
                           {/* Priority Badge */}
                           <TableCell className="text-center">
-                            {renderPriorityBadge(proc.priority)}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger className="cursor-pointer outline-none hover:opacity-80 transition-opacity">
+                                {renderPriorityBadge(proc.priority)}
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent
+                                align="center"
+                                className="text-xs w-36 shadow-lg border border-border"
+                              >
+                                {(["Urgent", "High", "Med", "Low"] as OrderPriority[]).map(
+                                  (prio) => (
+                                    <DropdownMenuItem
+                                      key={prio}
+                                      onClick={() => updateOrderPriority(proc.orderId, prio)}
+                                      className="cursor-pointer flex items-center justify-between"
+                                    >
+                                      <span className="flex items-center gap-2">
+                                        <span
+                                          className={`h-2 w-2 rounded-full shrink-0 ${
+                                            prio === "Urgent"
+                                              ? "bg-rose-500"
+                                              : prio === "High"
+                                                ? "bg-orange-500"
+                                                : prio === "Low"
+                                                  ? "bg-slate-400"
+                                                  : "bg-amber-500"
+                                          }`}
+                                        />
+                                        {prio === "Med" ? "Medium" : prio}
+                                      </span>
+                                      {proc.priority === prio && (
+                                        <span className="text-primary font-bold">✓</span>
+                                      )}
+                                    </DropdownMenuItem>
+                                  ),
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </TableCell>
 
                           {/* Status Badge */}
@@ -1923,7 +1949,41 @@ function ShopFloorStatusPage() {
                           {proc.sopStartDate}
                         </TableCell>
                         <TableCell className="text-center">
-                          {renderPriorityBadge(proc.priority)}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger className="cursor-pointer outline-none hover:opacity-80 transition-opacity">
+                              {renderPriorityBadge(proc.priority)}
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                              align="center"
+                              className="text-xs w-36 shadow-lg border border-border"
+                            >
+                              {(["Urgent", "High", "Med", "Low"] as OrderPriority[]).map((prio) => (
+                                <DropdownMenuItem
+                                  key={prio}
+                                  onClick={() => updateOrderPriority(proc.orderId, prio)}
+                                  className="cursor-pointer flex items-center justify-between"
+                                >
+                                  <span className="flex items-center gap-2">
+                                    <span
+                                      className={`h-2 w-2 rounded-full shrink-0 ${
+                                        prio === "Urgent"
+                                          ? "bg-rose-500"
+                                          : prio === "High"
+                                            ? "bg-orange-500"
+                                            : prio === "Low"
+                                              ? "bg-slate-400"
+                                              : "bg-amber-500"
+                                      }`}
+                                    />
+                                    {prio === "Med" ? "Medium" : prio}
+                                  </span>
+                                  {proc.priority === prio && (
+                                    <span className="text-primary font-bold">✓</span>
+                                  )}
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                         <TableCell className="text-center">
                           {renderStatusBadge(proc.executionStatus, proc.completionPct)}

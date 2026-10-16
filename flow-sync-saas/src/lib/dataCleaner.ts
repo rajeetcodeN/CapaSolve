@@ -1,15 +1,34 @@
+/**
+ * ==============================================================================
+ * CapaSolve SaaS — Manufacturing ERP Data Ingestion & Hygiene Engine
+ * ==============================================================================
+ * Provides intelligent data parsing, column heuristic detection, multi-format
+ * date parsing, validation auditing, and automated data cleaning for CSV/TSV
+ * exports from SAP ERP, Siemens Opcenter, Microsoft Dynamics, and custom MES systems.
+ * ==============================================================================
+ */
+
 import Papa from "papaparse";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+/**
+ * Individual data validation finding flagged during pre-flight dataset auditing.
+ */
 export interface ValidationIssue {
-  rowIdx: number; // 0-indexed, -1 for header issues
+  /** 0-indexed row number in dataset, or -1 for header/schema level errors */
+  rowIdx: number;
+  /** Severity level */
   type: "critical" | "warning" | "info";
+  /** Human-readable explanation of the data defect */
   message: string;
+  /** Name of the defective column (if applicable) */
   column?: string;
+  /** Raw defective value found in the input cell */
   value?: string;
 }
 
+/** Configurable rules for automated batch data cleaning */
 export interface CleaningOptions {
   trimWhitespace: boolean;
   normalizeDates: boolean;
@@ -18,8 +37,9 @@ export interface CleaningOptions {
   normalizeDelimiters: boolean;
 }
 
+/** Output of automated data cleaning execution including audit log */
 export interface CleanedResult {
-  cleanedRows: any[];
+  cleanedRows: Record<string, unknown>[];
   logs: Array<{
     rowIdx: number;
     column: string;
@@ -50,9 +70,17 @@ export interface ColumnMapping {
   processTime: string;
   baseQty: string;
   manpower: string;
+  priority?: string;
 }
 
-// Helper to auto-detect mappings based on headers
+/**
+ * Intelligently maps arbitrary ERP column header titles into CapaSolve's standardized schema.
+ * Employs exact matching, alias list resolution, and fuzzy substring detection across
+ * English, German (SAP), and international manufacturing conventions.
+ *
+ * @param headers - Array of raw column headers extracted from CSV/TSV
+ * @returns Strongly typed ColumnMapping pointing each internal field to its corresponding CSV header
+ */
 export function detectColumnMapping(headers: string[]): ColumnMapping {
   const findHeader = (possibleNames: string[], defaultFallback: string): string => {
     // Exact or array match
@@ -199,12 +227,19 @@ export const runServerAICleaning = createServerFn({ method: "POST" })
           "AI_ENGINE_API_KEY is not configured in environment. Using high-performance client-side AI data cleaner engine.",
         isApiKeyAvailable,
       };
-    } catch (e: any) {
-      return { success: false, error: e.message || "Failed in AI Server Function" };
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Failed in AI Server Function";
+      return { success: false, error: message };
     }
   });
 
-// 2. Delimiter detection
+/**
+ * Autodetects the tabular delimiter (comma, semicolon, or tab) by analyzing
+ * frequency distribution across the initial preview lines of the raw input.
+ *
+ * @param csvText - Raw text content of the uploaded spreadsheet or export
+ * @returns Detected delimiter character and human-friendly display label
+ */
 export function detectCSVFormat(csvText: string): { delimiter: string; name: string } {
   if (!csvText) return { delimiter: ",", name: "Comma (Default)" };
 
@@ -223,7 +258,19 @@ export function detectCSVFormat(csvText: string): { delimiter: string; name: str
   return { delimiter: ",", name: "Comma Separated (CSV)" };
 }
 
-// Helper to normalize dates
+/**
+ * Robust date normalizer converting international, European, and ERP date formats
+ * into the standardized ISO 8601 date string `YYYY-MM-DD`.
+ *
+ * Supported input variants:
+ * - `YYYY-MM-DD` (ISO standard)
+ * - `DD.MM.YYYY` (German / SAP standard)
+ * - `DD-MM-YYYY` or `MM-DD-YYYY` (hyphenated)
+ * - `DD/MM/YYYY` or `MM/DD/YYYY` (slashed)
+ *
+ * @param dateStr - Raw date string from imported cell
+ * @returns Canonical `YYYY-MM-DD` date string, or empty string if input is blank
+ */
 export function parseAndNormalizeDate(dateStr: string): string {
   if (!dateStr) return "";
   const cleaned = dateStr.trim();

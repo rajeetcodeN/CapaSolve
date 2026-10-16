@@ -31,6 +31,7 @@ import {
   QrCode,
   GitBranch,
   Wrench,
+  BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "@/lib/translations";
@@ -52,6 +53,7 @@ import { CommandPalette } from "./CommandPalette";
 import { NotificationCenter } from "./NotificationCenter";
 import { ExportButton } from "./ExportButton";
 import { OnboardingTour } from "./OnboardingTour";
+import { QuickOverviewPopover } from "./QuickOverviewPopover";
 
 interface NavItem {
   to: string;
@@ -64,6 +66,13 @@ interface NavItem {
 const nav: NavItem[] = [
   { to: "/dashboard", labelKey: "nav.dashboard", icon: LayoutGrid },
   { to: "/orders", labelKey: "nav.orders", icon: ListOrdered },
+  {
+    to: "/gantt",
+    labelKey: "nav.gantt",
+    icon: Calendar,
+    customLabel: "Gantt Timeline",
+    badge: "VISUAL",
+  },
   {
     to: "/status",
     labelKey: "nav.orders",
@@ -233,8 +242,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             })}
           </nav>
 
-          {/* Sidebar Footer (Role Swapper) */}
-          <div className="p-2 border-t border-slate-200/70 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex flex-col items-center justify-center">
+          {/* Sidebar Footer (Help Guide & Role Swapper) */}
+          <div className="p-2 border-t border-slate-200/70 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex flex-col items-center justify-center gap-1.5">
+            <QuickOverviewPopover
+              showLabel={true}
+              align="start"
+              side="right"
+              className="w-[64px] py-1.5 px-0.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 flex flex-col items-center justify-center transition-colors focus:outline-none cursor-pointer"
+            />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
@@ -426,6 +441,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 )}
               </button>
 
+              {/* Quick Overview & Help Popover */}
+              <QuickOverviewPopover />
+
               {/* Notification Center */}
               <NotificationCenter />
 
@@ -544,6 +562,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   >
                     <Search className="h-3.5 w-3.5" />
                     <span>Command Palette (⌘K)</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="text-xs cursor-pointer gap-2">
+                    <Link to="/documentation">
+                      <BookOpen className="h-3.5 w-3.5 text-primary" />
+                      <span>Documentation</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="text-xs cursor-pointer gap-2">
+                    <Link to="/terms">
+                      <Shield className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span>Terms & Beta Agreement</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="text-xs cursor-pointer gap-2">
+                    <Link to="/settings">
+                      <Settings className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span>Settings & Setup Matrix</span>
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem

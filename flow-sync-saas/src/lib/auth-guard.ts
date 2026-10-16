@@ -39,6 +39,7 @@ export const PUBLIC_ROUTES = [
   "/documentation",
   "/api-reference",
   "/support",
+  "/terms",
 ];
 
 export function isPublicRoute(pathname: string): boolean {

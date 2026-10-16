@@ -53,6 +53,7 @@ export const CreateStepModal: React.FC<CreateStepModalProps> = ({
       material: selectedOrder.material,
       orderQty: selectedOrder.orderQty,
       sopStartDate: selectedOrder.sopStartDate,
+      priority: selectedOrder.priority,
       processId,
       machineId,
       processText: processText.trim() || `OPERATION STEP ${processId}`,

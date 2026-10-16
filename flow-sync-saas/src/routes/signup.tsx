@@ -73,10 +73,12 @@ function SignupPage() {
       // If session is active (email verification disabled in Supabase dashboard)
       if (authData.session) {
         try {
-          const slug = company
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, "-")
-            .replace(/(^-|-$)+/g, "");
+          const baseSlug =
+            company
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/(^-|-$)+/g, "") || "factory";
+          const slug = `${baseSlug}-${authData.user.id.substring(0, 6)}`;
           const { data: orgData, error: orgError } = await supabase
             .from("organizations")
             .insert({ name: company, slug, plan: "FREE" })

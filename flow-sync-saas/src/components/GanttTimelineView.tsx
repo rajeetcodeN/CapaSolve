@@ -16,6 +16,7 @@ import { useAppStore } from "@/lib/store";
 import { useTranslations } from "@/lib/translations";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SHIFT_1_START, SHIFT_1_END, SHIFT_2_END, WORKING_HOURS_PER_DAY } from "@/lib/types";
+import { parseSOPDate } from "@/lib/scheduler";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
@@ -28,88 +29,34 @@ import {
   ArrowRight,
   SlidersHorizontal,
   ChevronRight,
+  ChevronLeft,
   Info,
   ArrowLeft,
   CalendarDays,
   Pin,
   Unlock,
   Package,
+  Pause,
+  CheckCircle2,
+  Activity,
+  Check,
 } from "lucide-react";
 import { ExportButton } from "@/components/ExportButton";
 import { MaterialInventoryModal } from "@/components/modals/MaterialInventoryModal";
+import { HoldReasonModal } from "@/components/modals/HoldReasonModal";
+import { LogScrapModal } from "@/components/modals/LogScrapModal";
 
-function formatDateStr(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-// Counts working hours (06:00 to 20:00) between two dates mathematically in O(1) constant time
-function getWorkingHoursBetween(start: Date, end: Date): number {
-  if (start >= end) return 0;
-
-  const dStart = new Date(start.getTime());
-  const dEnd = new Date(end.getTime());
-
-  // Set to midnight to find the difference in calendar days
-  const startDay = new Date(dStart.getFullYear(), dStart.getMonth(), dStart.getDate());
-  const endDay = new Date(dEnd.getFullYear(), dEnd.getMonth(), dEnd.getDate());
-
-  const diffDays = Math.round((endDay.getTime() - startDay.getTime()) / 86400000);
-
-  if (diffDays === 0) {
-    // Same calendar day: count hours within the working range
-    const h1 = Math.max(SHIFT_1_START, Math.min(SHIFT_2_END, dStart.getHours()));
-    const h2 = Math.max(SHIFT_1_START, Math.min(SHIFT_2_END, dEnd.getHours()));
-    return Math.max(0, h2 - h1);
-  } else {
-    // Different calendar days
-    // 1. Working hours on the first day
-    const h1 = Math.max(SHIFT_1_START, Math.min(SHIFT_2_END, dStart.getHours()));
-    const firstDayHours = Math.max(0, SHIFT_2_END - h1);
-
-    // 2. Working hours on the last day
-    const h2 = Math.max(SHIFT_1_START, Math.min(SHIFT_2_END, dEnd.getHours()));
-    const lastDayHours = Math.max(0, h2 - SHIFT_1_START);
-
-    // 3. Working hours for full days in between
-    const middleDaysHours = (diffDays - 1) * WORKING_HOURS_PER_DAY;
-
-    return firstDayHours + middleDaysHours + lastDayHours;
-  }
-}
-
-const MONTH_NAMES = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
-
-function getLocalizedMonthName(mo: number): string {
-  return MONTH_NAMES[mo] ?? "June";
-}
-
-function getWeekNumber(d: Date): number {
-  const target = new Date(d.valueOf());
-  const dayNr = (d.getDay() + 6) % 7;
-  target.setDate(target.getDate() - dayNr + 3);
-  const firstThursday = target.valueOf();
-  target.setMonth(0, 1);
-  if (target.getDay() !== 4) {
-    target.setMonth(0, 1 + ((4 - target.getDay() + 7) % 7));
-  }
-  return 1 + Math.ceil((firstThursday - target.valueOf()) / 604800000);
-}
+import {
+  formatDateStr,
+  getWorkingHoursBetween,
+  MONTH_NAMES,
+  getLocalizedMonthName,
+  getWeekNumber,
+} from "@/lib/dateUtils";
+import { ScheduleLegend } from "@/components/common/ScheduleLegend";
+import { YearView } from "@/components/gantt/YearView";
+import { WeekView } from "@/components/gantt/WeekView";
+import { HourView } from "@/components/gantt/HourView";
 
 interface GanttTimelineViewProps {
   timelineZoom?: "compact" | "normal" | "wide";
@@ -223,6 +170,8 @@ export function GanttTimelineView({
   const [filterGroup, setFilterGroup] = useState<string>("ALL");
   const [viewMode, setViewMode] = useState<"workstation" | "group">("workstation");
   const [isMaterialModalOpen, setIsMaterialModalOpen] = useState(false);
+  const [holdModalOpen, setHoldModalOpen] = useState(false);
+  const [scrapModalOpen, setScrapModalOpen] = useState(false);
 
   const filteredGroups = useMemo(() => {
     const groups = machineGroups || [
@@ -254,15 +203,51 @@ export function GanttTimelineView({
     }
   }, [granularity]);
 
-  // Date states synced with currentDate
+  // Dynamic Horizon Detection: Find the earliest order/scheduled date so we never land on an empty month!
+  const earliestScheduledDate = useMemo(() => {
+    if (slots && slots.length > 0) {
+      const dates = slots
+        .map((s) => s.date)
+        .filter(Boolean)
+        .sort();
+      if (dates.length > 0) {
+        const p = dates[0].split("-");
+        if (p.length === 3) {
+          return { year: parseInt(p[0], 10), month: parseInt(p[1], 10) - 1, dayStr: dates[0] };
+        }
+      }
+    }
+    if (processes && processes.length > 0) {
+      const scheduled = processes.filter((p) => p.scheduledStart);
+      if (scheduled.length > 0) {
+        const d = new Date(scheduled[0].scheduledStart!);
+        if (!isNaN(d.getTime())) {
+          return { year: d.getFullYear(), month: d.getMonth(), dayStr: formatDateStr(d) };
+        }
+      }
+    }
+    if (orders && orders.length > 0) {
+      const orderStarts = orders
+        .map((o) => parseSOPDate(o.sopStartDate, o.sopStartTime).getTime())
+        .filter((t) => !isNaN(t));
+      if (orderStarts.length > 0) {
+        orderStarts.sort((a, b) => a - b);
+        const d = new Date(orderStarts[0]);
+        return { year: d.getFullYear(), month: d.getMonth(), dayStr: formatDateStr(d) };
+      }
+    }
+    return { year: 2026, month: 5, dayStr: "2026-06-01" }; // Default June 2026
+  }, [slots, processes, orders]);
+
+  // Date states synced with currentDate or earliestScheduledDate
   const [selectedYear, setSelectedYear] = useState<number>(() =>
-    currentDate ? currentDate.getFullYear() : 2026,
+    currentDate ? currentDate.getFullYear() : earliestScheduledDate.year,
   );
   const [selectedMonth, setSelectedMonth] = useState<number>(() =>
-    currentDate ? currentDate.getMonth() : 6,
+    currentDate ? currentDate.getMonth() : earliestScheduledDate.month,
   );
   const [selectedDayStr, setSelectedDayStr] = useState<string>(() =>
-    currentDate ? formatDateStr(currentDate) : "2026-07-27",
+    currentDate ? formatDateStr(currentDate) : earliestScheduledDate.dayStr,
   );
   const [selectedHour, setSelectedHour] = useState<number>(10);
   const [showAllAlerts, setShowAllAlerts] = useState<boolean>(false);
@@ -275,8 +260,12 @@ export function GanttTimelineView({
       setSelectedYear(yr);
       setSelectedMonth(mo);
       setSelectedDayStr(dayStr);
+    } else if (earliestScheduledDate) {
+      setSelectedYear(earliestScheduledDate.year);
+      setSelectedMonth(earliestScheduledDate.month);
+      setSelectedDayStr(earliestScheduledDate.dayStr);
     }
-  }, [currentDate]);
+  }, [currentDate, earliestScheduledDate]);
 
   // Dynamic hour width based on zoom switcher
   const HOUR_WIDTH = timelineZoom === "compact" ? 36 : timelineZoom === "wide" ? 104 : 64;
@@ -333,7 +322,11 @@ export function GanttTimelineView({
 
   const selectedOrder = useMemo(() => {
     if (!selectedProcess) return null;
-    return orders.find((o) => o.id === selectedProcess.orderId) || null;
+    return (
+      orders.find(
+        (o) => o.id === selectedProcess.orderId || o.orderId === selectedProcess.orderId,
+      ) || null
+    );
   }, [selectedProcess, orders]);
 
   // Handle HTML5 Drag and Drop Drops
@@ -478,6 +471,72 @@ export function GanttTimelineView({
       totalHours: daysList.length * WORKING_HOURS_PER_DAY,
     };
   }, [processes, selectedMonth, currentDate]);
+
+  // Dynamic SVG Precedence Routing Curves connecting sequential steps of selected work order
+  const routingPrecedenceCurves = useMemo(() => {
+    if (!selectedOrder || viewMode !== "workstation" || !timelineRange) return [];
+
+    const orderSteps = processes
+      .filter((p) => p.orderId === selectedOrder.orderId || p.orderId === selectedOrder.id)
+      .filter((p) => p.status === "SCHEDULED" && p.scheduledStart && p.scheduledEnd)
+      .sort((a, b) => a.processId - b.processId);
+
+    if (orderSteps.length < 2) return [];
+
+    const curves: {
+      path: string;
+      isViolation: boolean;
+      midX: number;
+      midY: number;
+      fromStep: number;
+      toStep: number;
+    }[] = [];
+
+    for (let i = 0; i < orderSteps.length - 1; i++) {
+      const stepA = orderSteps[i];
+      const stepB = orderSteps[i + 1];
+
+      const mIdxA = filteredMachines.findIndex((m) => m.id === stepA.machineId);
+      const mIdxB = filteredMachines.findIndex((m) => m.id === stepB.machineId);
+
+      if (mIdxA === -1 || mIdxB === -1) continue;
+
+      const dateAEnd = new Date(stepA.scheduledEnd!);
+      const dateBStart = new Date(stepB.scheduledStart!);
+
+      const endHoursA = getWorkingHoursBetween(timelineRange.start, dateAEnd);
+      const startHoursB = getWorkingHoursBetween(timelineRange.start, dateBStart);
+
+      const x1 = 220 + endHoursA * HOUR_WIDTH;
+      const y1 = mIdxA * 49 + 24;
+
+      const x2 = 220 + startHoursB * HOUR_WIDTH;
+      const y2 = mIdxB * 49 + 24;
+
+      const isViolation = dateBStart < dateAEnd;
+
+      const dx = Math.max(30, Math.abs(x2 - x1) / 2);
+      const c1x = x1 + (x2 >= x1 ? dx : -dx);
+      const c1y = y1;
+      const c2x = x2 - (x2 >= x1 ? dx : -dx);
+      const c2y = y2;
+
+      const path = `M ${x1} ${y1} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${x2} ${y2}`;
+      const midX = (x1 + x2) / 2;
+      const midY = (y1 + y2) / 2;
+
+      curves.push({
+        path,
+        isViolation,
+        midX,
+        midY,
+        fromStep: stepA.processId,
+        toStep: stepB.processId,
+      });
+    }
+
+    return curves;
+  }, [selectedOrder, processes, filteredMachines, viewMode, timelineRange, HOUR_WIDTH]);
 
   // Scroll to selected date on timeline
   useEffect(() => {
@@ -637,6 +696,13 @@ export function GanttTimelineView({
             setZoomLevel("DAY");
             onGranularityChange?.("day");
           }}
+          onMonthChange={(mIdx, y) => {
+            setSelectedMonth(mIdx);
+            setSelectedYear(y);
+            const defaultDate = new Date(y, mIdx, 1);
+            setSelectedDayStr(formatDateStr(defaultDate));
+            onDateChange?.(defaultDate);
+          }}
         />
       )}
 
@@ -787,471 +853,545 @@ export function GanttTimelineView({
               </div>
 
               {/* Workstations or Group Grid Rows */}
-              {viewMode === "workstation"
-                ? filteredMachines.map((m) => {
-                    const machineProcesses = processes.filter(
-                      (p) => p.status === "SCHEDULED" && p.machineId === m.id && p.scheduledStart,
-                    );
-
-                    return (
-                      <div
-                        key={m.id}
-                        className="flex border-b border-border/60 hover:bg-muted/5 transition-colors"
+              <div className="relative">
+                {/* SVG Precedence Routing Curves Overlay */}
+                {routingPrecedenceCurves.length > 0 && (
+                  <svg
+                    className="absolute inset-0 pointer-events-none z-30 overflow-visible"
+                    style={{
+                      width: 220 + totalHours * HOUR_WIDTH,
+                      height: filteredMachines.length * 49,
+                    }}
+                  >
+                    <defs>
+                      <marker
+                        id="precedence-arrow-valid"
+                        viewBox="0 0 10 10"
+                        refX="6"
+                        refY="5"
+                        markerWidth="6"
+                        markerHeight="6"
+                        orient="auto-start-reverse"
                       >
-                        {/* Frozen workstation selector cell */}
-                        <div className="w-[220px] shrink-0 border-r border-border px-4 py-2.5 bg-background sticky left-0 z-20 flex items-center justify-between shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
-                          <div>
-                            <div className="font-bold text-foreground text-sm flex items-center gap-1.5">
-                              <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                              {m.name}
-                            </div>
-                            <div className="text-[10px] text-muted-foreground uppercase font-semibold">
-                              Group {m.machineGroupId}
-                            </div>
-                          </div>
-                        </div>
+                        <path d="M 0 1 L 8 5 L 0 9 z" fill="#10B981" />
+                      </marker>
+                      <marker
+                        id="precedence-arrow-violation"
+                        viewBox="0 0 10 10"
+                        refX="6"
+                        refY="5"
+                        markerWidth="6"
+                        markerHeight="6"
+                        orient="auto-start-reverse"
+                      >
+                        <path d="M 0 1 L 8 5 L 0 9 z" fill="#EF4444" />
+                      </marker>
+                    </defs>
+                    {routingPrecedenceCurves.map((curve, idx) => (
+                      <g key={idx}>
+                        <path
+                          d={curve.path}
+                          fill="none"
+                          stroke={curve.isViolation ? "#EF4444" : "#10B981"}
+                          strokeWidth={2.5}
+                          strokeDasharray={curve.isViolation ? "5 3" : undefined}
+                          markerEnd={
+                            curve.isViolation
+                              ? "url(#precedence-arrow-violation)"
+                              : "url(#precedence-arrow-valid)"
+                          }
+                          className="transition-all duration-300"
+                        />
+                        {curve.isViolation && (
+                          <text
+                            x={curve.midX}
+                            y={curve.midY - 8}
+                            fill="#EF4444"
+                            fontSize={10}
+                            fontWeight="bold"
+                            fontFamily="monospace"
+                            textAnchor="middle"
+                          >
+                            ⚠ Precedence Conflict
+                          </text>
+                        )}
+                      </g>
+                    ))}
+                  </svg>
+                )}
 
-                        {/* Hourly background grid dropzone */}
-                        <div
-                          className="relative flex items-center"
-                          style={{
-                            width: totalHours * HOUR_WIDTH,
-                            height: 48,
-                          }}
-                        >
-                          {/* Background hour grid dividers */}
-                          <div className="absolute inset-0 flex pointer-events-none">
-                            {days.map((dayStr) => (
-                              <div
-                                key={dayStr}
-                                className={cn(
-                                  "flex h-full",
-                                  dayStr === selectedDayStr ? "bg-primary/[0.015]" : "",
-                                )}
-                              >
-                                {Array.from({ length: WORKING_HOURS_PER_DAY }).map((_, hIdx) => {
-                                  const hr = SHIFT_1_START + hIdx;
-                                  const isShift1 = hr < SHIFT_1_END;
-                                  const isOver =
-                                    dragOverCell &&
-                                    dragOverCell.machineId === m.id &&
-                                    dragOverCell.dateStr === dayStr &&
-                                    dragOverCell.hour === hr;
-                                  return (
-                                    <div
-                                      key={hr}
-                                      onDragOver={(e) => {
-                                        e.preventDefault();
-                                        if (
-                                          !dragOverCell ||
-                                          dragOverCell.machineId !== m.id ||
-                                          dragOverCell.dateStr !== dayStr ||
-                                          dragOverCell.hour !== hr
-                                        ) {
-                                          setDragOverCell({
-                                            machineId: m.id,
-                                            dateStr: dayStr,
-                                            hour: hr,
-                                          });
-                                        }
-                                      }}
-                                      onDragLeave={() => {
-                                        setDragOverCell((curr) =>
-                                          curr &&
-                                          curr.machineId === m.id &&
-                                          curr.dateStr === dayStr &&
-                                          curr.hour === hr
-                                            ? null
-                                            : curr,
-                                        );
-                                      }}
-                                      onDrop={(e) => handleDrop(e, m.id, dayStr, hr)}
-                                      className={cn(
-                                        "h-full border-r border-border/10 pointer-events-auto cursor-crosshair transition-all duration-150",
-                                        isOver
-                                          ? "bg-primary/25 ring-2 ring-primary/40 ring-inset"
-                                          : isShift1
-                                            ? "bg-sky-500/[0.015] hover:bg-sky-500/10"
-                                            : "bg-orange-500/[0.015] hover:bg-orange-500/10",
-                                        hr === SHIFT_1_END ? "border-r-2 border-border/40" : "",
-                                        dayStr === selectedDayStr ? "bg-primary/[0.03]" : "",
-                                      )}
-                                      style={{ width: HOUR_WIDTH }}
-                                    />
-                                  );
-                                })}
-                              </div>
-                            ))}
-                          </div>
-
-                          {/* Process draggable block overlays */}
-                          {machineProcesses.map((p) => {
-                            const order = orders.find((o) => o.id === p.orderId);
-                            if (!order || !p.scheduledStart || !p.scheduledEnd) return null;
-
-                            const startD = new Date(p.scheduledStart);
-                            const endD = new Date(p.scheduledEnd);
-
-                            // Calculate absolute offsets in working hours
-                            const leftWorkingHours = getWorkingHoursBetween(timelineStart, startD);
-                            const durationHours = getWorkingHoursBetween(startD, endD);
-
-                            const leftOffset = leftWorkingHours * HOUR_WIDTH;
-                            const widthVal = durationHours * HOUR_WIDTH;
-
-                            // Check if this process has any overloaded hour slots or machine collisions
-                            const isOverloaded = slots.some(
-                              (sl) => sl.processId === p.id && sl.overloaded,
-                            );
-                            const isColliding = slots.some(
-                              (sl) => sl.processId === p.id && sl.collision,
-                            );
-
-                            // Draw Setup portion vs Machining portion visually inside the block
-                            const setupHours = Math.ceil(p.setupTimeMin / 60);
-                            const setupWidth = Math.min(setupHours * HOUR_WIDTH, widthVal);
-
-                            return (
-                              <div
-                                key={p.id}
-                                draggable
-                                onDragStart={(e) => {
-                                  e.dataTransfer.setData("text/plain", p.id);
-                                  e.dataTransfer.effectAllowed = "move";
-                                  setActiveDragProcessId(p.id);
-                                }}
-                                onDragEnd={() => {
-                                  setActiveDragProcessId(null);
-                                  setDragOverCell(null);
-                                }}
-                                onClick={() => setSelectedProcessId(p.id)}
-                                className={cn(
-                                  "absolute h-9 rounded-md shadow-sm border border-border/60 overflow-hidden flex cursor-grab active:cursor-grabbing hover:ring-2 hover:ring-primary hover:shadow-md transition-all select-none z-10 group",
-                                  activeDragProcessId === p.id
-                                    ? "opacity-20 border-dashed bg-muted shadow-none border-slate-400"
-                                    : isColliding
-                                      ? "border-red-600 ring-2 ring-red-500/40 bg-red-50/20"
-                                      : isOverloaded
-                                        ? "border-red-500 ring-2 ring-red-500/30"
-                                        : "",
-                                  selectedProcessId === p.id && activeDragProcessId !== p.id
-                                    ? "ring-2 ring-primary ring-offset-1 border-primary"
-                                    : "",
-                                )}
-                                style={{
-                                  left: leftOffset + 2,
-                                  width: widthVal - 4,
-                                }}
-                              >
-                                {/* Setup portion (Steel blue R block) */}
-                                {setupWidth > 0 && (
-                                  <div
-                                    style={{ width: setupWidth }}
-                                    className="h-full bg-[#4A90D9] text-white flex items-center justify-center px-1.5 text-[10px] font-extrabold truncate shrink-0 border-r border-white/20"
-                                    title={`Setup R: ${p.setupTimeMin} min (100% Operator)`}
-                                  >
-                                    R {order.orderId}
-                                  </div>
-                                )}
-
-                                {/* Machining portion (Emerald green by default, RED on collision/overload) */}
-                                <div
-                                  className={cn(
-                                    "h-full flex-1 text-white flex items-center justify-between px-2 text-[10px] font-bold truncate transition-colors",
-                                    isColliding || isOverloaded
-                                      ? "bg-red-500 animate-pulse font-extrabold"
-                                      : "bg-[#52C41A]",
-                                  )}
-                                  title={
-                                    isColliding || isOverloaded
-                                      ? `OVERLOAD / COLLISION! Run: ${(p.sumV2 ?? 0).toFixed(1)} min`
-                                      : `Run: ${(p.sumV2 ?? 0).toFixed(1)} min`
-                                  }
-                                >
-                                  <span className="truncate flex items-center gap-1">
-                                    {p.isManual && (
-                                      <Pin className="h-3 w-3 shrink-0 text-yellow-300 fill-yellow-300" />
-                                    )}
-                                    M {order.orderId}
-                                  </span>
-
-                                  <div className="hidden group-hover:flex items-center shrink-0 z-20 ml-1">
-                                    {p.isManual ? (
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          resetProcessToAuto(p.id);
-                                          toast.success(
-                                            language === "de"
-                                              ? "Pin aufgehoben!"
-                                              : "Reset to automatic scheduling!",
-                                          );
-                                        }}
-                                        className="h-5 w-5 flex items-center justify-center rounded bg-black/30 hover:bg-black/60 text-white border border-white/20 transition-all cursor-pointer"
-                                        title={
-                                          language === "de" ? "Pin aufheben" : "Unpin Schedule"
-                                        }
-                                      >
-                                        <Unlock className="h-3 w-3" />
-                                      </button>
-                                    ) : (
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          pinProcessSchedule(p.id);
-                                          toast.success(
-                                            language === "de"
-                                              ? "Planung gesichert!"
-                                              : "Pinned current schedule!",
-                                          );
-                                        }}
-                                        className="h-5 w-5 flex items-center justify-center rounded bg-black/30 hover:bg-black/60 text-white border border-white/20 transition-all cursor-pointer"
-                                        title={
-                                          language === "de" ? "Planung sichern" : "Pin Schedule"
-                                        }
-                                      >
-                                        <Pin className="h-3 w-3" />
-                                      </button>
-                                    )}
-                                  </div>
-
-                                  <span className="text-[8px] opacity-90 border-l border-white/20 pl-1 font-mono font-bold shrink-0">
-                                    {p.processId} ({Math.round((p.manpowerPct ?? 0) * 100)}% P)
-                                  </span>
-                                </div>
-                              </div>
-                            );
-                          })}
-
-                          {/* Projected drag shadow preview */}
-                          {dragProjection && dragProjection.machineId === m.id && (
-                            <div
-                              className="absolute h-9 rounded-md border-2 border-dashed border-primary bg-primary/20 opacity-60 overflow-hidden flex select-none pointer-events-none z-30 shadow-lg scale-105 transition-all duration-75 animate-pulse"
-                              style={{
-                                left: dragProjection.leftOffset + 2,
-                                width: dragProjection.widthVal - 4,
-                              }}
-                            >
-                              {/* Setup portion */}
-                              {dragProjection.setupTimeMin > 0 && (
-                                <div
-                                  style={{
-                                    width: Math.min(
-                                      Math.ceil(dragProjection.setupTimeMin / 60) * HOUR_WIDTH,
-                                      dragProjection.widthVal,
-                                    ),
-                                  }}
-                                  className="h-full bg-[#4A90D9]/80 text-white flex items-center justify-center px-1.5 text-[10px] font-extrabold truncate shrink-0 border-r border-white/20"
-                                >
-                                  R {dragProjection.orderCode} (Proj)
-                                </div>
-                              )}
-
-                              {/* Machining portion */}
-                              <div className="h-full flex-1 bg-[#52C41A]/80 text-white flex items-center justify-between px-2 text-[10px] font-bold truncate">
-                                <span className="truncate">
-                                  M {dragProjection.orderCode} (Proj)
-                                </span>
-                                <span className="text-[8px] opacity-90 border-l border-white/20 pl-1 font-mono font-bold">
-                                  {dragProjection.processId}
-                                </span>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })
-                : filteredGroups.map((g) => {
-                    const groupProcesses = processes.filter((p) => {
-                      const machine = machines.find((m) => m.id === p.machineId);
-                      return (
-                        p.status === "SCHEDULED" &&
-                        machine?.machineGroupId === g.id &&
-                        p.scheduledStart
+                {viewMode === "workstation"
+                  ? filteredMachines.map((m) => {
+                      const machineProcesses = processes.filter(
+                        (p) => p.status === "SCHEDULED" && p.machineId === m.id && p.scheduledStart,
                       );
-                    });
 
-                    return (
-                      <div
-                        key={g.id}
-                        className="flex border-b border-border/60 hover:bg-muted/5 transition-colors"
-                      >
-                        {/* Frozen group cell */}
-                        <div className="w-[220px] shrink-0 border-r border-border px-4 py-2.5 bg-background sticky left-0 z-20 flex items-center justify-between shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
-                          <div>
-                            <div className="font-bold text-foreground text-sm flex items-center gap-1.5">
-                              <span className="h-2 w-2 rounded-full bg-blue-500" />
-                              Group {g.name}
-                            </div>
-                            <div className="text-[10px] text-muted-foreground uppercase font-semibold">
-                              {machines
-                                .filter((m) => m.machineGroupId === g.id)
-                                .map((m) => m.name)
-                                .join(", ")}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Hourly background grid dropzone */}
+                      return (
                         <div
-                          className="relative flex items-center"
-                          style={{
-                            width: totalHours * HOUR_WIDTH,
-                            height: 48,
-                          }}
+                          key={m.id}
+                          className="flex border-b border-border/60 hover:bg-muted/5 transition-colors"
                         >
-                          {/* Background hour grid dividers */}
-                          <div className="absolute inset-0 flex pointer-events-none">
-                            {days.map((dayStr) => (
-                              <div key={dayStr} className="flex h-full">
-                                {Array.from({ length: WORKING_HOURS_PER_DAY }).map((_, hIdx) => {
-                                  const hr = SHIFT_1_START + hIdx;
-                                  const isShift1 = hr < SHIFT_1_END;
-                                  return (
-                                    <div
-                                      key={hr}
-                                      className={cn(
-                                        "h-full border-r border-border/10",
-                                        isShift1 ? "bg-sky-500/[0.015]" : "bg-orange-500/[0.015]",
-                                      )}
-                                      style={{ width: HOUR_WIDTH }}
-                                    />
-                                  );
-                                })}
+                          {/* Frozen workstation selector cell */}
+                          <div className="w-[220px] shrink-0 border-r border-border px-4 py-2.5 bg-background sticky left-0 z-20 flex items-center justify-between shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
+                            <div>
+                              <div className="font-bold text-foreground text-sm flex items-center gap-1.5">
+                                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                                {m.name}
                               </div>
-                            ))}
+                              <div className="text-[10px] text-muted-foreground uppercase font-semibold">
+                                Group {m.machineGroupId}
+                              </div>
+                            </div>
                           </div>
 
-                          {/* Process blocks (readonly in group view, but clickable!) */}
-                          {groupProcesses.map((p) => {
-                            const order = orders.find((o) => o.id === p.orderId);
-                            if (!order || !p.scheduledStart || !p.scheduledEnd) return null;
+                          {/* Hourly background grid dropzone */}
+                          <div
+                            className="relative flex items-center"
+                            style={{
+                              width: totalHours * HOUR_WIDTH,
+                              height: 48,
+                            }}
+                          >
+                            {/* Background hour grid dividers */}
+                            <div className="absolute inset-0 flex pointer-events-none">
+                              {days.map((dayStr) => (
+                                <div
+                                  key={dayStr}
+                                  className={cn(
+                                    "flex h-full",
+                                    dayStr === selectedDayStr ? "bg-primary/[0.015]" : "",
+                                  )}
+                                >
+                                  {Array.from({ length: WORKING_HOURS_PER_DAY }).map((_, hIdx) => {
+                                    const hr = SHIFT_1_START + hIdx;
+                                    const isShift1 = hr < SHIFT_1_END;
+                                    const isOver =
+                                      dragOverCell &&
+                                      dragOverCell.machineId === m.id &&
+                                      dragOverCell.dateStr === dayStr &&
+                                      dragOverCell.hour === hr;
+                                    return (
+                                      <div
+                                        key={hr}
+                                        onDragOver={(e) => {
+                                          e.preventDefault();
+                                          if (
+                                            !dragOverCell ||
+                                            dragOverCell.machineId !== m.id ||
+                                            dragOverCell.dateStr !== dayStr ||
+                                            dragOverCell.hour !== hr
+                                          ) {
+                                            setDragOverCell({
+                                              machineId: m.id,
+                                              dateStr: dayStr,
+                                              hour: hr,
+                                            });
+                                          }
+                                        }}
+                                        onDragLeave={() => {
+                                          setDragOverCell((curr) =>
+                                            curr &&
+                                            curr.machineId === m.id &&
+                                            curr.dateStr === dayStr &&
+                                            curr.hour === hr
+                                              ? null
+                                              : curr,
+                                          );
+                                        }}
+                                        onDrop={(e) => handleDrop(e, m.id, dayStr, hr)}
+                                        className={cn(
+                                          "h-full border-r border-border/10 pointer-events-auto cursor-crosshair transition-all duration-150",
+                                          isOver
+                                            ? "bg-primary/25 ring-2 ring-primary/40 ring-inset"
+                                            : isShift1
+                                              ? "bg-sky-500/[0.015] hover:bg-sky-500/10"
+                                              : "bg-orange-500/[0.015] hover:bg-orange-500/10",
+                                          hr === SHIFT_1_END ? "border-r-2 border-border/40" : "",
+                                          dayStr === selectedDayStr ? "bg-primary/[0.03]" : "",
+                                        )}
+                                        style={{ width: HOUR_WIDTH }}
+                                      />
+                                    );
+                                  })}
+                                </div>
+                              ))}
+                            </div>
 
-                            const startD = new Date(p.scheduledStart);
-                            const endD = new Date(p.scheduledEnd);
+                            {/* Process draggable block overlays */}
+                            {machineProcesses.map((p) => {
+                              const order = orders.find((o) => o.id === p.orderId);
+                              if (!order || !p.scheduledStart || !p.scheduledEnd) return null;
 
-                            const leftWorkingHours = getWorkingHoursBetween(timelineStart, startD);
-                            const durationHours = getWorkingHoursBetween(startD, endD);
+                              const startD = new Date(p.scheduledStart);
+                              const endD = new Date(p.scheduledEnd);
 
-                            const leftOffset = leftWorkingHours * HOUR_WIDTH;
-                            const widthVal = durationHours * HOUR_WIDTH;
+                              // Calculate absolute offsets in working hours
+                              const leftWorkingHours = getWorkingHoursBetween(
+                                timelineStart,
+                                startD,
+                              );
+                              const durationHours = getWorkingHoursBetween(startD, endD);
 
-                            const isOverloaded = slots.some(
-                              (sl) => sl.processId === p.id && sl.overloaded,
-                            );
-                            const isColliding = slots.some(
-                              (sl) => sl.processId === p.id && sl.collision,
-                            );
-                            const isMatch = isProcessFiltered(p, order);
+                              const leftOffset = leftWorkingHours * HOUR_WIDTH;
+                              const widthVal = durationHours * HOUR_WIDTH;
 
-                            const setupHours = Math.ceil(p.setupTimeMin / 60);
-                            const setupWidth = Math.min(setupHours * HOUR_WIDTH, widthVal);
+                              // Check if this process has any overloaded hour slots or machine collisions
+                              const isOverloaded = slots.some(
+                                (sl) => sl.processId === p.id && sl.overloaded,
+                              );
+                              const isColliding = slots.some(
+                                (sl) => sl.processId === p.id && sl.collision,
+                              );
 
-                            return (
-                              <div
-                                key={p.id}
-                                onClick={() => setSelectedProcessId(p.id)}
-                                className={cn(
-                                  "absolute h-9 rounded-md shadow-sm border border-border/60 overflow-hidden flex cursor-pointer hover:ring-2 hover:ring-primary hover:shadow-md transition-all select-none z-10 group",
-                                  isColliding
-                                    ? "border-red-600 ring-2 ring-red-500/40 bg-red-50/20"
-                                    : isOverloaded
-                                      ? "border-red-500 ring-2 ring-red-500/30"
+                              // Draw Setup portion vs Machining portion visually inside the block
+                              const setupHours = Math.ceil(p.setupTimeMin / 60);
+                              const setupWidth = Math.min(setupHours * HOUR_WIDTH, widthVal);
+
+                              return (
+                                <div
+                                  key={p.id}
+                                  draggable
+                                  onDragStart={(e) => {
+                                    e.dataTransfer.setData("text/plain", p.id);
+                                    e.dataTransfer.effectAllowed = "move";
+                                    setActiveDragProcessId(p.id);
+                                  }}
+                                  onDragEnd={() => {
+                                    setActiveDragProcessId(null);
+                                    setDragOverCell(null);
+                                  }}
+                                  onClick={() => setSelectedProcessId(p.id)}
+                                  className={cn(
+                                    "absolute h-9 rounded-md shadow-sm border border-border/60 overflow-hidden flex cursor-grab active:cursor-grabbing hover:ring-2 hover:ring-primary hover:shadow-md transition-all select-none z-10 group",
+                                    activeDragProcessId === p.id
+                                      ? "opacity-20 border-dashed bg-muted shadow-none border-slate-400"
+                                      : isColliding
+                                        ? "border-red-600 ring-2 ring-red-500/40 bg-red-50/20"
+                                        : isOverloaded
+                                          ? "border-red-500 ring-2 ring-red-500/30"
+                                          : "",
+                                    selectedProcessId === p.id && activeDragProcessId !== p.id
+                                      ? "ring-2 ring-primary ring-offset-1 border-primary"
                                       : "",
-                                  selectedProcessId === p.id
-                                    ? "ring-2 ring-primary ring-offset-1 border-primary"
-                                    : "",
-                                  !isMatch && "opacity-25 saturate-50 hover:opacity-100",
-                                )}
+                                  )}
+                                  style={{
+                                    left: leftOffset + 2,
+                                    width: widthVal - 4,
+                                  }}
+                                >
+                                  {/* Setup portion (Steel blue R block) */}
+                                  {setupWidth > 0 && (
+                                    <div
+                                      style={{ width: setupWidth }}
+                                      className="h-full bg-[#4A90D9] text-white flex items-center justify-center px-1.5 text-[10px] font-extrabold truncate shrink-0 border-r border-white/20"
+                                      title={`Setup R: ${p.setupTimeMin} min (100% Operator)`}
+                                    >
+                                      R {order.orderId}
+                                    </div>
+                                  )}
+
+                                  {/* Machining portion (Emerald green by default, RED on collision/overload) */}
+                                  <div
+                                    className={cn(
+                                      "h-full flex-1 text-white flex items-center justify-between px-2 text-[10px] font-bold truncate transition-colors",
+                                      isColliding || isOverloaded
+                                        ? "bg-red-500 animate-pulse font-extrabold"
+                                        : "bg-[#52C41A]",
+                                    )}
+                                    title={
+                                      isColliding || isOverloaded
+                                        ? `OVERLOAD / COLLISION! Run: ${(p.sumV2 ?? 0).toFixed(1)} min`
+                                        : `Run: ${(p.sumV2 ?? 0).toFixed(1)} min`
+                                    }
+                                  >
+                                    <span className="truncate flex items-center gap-1">
+                                      {p.isManual && (
+                                        <Pin className="h-3 w-3 shrink-0 text-yellow-300 fill-yellow-300" />
+                                      )}
+                                      M {order.orderId}
+                                    </span>
+
+                                    <div className="hidden group-hover:flex items-center shrink-0 z-20 ml-1">
+                                      {p.isManual ? (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            resetProcessToAuto(p.id);
+                                            toast.success(
+                                              language === "de"
+                                                ? "Pin aufgehoben!"
+                                                : "Reset to automatic scheduling!",
+                                            );
+                                          }}
+                                          className="h-5 w-5 flex items-center justify-center rounded bg-black/30 hover:bg-black/60 text-white border border-white/20 transition-all cursor-pointer"
+                                          title={
+                                            language === "de" ? "Pin aufheben" : "Unpin Schedule"
+                                          }
+                                        >
+                                          <Unlock className="h-3 w-3" />
+                                        </button>
+                                      ) : (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            pinProcessSchedule(p.id);
+                                            toast.success(
+                                              language === "de"
+                                                ? "Planung gesichert!"
+                                                : "Pinned current schedule!",
+                                            );
+                                          }}
+                                          className="h-5 w-5 flex items-center justify-center rounded bg-black/30 hover:bg-black/60 text-white border border-white/20 transition-all cursor-pointer"
+                                          title={
+                                            language === "de" ? "Planung sichern" : "Pin Schedule"
+                                          }
+                                        >
+                                          <Pin className="h-3 w-3" />
+                                        </button>
+                                      )}
+                                    </div>
+
+                                    <span className="text-[8px] opacity-90 border-l border-white/20 pl-1 font-mono font-bold shrink-0">
+                                      {p.processId} ({Math.round((p.manpowerPct ?? 0) * 100)}% P)
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+
+                            {/* Projected drag shadow preview */}
+                            {dragProjection && dragProjection.machineId === m.id && (
+                              <div
+                                className="absolute h-9 rounded-md border-2 border-dashed border-primary bg-primary/20 opacity-60 overflow-hidden flex select-none pointer-events-none z-30 shadow-lg scale-105 transition-all duration-75 animate-pulse"
                                 style={{
-                                  left: leftOffset + 2,
-                                  width: widthVal - 4,
+                                  left: dragProjection.leftOffset + 2,
+                                  width: dragProjection.widthVal - 4,
                                 }}
                               >
                                 {/* Setup portion */}
-                                {setupWidth > 0 && (
+                                {dragProjection.setupTimeMin > 0 && (
                                   <div
-                                    style={{ width: setupWidth }}
-                                    className="h-full bg-[#4A90D9] text-white flex items-center justify-center px-1.5 text-[10px] font-extrabold truncate shrink-0 border-r border-white/20"
-                                    title={`Setup R: ${p.setupTimeMin} min`}
+                                    style={{
+                                      width: Math.min(
+                                        Math.ceil(dragProjection.setupTimeMin / 60) * HOUR_WIDTH,
+                                        dragProjection.widthVal,
+                                      ),
+                                    }}
+                                    className="h-full bg-[#4A90D9]/80 text-white flex items-center justify-center px-1.5 text-[10px] font-extrabold truncate shrink-0 border-r border-white/20"
                                   >
-                                    R {order.orderId}
+                                    R {dragProjection.orderCode} (Proj)
                                   </div>
                                 )}
 
                                 {/* Machining portion */}
-                                <div
-                                  className={cn(
-                                    "h-full flex-1 text-white flex items-center justify-between px-2 text-[10px] font-bold truncate transition-colors",
-                                    isColliding || isOverloaded
-                                      ? "bg-red-500 animate-pulse font-extrabold"
-                                      : "bg-[#52C41A]",
-                                  )}
-                                  title={
-                                    isColliding || isOverloaded
-                                      ? `OVERLOAD / COLLISION! Machine: ${p.machineId} | Run: ${(p.sumV2 ?? 0).toFixed(1)} min`
-                                      : `Machine: ${p.machineId} | Run: ${(p.sumV2 ?? 0).toFixed(1)} min`
-                                  }
-                                >
-                                  <span className="truncate font-sans font-bold flex items-center gap-1">
-                                    {p.isManual && (
-                                      <Pin className="h-3 w-3 shrink-0 text-yellow-300 fill-yellow-300" />
-                                    )}
-                                    M {order.orderId} ({p.machineId})
+                                <div className="h-full flex-1 bg-[#52C41A]/80 text-white flex items-center justify-between px-2 text-[10px] font-bold truncate">
+                                  <span className="truncate">
+                                    M {dragProjection.orderCode} (Proj)
                                   </span>
-
-                                  <div className="hidden group-hover:flex items-center shrink-0 z-20 ml-1">
-                                    {p.isManual ? (
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          resetProcessToAuto(p.id);
-                                          toast.success(
-                                            language === "de"
-                                              ? "Pin aufgehoben!"
-                                              : "Reset to automatic scheduling!",
-                                          );
-                                        }}
-                                        className="h-5 w-5 flex items-center justify-center rounded bg-black/30 hover:bg-black/60 text-white border border-white/20 transition-all cursor-pointer"
-                                        title={
-                                          language === "de" ? "Pin aufheben" : "Unpin Schedule"
-                                        }
-                                      >
-                                        <Unlock className="h-3 w-3" />
-                                      </button>
-                                    ) : (
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          pinProcessSchedule(p.id);
-                                          toast.success(
-                                            language === "de"
-                                              ? "Planung gesichert!"
-                                              : "Pinned current schedule!",
-                                          );
-                                        }}
-                                        className="h-5 w-5 flex items-center justify-center rounded bg-black/30 hover:bg-black/60 text-white border border-white/20 transition-all cursor-pointer"
-                                        title={
-                                          language === "de" ? "Planung sichern" : "Pin Schedule"
-                                        }
-                                      >
-                                        <Pin className="h-3 w-3" />
-                                      </button>
-                                    )}
-                                  </div>
-
-                                  <span className="text-[8px] opacity-90 border-l border-white/20 pl-1 font-mono font-bold shrink-0">
-                                    {p.processId}
+                                  <span className="text-[8px] opacity-90 border-l border-white/20 pl-1 font-mono font-bold">
+                                    {dragProjection.processId}
                                   </span>
                                 </div>
                               </div>
-                            );
-                          })}
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  : filteredGroups.map((g) => {
+                      const groupProcesses = processes.filter((p) => {
+                        const machine = machines.find((m) => m.id === p.machineId);
+                        return (
+                          p.status === "SCHEDULED" &&
+                          machine?.machineGroupId === g.id &&
+                          p.scheduledStart
+                        );
+                      });
+
+                      return (
+                        <div
+                          key={g.id}
+                          className="flex border-b border-border/60 hover:bg-muted/5 transition-colors"
+                        >
+                          {/* Frozen group cell */}
+                          <div className="w-[220px] shrink-0 border-r border-border px-4 py-2.5 bg-background sticky left-0 z-20 flex items-center justify-between shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
+                            <div>
+                              <div className="font-bold text-foreground text-sm flex items-center gap-1.5">
+                                <span className="h-2 w-2 rounded-full bg-blue-500" />
+                                Group {g.name}
+                              </div>
+                              <div className="text-[10px] text-muted-foreground uppercase font-semibold">
+                                {machines
+                                  .filter((m) => m.machineGroupId === g.id)
+                                  .map((m) => m.name)
+                                  .join(", ")}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Hourly background grid dropzone */}
+                          <div
+                            className="relative flex items-center"
+                            style={{
+                              width: totalHours * HOUR_WIDTH,
+                              height: 48,
+                            }}
+                          >
+                            {/* Background hour grid dividers */}
+                            <div className="absolute inset-0 flex pointer-events-none">
+                              {days.map((dayStr) => (
+                                <div key={dayStr} className="flex h-full">
+                                  {Array.from({ length: WORKING_HOURS_PER_DAY }).map((_, hIdx) => {
+                                    const hr = SHIFT_1_START + hIdx;
+                                    const isShift1 = hr < SHIFT_1_END;
+                                    return (
+                                      <div
+                                        key={hr}
+                                        className={cn(
+                                          "h-full border-r border-border/10",
+                                          isShift1 ? "bg-sky-500/[0.015]" : "bg-orange-500/[0.015]",
+                                        )}
+                                        style={{ width: HOUR_WIDTH }}
+                                      />
+                                    );
+                                  })}
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Process blocks (readonly in group view, but clickable!) */}
+                            {groupProcesses.map((p) => {
+                              const order = orders.find((o) => o.id === p.orderId);
+                              if (!order || !p.scheduledStart || !p.scheduledEnd) return null;
+
+                              const startD = new Date(p.scheduledStart);
+                              const endD = new Date(p.scheduledEnd);
+
+                              const leftWorkingHours = getWorkingHoursBetween(
+                                timelineStart,
+                                startD,
+                              );
+                              const durationHours = getWorkingHoursBetween(startD, endD);
+
+                              const leftOffset = leftWorkingHours * HOUR_WIDTH;
+                              const widthVal = durationHours * HOUR_WIDTH;
+
+                              const isOverloaded = slots.some(
+                                (sl) => sl.processId === p.id && sl.overloaded,
+                              );
+                              const isColliding = slots.some(
+                                (sl) => sl.processId === p.id && sl.collision,
+                              );
+                              const isMatch = isProcessFiltered(p, order);
+
+                              const setupHours = Math.ceil(p.setupTimeMin / 60);
+                              const setupWidth = Math.min(setupHours * HOUR_WIDTH, widthVal);
+
+                              return (
+                                <div
+                                  key={p.id}
+                                  onClick={() => setSelectedProcessId(p.id)}
+                                  className={cn(
+                                    "absolute h-9 rounded-md shadow-sm border border-border/60 overflow-hidden flex cursor-pointer hover:ring-2 hover:ring-primary hover:shadow-md transition-all select-none z-10 group",
+                                    isColliding
+                                      ? "border-red-600 ring-2 ring-red-500/40 bg-red-50/20"
+                                      : isOverloaded
+                                        ? "border-red-500 ring-2 ring-red-500/30"
+                                        : "",
+                                    selectedProcessId === p.id
+                                      ? "ring-2 ring-primary ring-offset-1 border-primary"
+                                      : "",
+                                    !isMatch && "opacity-25 saturate-50 hover:opacity-100",
+                                  )}
+                                  style={{
+                                    left: leftOffset + 2,
+                                    width: widthVal - 4,
+                                  }}
+                                >
+                                  {/* Setup portion */}
+                                  {setupWidth > 0 && (
+                                    <div
+                                      style={{ width: setupWidth }}
+                                      className="h-full bg-[#4A90D9] text-white flex items-center justify-center px-1.5 text-[10px] font-extrabold truncate shrink-0 border-r border-white/20"
+                                      title={`Setup R: ${p.setupTimeMin} min`}
+                                    >
+                                      R {order.orderId}
+                                    </div>
+                                  )}
+
+                                  {/* Machining portion */}
+                                  <div
+                                    className={cn(
+                                      "h-full flex-1 text-white flex items-center justify-between px-2 text-[10px] font-bold truncate transition-colors",
+                                      isColliding || isOverloaded
+                                        ? "bg-red-500 animate-pulse font-extrabold"
+                                        : "bg-[#52C41A]",
+                                    )}
+                                    title={
+                                      isColliding || isOverloaded
+                                        ? `OVERLOAD / COLLISION! Machine: ${p.machineId} | Run: ${(p.sumV2 ?? 0).toFixed(1)} min`
+                                        : `Machine: ${p.machineId} | Run: ${(p.sumV2 ?? 0).toFixed(1)} min`
+                                    }
+                                  >
+                                    <span className="truncate font-sans font-bold flex items-center gap-1">
+                                      {p.isManual && (
+                                        <Pin className="h-3 w-3 shrink-0 text-yellow-300 fill-yellow-300" />
+                                      )}
+                                      M {order.orderId} ({p.machineId})
+                                    </span>
+
+                                    <div className="hidden group-hover:flex items-center shrink-0 z-20 ml-1">
+                                      {p.isManual ? (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            resetProcessToAuto(p.id);
+                                            toast.success(
+                                              language === "de"
+                                                ? "Pin aufgehoben!"
+                                                : "Reset to automatic scheduling!",
+                                            );
+                                          }}
+                                          className="h-5 w-5 flex items-center justify-center rounded bg-black/30 hover:bg-black/60 text-white border border-white/20 transition-all cursor-pointer"
+                                          title={
+                                            language === "de" ? "Pin aufheben" : "Unpin Schedule"
+                                          }
+                                        >
+                                          <Unlock className="h-3 w-3" />
+                                        </button>
+                                      ) : (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            pinProcessSchedule(p.id);
+                                            toast.success(
+                                              language === "de"
+                                                ? "Planung gesichert!"
+                                                : "Pinned current schedule!",
+                                            );
+                                          }}
+                                          className="h-5 w-5 flex items-center justify-center rounded bg-black/30 hover:bg-black/60 text-white border border-white/20 transition-all cursor-pointer"
+                                          title={
+                                            language === "de" ? "Planung sichern" : "Pin Schedule"
+                                          }
+                                        >
+                                          <Pin className="h-3 w-3" />
+                                        </button>
+                                      )}
+                                    </div>
+
+                                    <span className="text-[8px] opacity-90 border-l border-white/20 pl-1 font-mono font-bold shrink-0">
+                                      {p.processId}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+              </div>
             </div>
           </div>
         </Card>
@@ -1271,262 +1411,498 @@ export function GanttTimelineView({
       )}
 
       {/* Slide-over Details & Rescheduling Drawer (only on Day View) */}
-      {selectedProcess && selectedOrder && zoomLevel === "DAY" && (
-        <div className="fixed inset-y-0 right-0 w-[380px] bg-background border-l border-border shadow-2xl p-6 z-50 flex flex-col justify-between animate-in slide-in-from-right duration-200">
-          <div className="space-y-6">
-            <div className="flex items-center justify-between border-b border-border pb-4">
-              <div>
-                <h3 className="font-bold text-lg text-foreground">Order Process Step</h3>
-                <span className="text-xs text-muted-foreground">ID: {selectedProcess.id}</span>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSelectedProcessId(null)}
-                className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-              >
-                &times;
-              </Button>
-            </div>
+      {selectedProcess &&
+        selectedOrder &&
+        zoomLevel === "DAY" &&
+        (() => {
+          const currentExecStatus =
+            selectedProcess.executionStatus ||
+            (selectedProcess.status === "SCHEDULED" ? "PLANNED" : "QUEUED");
+          const orderQty = selectedOrder.orderQty || selectedProcess.baseQty * 100 || 100;
+          const completedUnits = selectedProcess.completedQty ?? 0;
+          const completionRate = Math.min(100, Math.round((completedUnits / orderQty) * 100));
 
-            <div className="space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-4">
+          return (
+            <div className="fixed inset-y-0 right-0 w-full sm:w-[420px] bg-background border-l border-border shadow-2xl z-50 flex flex-col h-full animate-in slide-in-from-right duration-200">
+              {/* Fixed Header */}
+              <div className="p-4 sm:p-5 border-b border-border flex items-center justify-between shrink-0 bg-background/95 backdrop-blur-sm">
+                <div>
+                  <h3 className="font-bold text-base sm:text-lg text-foreground">
+                    Order Process Step
+                  </h3>
+                  <span className="text-xs text-muted-foreground font-mono">
+                    ID: {selectedProcess.id}
+                  </span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedProcessId(null)}
+                  className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  &times;
+                </Button>
+              </div>
+
+              {/* Scrollable Content Body */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 text-xs overscroll-contain">
+                {/* Order & Step Basic Info */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <span className="text-muted-foreground uppercase tracking-wider font-semibold text-[10px]">
+                      Order ID
+                    </span>
+                    <p className="font-bold text-primary text-sm mt-0.5 font-mono">
+                      {selectedOrder.orderId}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground uppercase tracking-wider font-semibold text-[10px]">
+                      Step / Vorgang
+                    </span>
+                    <p className="font-mono font-bold text-foreground text-sm mt-0.5">
+                      {selectedProcess.processId}
+                    </p>
+                  </div>
+                </div>
+
                 <div>
                   <span className="text-muted-foreground uppercase tracking-wider font-semibold text-[10px]">
-                    Order ID
+                    Material Spec
                   </span>
-                  <p className="font-bold text-primary text-sm mt-0.5">{selectedOrder.orderId}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground uppercase tracking-wider font-semibold text-[10px]">
-                    Step / Vorgang
-                  </span>
-                  <p className="font-mono font-bold text-foreground text-sm mt-0.5">
-                    {selectedProcess.processId}
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <span className="text-muted-foreground uppercase tracking-wider font-semibold text-[10px]">
-                  Material Spec
-                </span>
-                <p className="font-mono text-foreground font-semibold mt-0.5">
-                  {selectedOrder.material}
-                </p>
-              </div>
-
-              <div>
-                <span className="text-muted-foreground uppercase tracking-wider font-semibold text-[10px]">
-                  Process Text
-                </span>
-                <p className="text-foreground font-medium bg-muted/50 p-2 rounded border border-border/50 mt-0.5 leading-relaxed">
-                  {selectedProcess.processText}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2 border-t border-border pt-3">
-                <div className="text-center bg-sky-50 dark:bg-sky-950/20 p-2 rounded">
-                  <span className="text-sky-600 font-bold text-[10px]">Setup R</span>
-                  <p className="font-bold text-foreground mt-0.5">
-                    {selectedProcess.setupTimeMin ?? 0}m
-                  </p>
-                </div>
-                <div className="text-center bg-emerald-50 dark:bg-emerald-950/20 p-2 rounded">
-                  <span className="text-emerald-600 font-bold text-[10px]">
-                    Machining M (SumV2)
-                  </span>
-                  <p className="font-bold text-foreground mt-0.5">
-                    {(selectedProcess.sumV2 ?? 0).toFixed(1)}m
-                  </p>
-                </div>
-                <div className="text-center bg-orange-50 dark:bg-orange-950/20 p-2 rounded">
-                  <span className="text-orange-600 font-bold text-[10px]">Manpower (Pct)</span>
-                  <p className="font-bold text-foreground mt-0.5">
-                    {Math.round((selectedProcess.manpowerPct ?? 0) * 100)}%
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                <div className="text-center bg-purple-50 dark:bg-purple-950/20 p-2 rounded">
-                  <span className="text-purple-600 font-bold text-[10px]">Operator Util Min</span>
-                  <p className="font-bold text-foreground mt-0.5">
-                    {(selectedProcess.manpowerUtilizationMin ?? 0).toFixed(3)}m
-                  </p>
-                </div>
-                <div className="text-center bg-indigo-50 dark:bg-indigo-950/20 p-2 rounded">
-                  <span className="text-indigo-600 font-bold text-[10px]">
-                    Total Operator Min (SumV3)
-                  </span>
-                  <p className="font-bold text-foreground mt-0.5">
-                    {(selectedProcess.sumV3 ?? 0).toLocaleString(undefined, {
-                      maximumFractionDigits: 1,
-                    })}
-                    m
-                  </p>
-                </div>
-              </div>
-
-              <div className="border-t border-border pt-4 space-y-3">
-                <h4 className="font-bold text-sm text-foreground flex items-center gap-1">
-                  <SlidersHorizontal className="h-4 w-4 text-primary" />
-                  Manual Schedule Override
-                </h4>
-
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">Target Workstation / Machine</Label>
-                  <Select
-                    value={selectedProcess.machineId}
-                    onValueChange={(val) => {
-                      const startD = new Date(selectedProcess.scheduledStart!);
-                      updateSlotSchedule(
-                        selectedProcess.id,
-                        val,
-                        formatDateStr(startD),
-                        startD.getHours(),
-                      );
-                      toast.success("Updated assigned machine!");
-                    }}
+                  <p
+                    className="font-mono text-foreground font-semibold mt-0.5 truncate"
+                    title={selectedOrder.material}
                   >
-                    <SelectTrigger className="h-9">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {machines.map((m) => (
-                        <SelectItem key={m.id} value={m.id}>
-                          Machine {m.name} ({m.machineGroupId})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    {selectedOrder.material}
+                  </p>
+                </div>
+
+                <div>
+                  <span className="text-muted-foreground uppercase tracking-wider font-semibold text-[10px]">
+                    Process Text
+                  </span>
+                  <p className="text-foreground font-medium bg-muted/50 p-2 rounded border border-border/50 mt-0.5 leading-relaxed">
+                    {selectedProcess.processText}
+                  </p>
+                </div>
+
+                {/* Shop Floor Execution Status & 1-Click Action Controls */}
+                <div className="border border-border/80 rounded-lg p-3 bg-slate-50/70 dark:bg-slate-900/40 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs text-foreground flex items-center gap-1.5">
+                      <Activity className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                      Shop Floor Status
+                    </span>
+                    {/* Current status badge */}
+                    {currentExecStatus === "IN_PROGRESS" && (
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300">
+                        <span className="relative flex h-1.5 w-1.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                        </span>
+                        Running
+                      </span>
+                    )}
+                    {currentExecStatus === "PAUSED" && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-300 dark:bg-amber-950/40 dark:text-amber-300">
+                        <Pause className="w-3 h-3" /> On Hold
+                      </span>
+                    )}
+                    {currentExecStatus === "COMPLETED" && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Done
+                      </span>
+                    )}
+                    {currentExecStatus === "PLANNED" && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-sky-50 text-sky-700 border border-sky-300 dark:bg-sky-950/40 dark:text-sky-300">
+                        <Clock className="w-3 h-3 text-sky-600" /> Released
+                      </span>
+                    )}
+                    {(currentExecStatus === "QUEUED" || currentExecStatus === "DELAYED") && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-300 dark:bg-slate-800 dark:text-slate-300">
+                        Queued
+                      </span>
+                    )}
+                  </div>
+
+                  {/* 1-Click Status Controls */}
+                  <div className="grid grid-cols-3 gap-1.5 pt-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={currentExecStatus === "IN_PROGRESS" ? "default" : "outline"}
+                      onClick={() => {
+                        store.updateStepExecutionStatus(selectedProcess.id, "IN_PROGRESS");
+                        toast.success("Operation dispatched: RUNNING on shop floor!");
+                      }}
+                      className={cn(
+                        "cursor-pointer text-[11px] h-8 px-1.5 gap-1 font-semibold",
+                        currentExecStatus === "IN_PROGRESS"
+                          ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+                          : "text-emerald-700 border-emerald-300 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300",
+                      )}
+                    >
+                      <Play className="h-3 w-3 fill-current" />
+                      Start / Run
+                    </Button>
+
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={currentExecStatus === "PAUSED" ? "default" : "outline"}
+                      onClick={() => setHoldModalOpen(true)}
+                      className={cn(
+                        "cursor-pointer text-[11px] h-8 px-1.5 gap-1 font-semibold",
+                        currentExecStatus === "PAUSED"
+                          ? "bg-amber-600 hover:bg-amber-700 text-white shadow-xs"
+                          : "text-amber-700 border-amber-300 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300",
+                      )}
+                    >
+                      <Pause className="h-3 w-3" />
+                      Hold
+                    </Button>
+
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={currentExecStatus === "COMPLETED" ? "default" : "outline"}
+                      onClick={() => {
+                        store.updateStepExecutionStatus(selectedProcess.id, "COMPLETED", orderQty);
+                        toast.success("Operation marked DONE!");
+                      }}
+                      className={cn(
+                        "cursor-pointer text-[11px] h-8 px-1.5 gap-1 font-semibold",
+                        currentExecStatus === "COMPLETED"
+                          ? "bg-emerald-700 hover:bg-emerald-800 text-white shadow-xs"
+                          : "text-slate-700 border-slate-300 hover:bg-slate-100 dark:text-slate-300 dark:border-slate-700",
+                      )}
+                    >
+                      <Check className="h-3 w-3" />
+                      Done
+                    </Button>
+                  </div>
+
+                  {/* Secondary Status Options */}
+                  <div className="flex items-center justify-between pt-0.5">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        store.updateStepExecutionStatus(selectedProcess.id, "PLANNED", 0);
+                        toast.info("Operation reset to Released queue.");
+                      }}
+                      className={cn(
+                        "cursor-pointer text-[10px] h-6 px-2 text-slate-500 hover:text-slate-900 dark:hover:text-slate-200",
+                        currentExecStatus === "PLANNED" &&
+                          "font-bold text-sky-600 bg-sky-50 dark:bg-sky-950/40",
+                      )}
+                    >
+                      Set Released
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        store.updateStepExecutionStatus(selectedProcess.id, "QUEUED", 0);
+                        toast.info("Operation moved to Backlog queue.");
+                      }}
+                      className={cn(
+                        "cursor-pointer text-[10px] h-6 px-2 text-slate-500 hover:text-slate-900 dark:hover:text-slate-200",
+                        currentExecStatus === "QUEUED" &&
+                          "font-bold text-slate-900 dark:text-white bg-slate-200 dark:bg-slate-800",
+                      )}
+                    >
+                      Set Queued
+                    </Button>
+                  </div>
+
+                  {/* Units Progress & Quick Input */}
+                  <div className="pt-2 border-t border-border/60 space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-muted-foreground font-medium">Produced Units:</span>
+                      <span className="font-mono font-bold text-foreground">
+                        {completedUnits} / {orderQty} ({completionRate}%)
+                      </span>
+                    </div>
+                    <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                      <div
+                        className={cn(
+                          "h-full rounded-full transition-all duration-300",
+                          currentExecStatus === "COMPLETED"
+                            ? "bg-emerald-500"
+                            : currentExecStatus === "IN_PROGRESS"
+                              ? "bg-emerald-600"
+                              : currentExecStatus === "PAUSED"
+                                ? "bg-amber-500"
+                                : "bg-slate-400",
+                        )}
+                        style={{ width: `${completionRate}%` }}
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <Label className="text-[10px] text-muted-foreground shrink-0">
+                        Log Units:
+                      </Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={orderQty}
+                        value={selectedProcess.completedQty ?? 0}
+                        onChange={(e) => {
+                          const val = Math.max(
+                            0,
+                            Math.min(orderQty, parseInt(e.target.value, 10) || 0),
+                          );
+                          store.updateStepExecutionStatus(
+                            selectedProcess.id,
+                            val >= orderQty
+                              ? "COMPLETED"
+                              : selectedProcess.executionStatus || "IN_PROGRESS",
+                            val,
+                          );
+                        }}
+                        className="h-7 text-xs font-mono w-24"
+                      />
+                      <span className="text-[10px] text-muted-foreground">
+                        of {orderQty} target
+                      </span>
+
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setScrapModalOpen(true)}
+                        className="h-7 text-[10px] text-rose-600 border-rose-300 dark:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 gap-1 ml-auto cursor-pointer"
+                      >
+                        Log Scrap
+                      </Button>
+                      {(selectedProcess.scrapQty || 0) > 0 && (
+                        <span className="text-[10px] text-rose-600 font-bold font-mono">
+                          ({selectedProcess.scrapQty} scrap)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Time Metrics Grid */}
+                <div className="grid grid-cols-3 gap-2 border-t border-border pt-3">
+                  <div className="text-center bg-sky-50 dark:bg-sky-950/20 p-2 rounded">
+                    <span className="text-sky-600 font-bold text-[10px]">Setup R</span>
+                    <p className="font-bold text-foreground mt-0.5">
+                      {selectedProcess.setupTimeMin ?? 0}m
+                    </p>
+                  </div>
+                  <div className="text-center bg-emerald-50 dark:bg-emerald-950/20 p-2 rounded">
+                    <span className="text-emerald-600 font-bold text-[10px]">
+                      Machining M (SumV2)
+                    </span>
+                    <p className="font-bold text-foreground mt-0.5">
+                      {(selectedProcess.sumV2 ?? 0).toFixed(1)}m
+                    </p>
+                  </div>
+                  <div className="text-center bg-orange-50 dark:bg-orange-950/20 p-2 rounded">
+                    <span className="text-orange-600 font-bold text-[10px]">Manpower (Pct)</span>
+                    <p className="font-bold text-foreground mt-0.5">
+                      {Math.round((selectedProcess.manpowerPct ?? 0) * 100)}%
+                    </p>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-muted-foreground">Start Date</Label>
-                    <Input
-                      type="date"
-                      value={formatDateStr(new Date(selectedProcess.scheduledStart!))}
-                      onChange={(e) => {
+                  <div className="text-center bg-purple-50 dark:bg-purple-950/20 p-2 rounded">
+                    <span className="text-purple-600 font-bold text-[10px]">Operator Util Min</span>
+                    <p className="font-bold text-foreground mt-0.5">
+                      {(selectedProcess.manpowerUtilizationMin ?? 0).toFixed(3)}m
+                    </p>
+                  </div>
+                  <div className="text-center bg-indigo-50 dark:bg-indigo-950/20 p-2 rounded">
+                    <span className="text-indigo-600 font-bold text-[10px]">
+                      Total Operator Min (SumV3)
+                    </span>
+                    <p className="font-bold text-foreground mt-0.5">
+                      {(selectedProcess.sumV3 ?? 0).toLocaleString(undefined, {
+                        maximumFractionDigits: 1,
+                      })}
+                      m
+                    </p>
+                  </div>
+                </div>
+
+                {/* Manual Schedule Override */}
+                <div className="border-t border-border pt-4 space-y-3">
+                  <h4 className="font-bold text-sm text-foreground flex items-center gap-1">
+                    <SlidersHorizontal className="h-4 w-4 text-primary" />
+                    Manual Schedule Override
+                  </h4>
+
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Target Workstation / Machine</Label>
+                    <Select
+                      value={selectedProcess.machineId}
+                      onValueChange={(val) => {
                         const startD = new Date(selectedProcess.scheduledStart!);
                         updateSlotSchedule(
                           selectedProcess.id,
-                          selectedProcess.machineId,
-                          e.target.value,
+                          val,
+                          formatDateStr(startD),
                           startD.getHours(),
                         );
-                        toast.success("Rescheduled start date!");
+                        toast.success("Updated assigned machine!");
                       }}
-                      className="h-9"
-                    />
+                    >
+                      <SelectTrigger className="h-9 cursor-pointer">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {machines.map((m) => (
+                          <SelectItem key={m.id} value={m.id}>
+                            Machine {m.name} ({m.machineGroupId})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-muted-foreground">Start Hour (6-19)</Label>
-                    <Input
-                      type="number"
-                      min={6}
-                      max={19}
-                      value={new Date(selectedProcess.scheduledStart!).getHours()}
-                      onChange={(e) => {
-                        const startD = new Date(selectedProcess.scheduledStart!);
-                        const val = Math.max(6, Math.min(19, parseInt(e.target.value, 10) || 6));
-                        updateSlotSchedule(
-                          selectedProcess.id,
-                          selectedProcess.machineId,
-                          formatDateStr(startD),
-                          val,
-                        );
-                        toast.success("Rescheduled start hour!");
-                      }}
-                      className="h-9 font-mono"
-                    />
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-muted-foreground">Start Date</Label>
+                      <Input
+                        type="date"
+                        value={formatDateStr(new Date(selectedProcess.scheduledStart!))}
+                        onChange={(e) => {
+                          const startD = new Date(selectedProcess.scheduledStart!);
+                          updateSlotSchedule(
+                            selectedProcess.id,
+                            selectedProcess.machineId,
+                            e.target.value,
+                            startD.getHours(),
+                          );
+                          toast.success("Rescheduled start date!");
+                        }}
+                        className="h-9"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-muted-foreground">Start Hour (6-19)</Label>
+                      <Input
+                        type="number"
+                        min={6}
+                        max={19}
+                        value={new Date(selectedProcess.scheduledStart!).getHours()}
+                        onChange={(e) => {
+                          const startD = new Date(selectedProcess.scheduledStart!);
+                          const val = Math.max(6, Math.min(19, parseInt(e.target.value, 10) || 6));
+                          updateSlotSchedule(
+                            selectedProcess.id,
+                            selectedProcess.machineId,
+                            formatDateStr(startD),
+                            val,
+                          );
+                          toast.success("Rescheduled start hour!");
+                        }}
+                        className="h-9 font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Schedule Windows (Planned vs Optimized) */}
+                <div className="border-t border-border pt-3 space-y-2 bg-muted/30 p-2.5 rounded text-xs">
+                  <div className="space-y-1 pb-2 border-b border-border/50">
+                    <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
+                      Original Planned SOP
+                    </div>
+                    <div className="flex justify-between text-[11px]">
+                      <span className="text-muted-foreground">SOP Date:</span>
+                      <span className="font-bold text-foreground">
+                        {selectedOrder.sopStartDate}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-[11px]">
+                      <span className="text-muted-foreground">SOP Time:</span>
+                      <span className="font-bold text-foreground">
+                        {selectedOrder.sopStartTime || "00:00:00"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1 pt-1">
+                    <div className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400 tracking-wider">
+                      Optimized Schedule
+                    </div>
+                    <div className="flex justify-between text-[11px]">
+                      <span className="text-muted-foreground">Scheduled Start:</span>
+                      <span className="font-bold text-foreground">
+                        {new Date(selectedProcess.scheduledStart!).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-[11px]">
+                      <span className="text-muted-foreground">Scheduled End:</span>
+                      <span className="font-bold text-foreground">
+                        {new Date(selectedProcess.scheduledEnd!).toLocaleString()}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="border-t border-border pt-3 space-y-2 bg-muted/30 p-2.5 rounded text-xs">
-                <div className="space-y-1 pb-2 border-b border-border/50">
-                  <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
-                    Original Planned SOP
-                  </div>
-                  <div className="flex justify-between text-[11px]">
-                    <span className="text-muted-foreground">SOP Date:</span>
-                    <span className="font-bold text-foreground">{selectedOrder.sopStartDate}</span>
-                  </div>
-                  <div className="flex justify-between text-[11px]">
-                    <span className="text-muted-foreground">SOP Time:</span>
-                    <span className="font-bold text-foreground">
-                      {selectedOrder.sopStartTime || "00:00:00"}
-                    </span>
-                  </div>
-                </div>
+              {/* Fixed Sticky Footer - Never Chopped */}
+              <div className="p-4 sm:p-5 border-t border-border bg-background/95 backdrop-blur-sm shrink-0 flex flex-col gap-2 shadow-sm">
+                {selectedProcess.isManual ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      resetProcessToAuto(selectedProcess.id);
+                      setSelectedProcessId(null);
+                      toast.success(
+                        language === "de"
+                          ? "Pin aufgehoben (Automatisch)!"
+                          : "Reset process to automatic scheduling!",
+                      );
+                    }}
+                    className="w-full border-destructive/30 hover:bg-destructive/10 text-destructive text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer h-9"
+                  >
+                    <Unlock className="h-3.5 w-3.5" />
+                    {language === "de"
+                      ? "Pin aufheben (Automatisch)"
+                      : "Unpin Schedule (Automatic)"}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      pinProcessSchedule(selectedProcess.id);
+                      setSelectedProcessId(null);
+                      toast.success(
+                        language === "de"
+                          ? "Planung angepinnt / gesichert!"
+                          : "Pinned/saved current schedule!",
+                      );
+                    }}
+                    className="w-full border-primary/30 hover:bg-primary/10 text-primary text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer h-9"
+                  >
+                    <Pin className="h-3.5 w-3.5" />
+                    {language === "de" ? "Planung anpinnen / sichern" : "Pin / Save Schedule"}
+                  </Button>
+                )}
 
-                <div className="space-y-1 pt-1">
-                  <div className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400 tracking-wider">
-                    Optimized Schedule
-                  </div>
-                  <div className="flex justify-between text-[11px]">
-                    <span className="text-muted-foreground">Scheduled Start:</span>
-                    <span className="font-bold text-foreground">
-                      {new Date(selectedProcess.scheduledStart!).toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-[11px]">
-                    <span className="text-muted-foreground">Scheduled End:</span>
-                    <span className="font-bold text-foreground">
-                      {new Date(selectedProcess.scheduledEnd!).toLocaleString()}
-                    </span>
-                  </div>
-                </div>
+                <Button
+                  onClick={() => setSelectedProcessId(null)}
+                  className="w-full bg-[#1e3f2e] hover:bg-[#27533d] text-white text-xs font-semibold h-9 cursor-pointer shadow-xs"
+                >
+                  Save & Close
+                </Button>
               </div>
             </div>
-          </div>
-
-          {selectedProcess.isManual ? (
-            <Button
-              variant="outline"
-              onClick={() => {
-                resetProcessToAuto(selectedProcess.id);
-                setSelectedProcessId(null);
-                toast.success(
-                  language === "de"
-                    ? "Pin aufgehoben (Automatisch)!"
-                    : "Reset process to automatic scheduling!",
-                );
-              }}
-              className="w-full border-destructive/30 hover:bg-destructive/10 text-destructive text-xs font-semibold mt-4 flex items-center justify-center gap-1.5"
-            >
-              <Unlock className="h-4 w-4" />
-              {language === "de" ? "Pin aufheben (Automatisch)" : "Unpin Schedule (Automatic)"}
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              onClick={() => {
-                pinProcessSchedule(selectedProcess.id);
-                setSelectedProcessId(null);
-                toast.success(
-                  language === "de"
-                    ? "Planung angepinnt / gesichert!"
-                    : "Pinned/saved current schedule!",
-                );
-              }}
-              className="w-full border-primary/30 hover:bg-primary/10 text-primary text-xs font-semibold mt-4 flex items-center justify-center gap-1.5"
-            >
-              <Pin className="h-4 w-4" />
-              {language === "de" ? "Planung anpinnen / sichern" : "Pin / Save Schedule"}
-            </Button>
-          )}
-
-          <Button
-            onClick={() => setSelectedProcessId(null)}
-            className="w-full bg-primary text-primary-foreground hover:bg-primary/90 mt-4"
-          >
-            Save & Close
-          </Button>
-        </div>
-      )}
+          );
+        })()}
 
       {/* Bottom Legend Footer */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-900 px-4 py-2.5 rounded-xl border border-slate-200/90 dark:border-slate-800 shadow-2xs">
@@ -1534,576 +1910,48 @@ export function GanttTimelineView({
           <Info className="h-3.5 w-3.5 text-slate-400" />
           <span>Timeline Color Indicators & Allocation Rules</span>
         </div>
-        <Legend />
+        <ScheduleLegend />
       </div>
 
       {/* Raw Material Inventory & Shortage Engine Modal */}
       <MaterialInventoryModal open={isMaterialModalOpen} onOpenChange={setIsMaterialModalOpen} />
-    </div>
-  );
-}
 
-// ==========================================
-// 1. YEAR CAPACITY GRID COMPONENT
-// ==========================================
-// ==========================================
-// 1. YEAR CAPACITY GRID COMPONENT
-// ==========================================
-interface YearViewProps {
-  year: number;
-  machines: any[];
-  slots: any[];
-  onSelectMonth: (monthIdx: number) => void;
-}
-
-function YearView({ year, machines, slots, onSelectMonth }: YearViewProps) {
-  const { t, language } = useTranslations();
-  const months =
-    language === "de"
-      ? ["Jan", "Feb", "Mrz", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"]
-      : ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const { machines: allMachines } = useAppStore();
-
-  // Helper to count calendar days in a month of 2026
-  const getDaysInMonth = (monthIdx: number, yr: number) => {
-    return new Date(yr, monthIdx + 1, 0).getDate();
-  };
-
-  // Pre-aggregate scheduled minutes by machineId/groupId and monthIdx in O(slots) time
-  const capacityMap = useMemo(() => {
-    const map = new Map<string, number>();
-    slots.forEach((s) => {
-      if (s.slotType === "R" || s.slotType === "M") {
-        const dateParts = s.date.split("-");
-        if (dateParts.length === 3) {
-          const monthIdx = parseInt(dateParts[1], 10) - 1; // 0-indexed month
-
-          // Machine entry
-          const mKey = `${s.machineId}_${monthIdx}`;
-          map.set(mKey, (map.get(mKey) || 0) + s.minutesUsed);
-
-          // Group entry
-          const machine = allMachines.find((m) => m.id === s.machineId);
-          if (machine) {
-            const gKey = `${machine.machineGroupId}_${monthIdx}`;
-            map.set(gKey, (map.get(gKey) || 0) + s.minutesUsed);
-          }
-        }
-      }
-    });
-    return map;
-  }, [slots, allMachines]);
-
-  const getMonthCapacity = (mId: string, monthIdx: number) => {
-    const daysCount = getDaysInMonth(monthIdx, year);
-
-    // Check if mId is a group ID (M1 or M2)
-    const isGroup = mId === "M1" || mId === "M2";
-    const machinesCount = isGroup ? allMachines.filter((m) => m.machineGroupId === mId).length : 1;
-
-    const totalWorkingHours = daysCount * 14 * machinesCount;
-
-    const totalMinutes = capacityMap.get(`${mId}_${monthIdx}`) || 0;
-    const scheduledHours = totalMinutes / 60;
-    const ratio = totalWorkingHours > 0 ? scheduledHours / totalWorkingHours : 0;
-    return {
-      ratio,
-      scheduledHours,
-      totalWorkingHours,
-    };
-  };
-
-  return (
-    <Card className="border border-border/80 shadow-md bg-card">
-      <CardHeader className="border-b border-border/50 pb-4">
-        <CardTitle className="text-base font-bold flex items-center gap-2 text-foreground">
-          <Calendar className="h-5 w-5 text-primary" />
-          Yearly Capacity Loading Grid ({year})
-        </CardTitle>
-        <CardDescription>
-          Capacity is the percentage of scheduled working hours (Setup R + Machining M) out of total
-          available working hours. Click any cell to open Month view.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="p-0 overflow-x-auto">
-        <table className="w-full text-xs border-collapse">
-          <thead>
-            <tr className="bg-muted border-b border-border text-slate-700">
-              <th className="px-4 py-3 text-left font-bold w-[200px] border-r border-border sticky left-0 bg-muted z-20 shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
-                {machines.some((m) => m.id === "M1" || m.id === "M2")
-                  ? "Machine Group"
-                  : "Workstation"}
-              </th>
-              {months.map((mName, idx) => (
-                <th
-                  key={idx}
-                  className="px-2 py-3 text-center font-bold border-r border-border min-w-[75px]"
-                >
-                  {mName}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {machines.map((m) => (
-              <tr key={m.id} className="border-b border-border hover:bg-muted/10 transition-colors">
-                <td className="px-4 py-2 border-r border-border font-bold sticky left-0 bg-background z-10 shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
-                  {m.name}
-                </td>
-                {months.map((_, mIdx) => {
-                  const cap = getMonthCapacity(m.id, mIdx);
-                  const pct = Math.round(cap.ratio * 100);
-
-                  return (
-                    <td
-                      key={mIdx}
-                      onClick={() => onSelectMonth(mIdx)}
-                      className="px-2 py-2 text-center border-r border-border/60 cursor-pointer font-mono transition-all hover:bg-secondary/40 relative h-16 align-middle"
-                      title={`Scheduled: ${cap.scheduledHours.toFixed(1)} hrs / Available: ${cap.totalWorkingHours} hrs`}
-                    >
-                      <div className="flex flex-col items-center justify-center gap-1.5 h-full w-full">
-                        {/* Mini capacity load chart progress bar */}
-                        <div className="w-full max-w-[55px] h-2 rounded bg-slate-200 dark:bg-slate-800 overflow-hidden flex shadow-inner border border-border/10">
-                          <div
-                            style={{ width: `${Math.min(100, pct)}%` }}
-                            className={cn(
-                              "h-full rounded-sm transition-all duration-300",
-                              pct > 100
-                                ? "bg-red-500 shadow-[0_0_4px_rgba(239,68,68,0.5)]"
-                                : pct >= 80
-                                  ? "bg-amber-500"
-                                  : "bg-emerald-500",
-                            )}
-                          />
-                        </div>
-                        <span
-                          className={cn(
-                            "text-[10px] font-extrabold font-mono",
-                            pct > 100
-                              ? "text-red-600 dark:text-red-400 animate-pulse font-black"
-                              : pct >= 80
-                                ? "text-amber-600 dark:text-amber-400"
-                                : "text-emerald-600 dark:text-emerald-400",
-                          )}
-                        >
-                          {pct}%
-                        </span>
-                      </div>
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </CardContent>
-    </Card>
-  );
-}
-
-// ==========================================
-// 2. WEEK CAPACITY COMPONENT
-// ==========================================
-interface WeekViewProps {
-  year: number;
-  month: number;
-  getLocalizedMonthName: (idx: number) => string;
-  machines: any[];
-  slots: any[];
-  onSelectDay: (dayStr: string) => void;
-}
-
-function WeekView({
-  year,
-  month,
-  getLocalizedMonthName,
-  machines,
-  slots,
-  onSelectDay,
-}: WeekViewProps) {
-  const { machines: allMachines, dailyCapacities } = useAppStore();
-  const { language } = useTranslations();
-
-  // Generate all days in selected month
-  const calendarDays = useMemo(() => {
-    const totalDays = new Date(year, month + 1, 0).getDate();
-    const list: { dayStr: string; label: string; weekday: string }[] = [];
-    const weekdayNames =
-      language === "de"
-        ? ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"]
-        : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-    for (let i = 1; i <= totalDays; i++) {
-      const d = new Date(year, month, i);
-      const dayStr = formatDateStr(d);
-      list.push({
-        dayStr,
-        label: `${String(i).padStart(2, "0")}.${String(month + 1).padStart(2, "0")}`,
-        weekday: weekdayNames[d.getDay()],
-      });
-    }
-    return list;
-  }, [year, month, language]);
-
-  // Pre-aggregate daily setup and machining minutes by machineId/groupId and date Str in O(slots)
-  const dailyCapacityMap = useMemo(() => {
-    const map = new Map<string, { rMin: number; mMin: number }>();
-    slots.forEach((s) => {
-      // Machine key
-      const mKey = `${s.machineId}_${s.date}`;
-      if (!map.has(mKey)) {
-        map.set(mKey, { rMin: 0, mMin: 0 });
-      }
-      const mEntry = map.get(mKey)!;
-      if (s.slotType === "R") {
-        mEntry.rMin += s.minutesUsed;
-      } else if (s.slotType === "M") {
-        mEntry.mMin += s.minutesUsed;
-      }
-
-      // Group key
-      const machine = allMachines.find((m) => m.id === s.machineId);
-      if (machine) {
-        const gKey = `${machine.machineGroupId}_${s.date}`;
-        if (!map.has(gKey)) {
-          map.set(gKey, { rMin: 0, mMin: 0 });
-        }
-        const gEntry = map.get(gKey)!;
-        if (s.slotType === "R") {
-          gEntry.rMin += s.minutesUsed;
-        } else if (s.slotType === "M") {
-          gEntry.mMin += s.minutesUsed;
-        }
-      }
-    });
-    return map;
-  }, [slots, allMachines]);
-
-  const getDayScheduledHours = (mId: string, dayStr: string) => {
-    const entry = dailyCapacityMap.get(`${mId}_${dayStr}`) || { rMin: 0, mMin: 0 };
-
-    const rHours = entry.rMin / 60;
-    const mHours = entry.mMin / 60;
-    const totalHours = rHours + mHours;
-
-    // Check if mId is a group ID (M1 or M2)
-    const isGroup = mId === "M1" || mId === "M2";
-    const machinesCount = isGroup ? allMachines.filter((m) => m.machineGroupId === mId).length : 1;
-
-    const availableHours = 14 * machinesCount;
-
-    return { rHours, mHours, totalHours, availableHours };
-  };
-
-  return (
-    <Card className="border border-border/80 shadow-md bg-card">
-      <CardHeader className="border-b border-border/50 pb-4">
-        <CardTitle className="text-base font-bold flex items-center gap-2 text-foreground">
-          <CalendarDays className="h-5 w-5 text-primary" />
-          Month Calendar Loading — {getLocalizedMonthName(month)} ({year})
-        </CardTitle>
-        <CardDescription>
-          Shows R hours (blue) + M hours (green) stacked out of shift hours. Displays total
-          scheduled hours inside each day. Click cell to zoom into that Day timeline.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="p-0 overflow-x-auto">
-        <table className="w-full text-xs border-collapse">
-          <thead>
-            <tr className="bg-muted border-b border-border text-slate-700">
-              <th className="px-4 py-3 text-left font-bold w-[180px] border-r border-border sticky left-0 bg-muted z-20 shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
-                {machines.some((m) => m.id === "M1" || m.id === "M2")
-                  ? "Machine Group"
-                  : "Workstation"}
-              </th>
-              {calendarDays.map((cd, idx) => (
-                <th
-                  key={idx}
-                  className="px-1.5 py-2 text-center font-bold border-r border-border min-w-[65px] font-sans"
-                >
-                  <div className="text-[10px] text-muted-foreground">{cd.weekday}</div>
-                  <div className="text-xs font-bold font-mono">{cd.label.split(".")[0]}</div>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {machines.map((m) => (
-              <tr key={m.id} className="border-b border-border hover:bg-muted/5 transition-colors">
-                <td className="px-4 py-2 border-r border-border font-bold bg-background sticky left-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
-                  {m.name}
-                </td>
-                {calendarDays.map((cd, idx) => {
-                  const loads = getDayScheduledHours(m.id, cd.dayStr);
-                  const totalHrs = loads.totalHours;
-
-                  // Percentages for stacked bar
-                  const rPct = Math.min(100, (loads.rHours / loads.availableHours) * 100);
-                  const mPct = Math.min(100, (loads.mHours / loads.availableHours) * 100);
-
-                  const dayCap = dailyCapacities?.[cd.dayStr];
-                  const hasCustomCap = dayCap && (dayCap.setter !== 100 || dayCap.process !== 100);
-
-                  return (
-                    <td
-                      key={idx}
-                      onClick={() => onSelectDay(cd.dayStr)}
-                      className="px-1 py-2 text-center border-r border-border/60 cursor-pointer font-mono font-medium transition-all hover:bg-secondary/40 relative h-12 align-middle"
-                    >
-                      {totalHrs > 0 ? (
-                        <div className="flex flex-col items-center justify-center gap-1 h-full w-full">
-                          {/* Mini stacked capacity bar */}
-                          <div className="w-full h-2 rounded bg-slate-200 dark:bg-slate-800 overflow-hidden flex shadow-inner">
-                            <div
-                              style={{ width: `${rPct}%` }}
-                              className="bg-[#4A90D9] h-full"
-                              title={`Setup: ${loads.rHours.toFixed(1)} hrs`}
-                            />
-                            <div
-                              style={{ width: `${mPct}%` }}
-                              className="bg-[#52C41A] h-full"
-                              title={`Machine: ${loads.mHours.toFixed(1)} hrs`}
-                            />
-                          </div>
-                          <span className="text-[10px] font-extrabold text-foreground">
-                            {totalHrs.toFixed(1)} hrs
-                          </span>
-                          {hasCustomCap && (
-                            <span className="text-[8px] text-indigo-600 dark:text-indigo-400 font-bold">
-                              {dayCap.setter}%/{dayCap.process}%
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="flex flex-col items-center justify-center">
-                          <span className="text-muted-foreground/30 text-[9px] font-light font-sans">
-                            —
-                          </span>
-                          {hasCustomCap && (
-                            <span className="text-[8px] text-indigo-600 dark:text-indigo-400 font-bold">
-                              {dayCap.setter}%/{dayCap.process}%
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </CardContent>
-    </Card>
-  );
-}
-
-// ==========================================
-// 4. MINUTE-LEVEL HOUR ZOOM VIEW COMPONENT
-// ==========================================
-interface HourViewProps {
-  dateStr: string;
-  targetHour: number;
-  machines: any[];
-  processes: any[];
-  orders: any[];
-  slots: any[];
-  onBack: () => void;
-}
-
-function HourView({
-  dateStr,
-  targetHour,
-  machines,
-  processes,
-  orders,
-  slots,
-  onBack,
-}: HourViewProps) {
-  // Show exact minute allocation (0 to 59 minutes)
-  const minutes = Array.from({ length: 60 });
-  const timeLabel = `${String(targetHour).padStart(2, "0")}:00 – ${String(targetHour + 1).padStart(2, "0")}:00`;
-
-  // Helper to map what runs at what minute
-  // Since we know the duration and where it resides in the hour, let's map it cleanly
-  const getMinuteAllocations = (mId: string) => {
-    // Find slot of type R or M for this hour and machine
-    const hourSlots = slots.filter(
-      (s) => s.machineId === mId && s.date === dateStr && s.hourStart === targetHour,
-    );
-
-    // Each slot has: minutesUsed, slotType, processId
-    const minsData = Array.from({ length: 60 }).map(() => ({
-      type: "empty",
-      processId: "",
-      manpowerPct: 0,
-      orderCode: "",
-    }));
-
-    let currentPtr = 0;
-    hourSlots.forEach((s) => {
-      const runMins = Math.min(60 - currentPtr, s.minutesUsed);
-      const proc = processes.find((p) => p.id === s.processId);
-      const orderCode = s.processId.split("-")[1] || "";
-
-      for (let i = 0; i < runMins; i++) {
-        minsData[currentPtr + i] = {
-          type: s.slotType,
-          processId: s.processId,
-          manpowerPct: s.manpowerPct ?? 0,
-          orderCode,
-        };
-      }
-      currentPtr += runMins;
-    });
-
-    return minsData;
-  };
-
-  return (
-    <Card className="border border-border/80 shadow-md bg-card">
-      <CardHeader className="border-b border-border/50 pb-4 flex flex-row items-center justify-between gap-4">
-        <div>
-          <CardTitle className="text-base font-bold flex items-center gap-2 text-foreground">
-            <Clock className="h-5 w-5 text-primary animate-spin-slow" />
-            Detailed Minute-Level Zoom —{" "}
-            {new Date(dateStr).toLocaleDateString("en-US", {
-              weekday: "short",
-              month: "short",
-              day: "2-digit",
-              year: "numeric",
-            })}{" "}
-            ({timeLabel})
-          </CardTitle>
-          <CardDescription>
-            Visualizes exact minute placement (0 to 59) of Setup R (steel blue) and Machining M
-            (green). Secondary bar shows P (manpower pct ratio) below M.
-          </CardDescription>
-        </div>
-        <Button variant="outline" size="sm" onClick={onBack} className="gap-1 bg-background">
-          <ArrowLeft className="h-4 w-4" /> Back to Day Timeline
-        </Button>
-      </CardHeader>
-      <CardContent className="p-0 overflow-x-auto">
-        <div
-          style={{ width: 220 + 60 * 12 }}
-          className="flex flex-col relative select-none text-[9px] font-mono"
-        >
-          {/* Header Row: Minute Ticks */}
-          <div className="flex border-b border-border bg-muted/30">
-            <div className="w-[220px] shrink-0 border-r border-border bg-muted/60" />
-            <div className="flex">
-              {minutes.map((_, idx) => (
-                <div
-                  key={idx}
-                  className="border-r border-border/10 text-center text-muted-foreground flex items-center justify-center font-bold"
-                  style={{ width: 12, height: 24 }}
-                >
-                  {idx % 5 === 0 ? String(idx).padStart(2, "0") : "."}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Workstation Rows */}
-          {machines.map((m) => {
-            const allocations = getMinuteAllocations(m.id);
-            const activeAllocation = allocations.find((a) => a.type !== "empty");
-
-            return (
-              <div
-                key={m.id}
-                className="flex border-b border-border/50 py-1 hover:bg-muted/5 transition-colors"
-              >
-                <div className="w-[220px] shrink-0 px-4 flex flex-col justify-center border-r border-border font-sans font-bold bg-background">
-                  <span className="text-sm font-semibold">{m.name}</span>
-                  {activeAllocation?.orderCode && (
-                    <span className="text-[10px] text-primary">
-                      Running Order: {activeAllocation.orderCode}
-                    </span>
-                  )}
-                </div>
-
-                {/* 60 Minute Cells */}
-                <div className="flex relative h-16 items-center">
-                  <div className="absolute inset-x-0 top-1.5 h-6 flex border border-slate-100 rounded bg-slate-50 dark:bg-slate-900 overflow-hidden shadow-inner">
-                    {allocations.map((a, mIdx) => {
-                      let bgClass = "bg-transparent";
-                      if (a.type === "R") bgClass = "bg-[#4A90D9]";
-                      else if (a.type === "M") bgClass = "bg-[#52C41A]";
-
-                      return (
-                        <div
-                          key={mIdx}
-                          style={{ width: 12 }}
-                          className={cn("h-full shrink-0 border-r border-white/5", bgClass)}
-                          title={
-                            a.type !== "empty"
-                              ? `Min ${mIdx}: Order ${a.orderCode} (${a.type === "R" ? "Setup" : "Machining"})`
-                              : `Min ${mIdx}: Idle`
-                          }
-                        />
-                      );
-                    })}
-                  </div>
-
-                  {/* Secondary bar below M: manpowerPct */}
-                  <div className="absolute inset-x-0 bottom-1.5 h-4 flex items-end">
-                    {allocations.map((a, mIdx) => {
-                      const heightPct =
-                        a.type === "M" ? a.manpowerPct * 100 : a.type === "R" ? 100 : 0;
-                      return (
-                        <div
-                          key={mIdx}
-                          style={{ width: 12 }}
-                          className="h-full flex items-end justify-center shrink-0"
-                        >
-                          {heightPct > 0 && (
-                            <div
-                              style={{ height: `${heightPct}%` }}
-                              className={cn(
-                                "w-[60%] shrink-0 shadow-sm",
-                                a.type === "R" ? "bg-sky-700/60" : "bg-orange-500/80",
-                              )}
-                              title={`Min ${mIdx}: Manpower Ratio ${Math.round(heightPct)}%`}
-                            />
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
+      {/* Hold Reason Code Modal */}
+      {selectedProcess && (
+        <HoldReasonModal
+          open={holdModalOpen}
+          onOpenChange={setHoldModalOpen}
+          orderId={selectedProcess.orderId}
+          processId={selectedProcess.processId}
+          machineId={selectedProcess.machineId}
+          onConfirm={(reason, notes) => {
+            store.updateStepExecutionStatus(
+              selectedProcess.id,
+              "PAUSED",
+              undefined,
+              undefined,
+              notes,
+              reason,
             );
-          })}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+            toast.info(`Operation placed on HOLD (${reason}).`);
+          }}
+        />
+      )}
 
-// Legend Helper Component
-function Legend() {
-  const { columnMapping } = useAppStore();
-  const setupLabel = columnMapping?.setupTime || "Setup R";
-  const machLabel = columnMapping?.processTime || "Machining M";
-  const manpowerLabel = columnMapping?.manpower || "Manpower P";
-
-  const items = [
-    { label: `${setupLabel} (Steel Blue)`, bg: "bg-[#4A90D9]" },
-    { label: `${machLabel} (Green)`, bg: "bg-[#52C41A]" },
-    { label: "Machine Overlap (Pulsing Red)", bg: "bg-red-500 animate-pulse" },
-    { label: `${manpowerLabel} (Orange)`, bg: "bg-orange-500" },
-    { label: "Overloaded Stack (Red Outline)", bg: "bg-red-500" },
-  ];
-  return (
-    <div className="flex flex-wrap items-center gap-3 text-[10px] font-semibold text-muted-foreground">
-      {items.map((i) => (
-        <div key={i.label} className="flex items-center gap-1">
-          <span className={cn("inline-block h-2.5 w-2.5 rounded-sm shadow-sm", i.bg)} />
-          {i.label}
-        </div>
-      ))}
+      {/* Log Scrap Defect Modal */}
+      {selectedProcess && (
+        <LogScrapModal
+          open={scrapModalOpen}
+          onOpenChange={setScrapModalOpen}
+          orderId={selectedProcess.orderId}
+          processId={selectedProcess.processId}
+          machineId={selectedProcess.machineId}
+          totalOrderQty={selectedOrder?.orderQty || 100}
+          onConfirm={(qty, reason, notes) => {
+            store.logScrap(selectedProcess.id, qty, reason, notes);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -30,14 +30,14 @@
 
 ## 🛠️ Development & Build Commands
 
-| Command | Description |
-| :--- | :--- |
-| `npm run dev` | Starts Vite development server at `http://localhost:8080` |
-| `npm run build` | Compiles client assets and generates Vercel serverless bundle in `.vercel/output` |
-| `npm run preview` | Previews the compiled production build locally |
-| `npm run lint` | Runs ESLint checks across the codebase |
-| `npm run format` | Formats all files with Prettier |
-| `npx tsc --noEmit` | Runs static TypeScript type checking |
+| Command            | Description                                                                       |
+| :----------------- | :-------------------------------------------------------------------------------- |
+| `npm run dev`      | Starts Vite development server at `http://localhost:8080`                         |
+| `npm run build`    | Compiles client assets and generates Vercel serverless bundle in `.vercel/output` |
+| `npm run preview`  | Previews the compiled production build locally                                    |
+| `npm run lint`     | Runs ESLint checks across the codebase                                            |
+| `npm run format`   | Formats all files with Prettier                                                   |
+| `npx tsc --noEmit` | Runs static TypeScript type checking                                              |
 
 ---
 
@@ -71,4 +71,3 @@ This repository outputs build artifacts conforming to the **Vercel Build Output 
 2. Set Root Directory to `flow-sync-saas`.
 3. Add the environment variables from `.env`.
 4. Deploy!
-

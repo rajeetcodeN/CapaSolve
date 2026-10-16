@@ -1,7 +1,26 @@
+/**
+ * ==============================================================================
+ * CapaSolve SaaS — Finite Capacity Advanced Planning & Scheduling (APS) Engine
+ * ==============================================================================
+ * High-performance deterministic forward/backward scheduling solver for discrete
+ * manufacturing and job-shop production facilities.
+ *
+ * Core algorithmic capabilities:
+ * 1. Finite Workcenter Capacity: Single-spindle non-overlapping job allocation
+ * 2. Routing Precedence Enforcement: Op 10 -> Op 20 -> Op 30 sequential dependencies
+ * 3. Sequence-Dependent Setups (SMED): Changeover time matrix minimization
+ * 4. Dual Labor Pools: Setter (toolmaker) and Operator utilization constraints
+ * 5. Multi-Shift Operating Calendars: Shift 1 (06-13h), Shift 2 (13-20h), weekends/holidays
+ * 6. Machine Group Workcenter Balancing: Dynamic load balancing across parallel cells
+ * 7. Digital Twin What-If Simulations: Machine breakdowns, line delays, overtime branches
+ * ==============================================================================
+ */
+
 import {
   Machine,
   Order,
   OrderProcess,
+  OrderPriority,
   ScheduleSlot,
   ScheduleResult,
   OptimizationMode,
@@ -16,6 +35,17 @@ import {
   WORKING_HOURS_PER_DAY,
 } from "./types";
 
+/**
+ * Calculates the dynamic sequence-dependent changeover / setup time in minutes
+ * between two consecutive manufacturing jobs based on active SMED matrix rules.
+ *
+ * @param fromMaterial - Previously processed material on this workcenter (or null if idle/first job)
+ * @param toMaterial - Next material scheduled to run
+ * @param machineGroupId - Workcenter machine group (e.g. "M1", "M2")
+ * @param baseSetupMin - Default catalog setup time in minutes (fallback)
+ * @param rules - Configured sequence setup matrix rules
+ * @returns Optimized setup time in minutes
+ */
 export function getSequenceSetupTime(
   fromMaterial: string | null,
   toMaterial: string,
@@ -36,6 +66,17 @@ export function getSequenceSetupTime(
   return rule ? rule.setupTimeMin : baseSetupMin;
 }
 
+/**
+ * Parses an ERP date string and time string into a deterministic JavaScript Date object.
+ * Robustly normalizes multiple international formats:
+ * - ISO 8601 strings (e.g. `2026-06-01T08:00:00`)
+ * - European format (e.g. `01-06-2026` or `01/06/2026`)
+ * - ISO date format (e.g. `2026-06-01` or `2026/06/01`)
+ *
+ * @param dateStr - Date string from CSV/ERP
+ * @param timeStr - Time string from CSV/ERP (HH:mm:ss)
+ * @returns Deterministic Date object normalized to local timezone
+ */
 export function parseSOPDate(dateStr: string, timeStr: string): Date {
   const dateClean = (dateStr || "").trim();
   const timeClean = (timeStr || "").trim() || "00:00:00";
@@ -44,19 +85,42 @@ export function parseSOPDate(dateStr: string, timeStr: string): Date {
     return new Date("2026-06-01T00:00:00");
   }
 
-  // Format 1: "01-06-2026" (dd-MM-yyyy)
-  if (dateClean.includes("-")) {
-    const parts = dateClean.split("-");
+  // Handle ISO string with 'T' e.g. "2026-06-01T08:00:00"
+  if (dateClean.includes("T")) {
+    const isoDate = new Date(dateClean);
+    if (!isNaN(isoDate.getTime())) return isoDate;
+  }
+
+  const timeParts = timeClean.split(":");
+  const hours = parseInt(timeParts[0] || "0", 10);
+  const minutes = parseInt(timeParts[1] || "0", 10);
+  const seconds = parseInt(timeParts[2] || "0", 10);
+
+  // Format with delimiter "-" or "/" (e.g. "2026-06-01", "01-06-2026", "01/06/2026")
+  const delim = dateClean.includes("-") ? "-" : dateClean.includes("/") ? "/" : null;
+  if (delim) {
+    const parts = dateClean.split(delim);
     if (parts.length === 3) {
-      const day = parseInt(parts[0], 10);
-      const month = parseInt(parts[1], 10) - 1;
-      const year = parseInt(parts[2], 10);
-      const timeParts = timeClean.split(":");
-      const hours = parseInt(timeParts[0] || "0", 10);
-      const minutes = parseInt(timeParts[1] || "0", 10);
-      const seconds = parseInt(timeParts[2] || "0", 10);
-      const d = new Date(year, month, day, hours, minutes, seconds);
-      if (!isNaN(d.getTime())) return d;
+      let year: number;
+      let month: number;
+      let day: number;
+
+      if (parts[0].length === 4) {
+        // YYYY-MM-DD
+        year = parseInt(parts[0], 10);
+        month = parseInt(parts[1], 10) - 1;
+        day = parseInt(parts[2], 10);
+      } else {
+        // DD-MM-YYYY
+        day = parseInt(parts[0], 10);
+        month = parseInt(parts[1], 10) - 1;
+        year = parseInt(parts[2], 10);
+      }
+
+      if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+        const d = new Date(year, month, day, hours, minutes, seconds);
+        if (!isNaN(d.getTime())) return d;
+      }
     }
   }
 
@@ -111,17 +175,79 @@ function formatDate(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-function alignToWorkingHours(d: Date) {
+function isNonWorkingDay(
+  d: Date,
+  allowWeekends = false,
+  dailyCapacities?: Record<string, { setter?: number; process?: number; isHoliday?: boolean }>,
+): boolean {
+  if (isNaN(d.getTime())) return false;
+  const dateStr = formatDate(d);
+  if (dailyCapacities?.[dateStr]?.isHoliday) return true;
+  const day = d.getDay(); // 0 = Sun, 6 = Sat
+  if ((day === 0 || day === 6) && !allowWeekends) {
+    if (dailyCapacities?.[dateStr] && !dailyCapacities[dateStr].isHoliday) {
+      return false;
+    }
+    return true;
+  }
+  return false;
+}
+
+function alignToWorkingHours(
+  d: Date,
+  allowWeekends = false,
+  dailyCapacities?: Record<string, { setter?: number; process?: number; isHoliday?: boolean }>,
+) {
   if (isNaN(d.getTime())) return;
+
+  let safety = 0;
+  while (isNonWorkingDay(d, allowWeekends, dailyCapacities) && safety < 365) {
+    d.setDate(d.getDate() + 1);
+    d.setHours(SHIFT_1_START, 0, 0, 0);
+    safety++;
+  }
+
   const h = d.getHours();
   if (h < SHIFT_1_START) {
     d.setHours(SHIFT_1_START, 0, 0, 0);
   } else if (h >= SHIFT_2_END) {
     d.setDate(d.getDate() + 1);
     d.setHours(SHIFT_1_START, 0, 0, 0);
+    safety = 0;
+    while (isNonWorkingDay(d, allowWeekends, dailyCapacities) && safety < 365) {
+      d.setDate(d.getDate() + 1);
+      safety++;
+    }
   }
 }
 
+/**
+ * Core Finite Capacity Scheduling (APS) Solver.
+ * Executes deterministic multi-pass scheduling across all manufacturing orders and routing steps:
+ *
+ * Pass 1: Order sequence determination (Urgent > High > Med > Low, sorting by earliest SOP release date).
+ * Pass 2: Workcenter allocation and dynamic changeover setup minimization via SMED transition matrix.
+ * Pass 3: Precedence chain traversal ensuring operation N+1 starts strictly after operation N finishes.
+ * Pass 4: Shift grid boundary snapping (06:00-13:00 Shift 1, 13:00-20:00 Shift 2), excluding non-working days.
+ * Pass 5: Dual labor pool tracking (global setter/toolmaker FTEs and shared machine operator capacity).
+ * Pass 6: Digital Twin scenario injection (machine breakdowns, labor shortages, weekend overtime).
+ *
+ * @param orders - Array of production work orders to schedule
+ * @param processes - Array of routing operations / steps across all orders
+ * @param machines - Available factory machines / workcenters
+ * @param optimizeMode - Optimization strategy: "full", "workstation", or "pre"
+ * @param groupSerialization - When true, groups identical parts consecutively to eliminate changeovers
+ * @param allowProcessOverlap - When true, enables lap-phasing / transfer-batch overlapping
+ * @param allowSopOverride - When true, pulls forward jobs prior to their SOP date if capacity is available
+ * @param maxUtilizeResources - When true, aggressively fills gaps on bottleneck machines
+ * @param dailyCapacities - Overrides for specific calendar days (e.g. holidays or reduced shifts)
+ * @param globalSetterCapacity - Daily available setter / toolmaker capacity in percent (100% = 1 FTE)
+ * @param globalOperatorCapacity - Daily available machine operator capacity in percent (200% = 2 FTEs)
+ * @param maxPreponeWeeks - Maximum number of weeks an order may be scheduled ahead of its SOP date
+ * @param setupMatrixRules - Active sequence-dependent setup matrix rules
+ * @param scenarioConfig - Optional what-if digital twin scenario configuration
+ * @returns Complete calculated ScheduleResult containing hourly slots, warnings, and changeover metrics
+ */
 export function generateSchedule(
   orders: Order[],
   processes: OrderProcess[],
@@ -143,6 +269,9 @@ export function generateSchedule(
 
   let effectiveSetterCapacity = globalSetterCapacity;
   let effectiveOperatorCapacity = globalOperatorCapacity;
+
+  const allowWeekends =
+    scenarioConfig?.type === "shift_change" && scenarioConfig.shiftOption === "weekend_overtime";
 
   if (scenarioConfig?.type === "resource_unavailable") {
     const redFactor = 1 - (scenarioConfig.capacityReductionPct || 50) / 100;
@@ -199,12 +328,36 @@ export function generateSchedule(
   // Map to track allocated machining operator minutes: `${dateStr}_${hour}` -> machiningOperatorMinutes (Global Pool: 1 FTE)
   const globalHourMachiningOperatorMinutes = new Map<string, number>();
 
+  // Track changeover optimization and sequence transitions
+  let baselineSetupTotalMinutes = 0;
+  let actualSetupTotalMinutes = 0;
+  const lastMaterialPerMachine = new Map<string, string>();
+
   // Sort orders/processes to schedule in priority
   // 1. Rush order priority (if scenario configured)
-  // 2. Parent SOP Start Date/Time ASC
-  // 3. processId (step number) ASC
+  // 2. Order Priority (Urgent > High > Med > Low)
+  // 3. Parent SOP Start Date/Time ASC
+  // 4. processId (step number) ASC
   const orderMap = new Map<string, Order>();
-  orders.forEach((o) => orderMap.set(o.id, o));
+  orders.forEach((o) => {
+    orderMap.set(o.id, o);
+    if (o.orderId) orderMap.set(o.orderId, o);
+  });
+
+  const getPriorityWeight = (priority?: OrderPriority): number => {
+    switch (priority) {
+      case "Urgent":
+        return 1;
+      case "High":
+        return 2;
+      case "Med":
+        return 3;
+      case "Low":
+        return 4;
+      default:
+        return 3;
+    }
+  };
 
   const sortedProcesses = [...processes].map((p) => {
     const order = orderMap.get(p.orderId);
@@ -217,10 +370,11 @@ export function generateSchedule(
   });
 
   sortedProcesses.sort((a, b) => {
+    const aOrder = orderMap.get(a.p.orderId);
+    const bOrder = orderMap.get(b.p.orderId);
+
     if (scenarioConfig?.type === "rush_order" && scenarioConfig.rushOrderId) {
       const targetRush = scenarioConfig.rushOrderId.toLowerCase().trim();
-      const aOrder = orderMap.get(a.p.orderId);
-      const bOrder = orderMap.get(b.p.orderId);
 
       const aIsRush =
         a.p.orderId.toLowerCase().includes(targetRush) ||
@@ -238,6 +392,30 @@ export function generateSchedule(
       if (aIsRush && !bIsRush) return -1;
       if (!aIsRush && bIsRush) return 1;
     }
+
+    // Compare Order Priority: Urgent (1) > High (2) > Med (3) > Low (4)
+    const aPrio = getPriorityWeight(a.p.priority || aOrder?.priority);
+    const bPrio = getPriorityWeight(b.p.priority || bOrder?.priority);
+    if (aPrio !== bPrio) {
+      return aPrio - bPrio;
+    }
+
+    // Setup Matrix Auto-Clustering Optimization Pass:
+    // If priorities match and SOP start dates are within a 72-hour window,
+    // cluster compatible materials on the same machine to minimize changeovers
+    if (
+      setupMatrixRules.length > 0 &&
+      aPrio === bPrio &&
+      Math.abs(a.startVal - b.startVal) <= 72 * 3600000
+    ) {
+      const aMat = (aOrder?.material || "").trim().toLowerCase();
+      const bMat = (bOrder?.material || "").trim().toLowerCase();
+      if (aMat && bMat && aMat !== bMat) {
+        const matCmp = aMat.localeCompare(bMat);
+        if (matCmp !== 0) return matCmp;
+      }
+    }
+
     if (a.startVal !== b.startVal) {
       return a.startVal - b.startVal;
     }
@@ -277,18 +455,45 @@ export function generateSchedule(
 
   // Helper to schedule a single process at a determined start date
   const allocateSlotsForProcess = (proc: OrderProcess, startDate: Date) => {
+    const parentOrder = orderMap.get(proc.orderId);
+    const currentMaterial = parentOrder?.material || "";
+    const lastMaterial = lastMaterialPerMachine.get(proc.machineId) || null;
+    const mGroupId = machineToGroupMap.get(proc.machineId) || "";
+
+    const rawSetup = proc.setupTimeMin;
+    let effectiveSetupMin = proc.setupTimeMin;
+
+    if (lastMaterial && setupMatrixRules.length > 0) {
+      effectiveSetupMin = getSequenceSetupTime(
+        lastMaterial,
+        currentMaterial,
+        mGroupId,
+        proc.setupTimeMin,
+        setupMatrixRules,
+      );
+      // If same material consecutively on same machine, changeover setup is minimal/reduced
+      if (lastMaterial.toLowerCase() === currentMaterial.toLowerCase() && proc.setupTimeMin > 10) {
+        effectiveSetupMin = Math.min(proc.setupTimeMin, 10);
+      }
+    }
+    lastMaterialPerMachine.set(proc.machineId, currentMaterial);
+
+    baselineSetupTotalMinutes += rawSetup;
+    actualSetupTotalMinutes += effectiveSetupMin;
+
+    proc.setupTimeMin = effectiveSetupMin;
+    proc.totalTimeMin = proc.setupTimeMin + proc.sumV2;
+
     const startIso = new Date(startDate.getTime());
     let currentPointer = new Date(startDate.getTime());
     let remainingMin = proc.totalTimeMin;
     let remainingSetupMin = proc.setupTimeMin;
 
-    const mGroupId = machineToGroupMap.get(proc.machineId) || "";
-
     while (remainingMin > 0) {
       if (isNaN(currentPointer.getTime())) {
         break;
       }
-      alignToWorkingHours(currentPointer);
+      alignToWorkingHours(currentPointer, allowWeekends, dailyCapacities);
       const dateStr = formatDate(currentPointer);
       const hour = currentPointer.getHours();
       const shift = hour < SHIFT_1_END ? 1 : 2;
@@ -386,7 +591,6 @@ export function generateSchedule(
     proc.status = "SCHEDULED";
 
     // Update latest order completion tracker
-    const parentOrder = orderMap.get(proc.orderId);
     if (parentOrder) {
       const currentEnd = orderEndTimes.get(parentOrder.orderId);
       if (!currentEnd || endIso > currentEnd) {
@@ -444,7 +648,7 @@ export function generateSchedule(
     ) {
       earliestStart.setHours(earliestStart.getHours() + 1, 0, 0, 0);
     }
-    alignToWorkingHours(earliestStart);
+    alignToWorkingHours(earliestStart, allowWeekends, dailyCapacities);
 
     // Find earliest starting hour on machine with zero overlap for total duration
     const totalTimeMin = proc.totalTimeMin;
@@ -468,14 +672,14 @@ export function generateSchedule(
           break;
         }
 
-        alignToWorkingHours(tempStart);
+        alignToWorkingHours(tempStart, allowWeekends, dailyCapacities);
         let testPointer = new Date(tempStart.getTime());
         let remainingMin = totalTimeMin;
         let remainingSetupMin = proc.setupTimeMin;
         let conflict = false;
 
         while (remainingMin > 0) {
-          alignToWorkingHours(testPointer);
+          alignToWorkingHours(testPointer, allowWeekends, dailyCapacities);
           const dateStr = formatDate(testPointer);
           const hour = testPointer.getHours();
           const key = `${mId}_${dateStr}_${hour}`;
@@ -831,9 +1035,14 @@ export function generateSchedule(
     }
   });
 
+  const totalSetupMinutesSaved = Math.max(0, baselineSetupTotalMinutes - actualSetupTotalMinutes);
+  const totalChangeoverMinutes = actualSetupTotalMinutes;
+
   return {
     slots,
     warnings: Array.from(warningsSet),
+    totalSetupMinutesSaved,
+    totalChangeoverMinutes,
   };
 }
 
@@ -1027,8 +1236,75 @@ export function simulateScenario(
     maxEndMs > minStartMs && minStartMs !== Infinity ? maxEndMs - minStartMs : 14 * 24 * 3600000;
   const makespanDays = Math.round((makespanMs / (24 * 3600000)) * 10) / 10;
   const totalSetupHours = Math.round((totalSetupMinutes / 60) * 10) / 10;
-  const utilizationPct = Math.min(98, Math.max(62, Math.round(84 - shiftedOrders.length * 1.5)));
-  const otdPct = Math.max(68, Math.round(96 - shiftedOrders.length * 2.8));
+  // 1. Real Capacity Utilization %
+  const totalAllocatedMinutes = scenarioResult.slots.reduce((acc, s) => acc + s.minutesUsed, 0);
+  const activeMachineCount = Math.max(1, machines.length);
+  const dailyWorkMinutes = (SHIFT_2_END - SHIFT_1_START) * 60; // 14 hours * 60 = 840 min/day per machine
+
+  let totalAvailableMinutes = 0;
+  if (minStartMs !== Infinity && maxEndMs > minStartMs) {
+    const uniqueDates = new Set<string>();
+    scenarioResult.slots.forEach((s) => uniqueDates.add(s.date));
+    const workingDaysCount = Math.max(1, uniqueDates.size);
+    totalAvailableMinutes = workingDaysCount * activeMachineCount * dailyWorkMinutes;
+  } else {
+    totalAvailableMinutes = activeMachineCount * dailyWorkMinutes;
+  }
+
+  const utilizationPct =
+    totalAvailableMinutes > 0
+      ? Math.min(100, Math.round((totalAllocatedMinutes / totalAvailableMinutes) * 1000) / 10)
+      : 0;
+
+  // 2. Real On-Time Delivery (OTD %) based on process completion vs parent order due date
+  const scheduledOrderIds = new Set<string>();
+  scenarioProcs.forEach((p) => {
+    if (p.scheduledEnd) {
+      scheduledOrderIds.add(p.orderId);
+    }
+  });
+
+  let onTimeOrderCount = 0;
+  scheduledOrderIds.forEach((ordId) => {
+    const parentOrder = orders.find((o) => o.id === ordId || o.orderId === ordId);
+    if (!parentOrder) {
+      onTimeOrderCount++;
+      return;
+    }
+
+    let targetDueMs = 0;
+    const rawDue = parentOrder.dueDate || parentOrder.customerDueDate;
+    if (rawDue) {
+      const parsedDue = new Date(rawDue.includes("T") ? rawDue : `${rawDue}T20:00:00`);
+      targetDueMs = !isNaN(parsedDue.getTime()) ? parsedDue.getTime() : 0;
+    }
+    if (!targetDueMs && parentOrder.sopStartDate) {
+      try {
+        const sopD = parseSOPDate(parentOrder.sopStartDate, parentOrder.sopStartTime || "20:00:00");
+        targetDueMs = sopD.getTime() + (parentOrder.orderQty || 1) * 3600000;
+      } catch {
+        targetDueMs = 0;
+      }
+    }
+
+    const orderProcs = scenarioProcs.filter(
+      (p) => (p.orderId === ordId || p.orderId === parentOrder.orderId) && p.scheduledEnd,
+    );
+    let actualOrderEndMs = 0;
+    orderProcs.forEach((p) => {
+      const pEnd = new Date(p.scheduledEnd!).getTime();
+      if (pEnd > actualOrderEndMs) actualOrderEndMs = pEnd;
+    });
+
+    if (!targetDueMs || actualOrderEndMs <= targetDueMs) {
+      onTimeOrderCount++;
+    }
+  });
+
+  const otdPct =
+    scheduledOrderIds.size > 0
+      ? Math.round((onTimeOrderCount / scheduledOrderIds.size) * 1000) / 10
+      : 100.0;
 
   // AI Adaptation Advice tailored to all 5 scenario types
   const aiAdaptationAdvice: string[] = [];

@@ -26,6 +26,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { parseSOPDate } from "@/lib/scheduler";
+import { formatDateStr } from "@/lib/dateUtils";
 
 export const Route = createFileRoute("/pivot")({
   head: () => ({
@@ -1490,12 +1491,4 @@ function PivotPage() {
       </Tabs>
     </div>
   );
-}
-
-// Small helper function to format Date object into YYYY-MM-DD
-function formatDateStr(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
 }

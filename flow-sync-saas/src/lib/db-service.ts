@@ -72,6 +72,7 @@ export async function syncScheduleToSupabaseDB(
     // 2. Upsert JSON payload into schedule_data table
     const { error: dataError } = await supabase.from("schedule_data").upsert({
       schedule_id: scheduleId,
+      org_id: orgId,
       data: data as any,
       updated_at: new Date().toISOString(),
     });

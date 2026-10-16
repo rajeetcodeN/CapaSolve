@@ -17,10 +17,23 @@ import process from "node:process";
 //     VITE_ prefix. Never put secrets here — they ship to the browser.
 
 export function getServerConfig() {
+  const projectId = process.env.SUPABASE_PROJECT_ID || process.env.VITE_SUPABASE_PROJECT_ID;
+  const anonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+  const bucketName = process.env.SUPABASE_BUCKET_NAME || "scheduler";
+
+  if (!projectId || !anonKey) {
+    const missing: string[] = [];
+    if (!projectId) missing.push("SUPABASE_PROJECT_ID");
+    if (!anonKey) missing.push("SUPABASE_ANON_KEY");
+    throw new Error(
+      `Server configuration error: Missing required Supabase environment variable(s): ${missing.join(", ")}.`,
+    );
+  }
+
   return {
     nodeEnv: process.env.NODE_ENV,
-    supabaseProjectId: process.env.SUPABASE_PROJECT_ID || "ymvdbaexgtxjjrpodiwf",
-    supabaseAnonKey: process.env.SUPABASE_ANON_KEY,
-    supabaseBucketName: process.env.SUPABASE_BUCKET_NAME || "scheduler",
+    supabaseProjectId: projectId,
+    supabaseAnonKey: anonKey,
+    supabaseBucketName: bucketName,
   };
 }

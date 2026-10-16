@@ -28,6 +28,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
@@ -48,6 +49,7 @@ import {
   Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { QuickOverviewPopover } from "@/components/QuickOverviewPopover";
 
 export const Route = createFileRoute("/machines")({
   head: () => ({
@@ -64,7 +66,16 @@ export const Route = createFileRoute("/machines")({
 });
 
 function MachineManagementPage() {
-  const { machines, machineGroups, setDailyCapacity, language } = useAppStore();
+  const {
+    machines,
+    machineGroups,
+    processes,
+    orders,
+    setOrders,
+    runScheduler,
+    setDailyCapacity,
+    language,
+  } = useAppStore();
   const { t } = useTranslations();
 
   // Search & Filter
@@ -83,6 +94,53 @@ function MachineManagementPage() {
   const [maintStartDate, setMaintStartDate] = useState("2026-06-10");
   const [maintEndDate, setMaintEndDate] = useState("2026-06-12");
   const [maintNote, setMaintNote] = useState("Planned Preventive Maintenance / Tool Re-alignment");
+
+  // Breakdown & Re-route Assistant State
+  const [isBreakdownOpen, setIsBreakdownOpen] = useState(false);
+  const [selectedMachineForBreakdown, setSelectedMachineForBreakdown] = useState<any>(null);
+  const [targetMachineId, setTargetMachineId] = useState<string>("");
+
+  const affectedOps = useMemo(() => {
+    if (!selectedMachineForBreakdown) return [];
+    return processes.filter(
+      (p) => p.machineId === selectedMachineForBreakdown.id && p.executionStatus !== "COMPLETED",
+    );
+  }, [processes, selectedMachineForBreakdown]);
+
+  const compatibleMachines = useMemo(() => {
+    if (!selectedMachineForBreakdown) return [];
+    return machines.filter(
+      (m) =>
+        m.id !== selectedMachineForBreakdown.id &&
+        m.machineGroupId === selectedMachineForBreakdown.machineGroupId,
+    );
+  }, [machines, selectedMachineForBreakdown]);
+
+  const handleExecuteReroute = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedMachineForBreakdown || !targetMachineId) {
+      toast.error("Please select a compatible target machine.");
+      return;
+    }
+
+    const updatedProcesses = processes.map((p) => {
+      if (p.machineId === selectedMachineForBreakdown.id && p.executionStatus !== "COMPLETED") {
+        return {
+          ...p,
+          machineId: targetMachineId,
+          status: "UNSCHEDULED" as const,
+        };
+      }
+      return p;
+    });
+
+    setOrders(orders, updatedProcesses);
+    runScheduler();
+    setIsBreakdownOpen(false);
+    toast.success(
+      `Re-routed ${affectedOps.length} operations to ${targetMachineId} and re-solved production schedule!`,
+    );
+  };
 
   // Filtered Machines List
   const filteredMachines = useMemo(() => {
@@ -147,106 +205,115 @@ function MachineManagementPage() {
           </p>
         </div>
 
-        <Dialog open={isAddMachineOpen} onOpenChange={setIsAddMachineOpen}>
-          <DialogTrigger asChild>
-            <Button
-              size="sm"
-              className="bg-[#1e3f2e] hover:bg-[#27533d] text-white font-medium shadow-xs border border-[#27533d] text-xs gap-1.5 cursor-pointer rounded-lg"
-            >
-              <Plus className="h-4 w-4" />
-              Add New Workstation
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-sm font-bold flex items-center gap-2">
-                <Plus className="h-4 w-4 text-slate-500" />
-                Add Workstation Line
-              </DialogTitle>
-            </DialogHeader>
+        <div className="flex items-center gap-2">
+          <Dialog open={isAddMachineOpen} onOpenChange={setIsAddMachineOpen}>
+            <DialogTrigger asChild>
+              <Button
+                size="sm"
+                className="bg-[#1e3f2e] hover:bg-[#27533d] text-white font-medium shadow-xs border border-[#27533d] text-xs gap-1.5 cursor-pointer rounded-lg"
+              >
+                <Plus className="h-4 w-4" />
+                Add New Workstation
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="text-sm font-bold flex items-center gap-2">
+                  <Plus className="h-4 w-4 text-slate-500" />
+                  Add Workstation Line
+                </DialogTitle>
+              </DialogHeader>
 
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (!newMachineId.trim()) return toast.error("Machine Code is required.");
-                toast.success(`Added workstation ${newMachineName || newMachineId}`);
-                setIsAddMachineOpen(false);
-                setNewMachineId("");
-                setNewMachineName("");
-              }}
-              className="space-y-4 pt-2 text-xs"
-            >
-              <div className="space-y-1">
-                <Label
-                  htmlFor="m-id"
-                  className="text-xs font-semibold text-slate-700 dark:text-slate-300"
-                >
-                  Workstation Code / ID *
-                </Label>
-                <Input
-                  id="m-id"
-                  value={newMachineId}
-                  onChange={(e) => setNewMachineId(e.target.value)}
-                  placeholder="e.g. 603013"
-                  className="h-8 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xs"
-                  required
-                />
-              </div>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!newMachineId.trim()) return toast.error("Machine Code is required.");
+                  toast.success(`Added workstation ${newMachineName || newMachineId}`);
+                  setIsAddMachineOpen(false);
+                  setNewMachineId("");
+                  setNewMachineName("");
+                }}
+                className="space-y-4 pt-2 text-xs"
+              >
+                <div className="space-y-1">
+                  <Label
+                    htmlFor="m-id"
+                    className="text-xs font-semibold text-slate-700 dark:text-slate-300"
+                  >
+                    Workstation Code / ID *
+                  </Label>
+                  <Input
+                    id="m-id"
+                    value={newMachineId}
+                    onChange={(e) => setNewMachineId(e.target.value)}
+                    placeholder="e.g. 603013"
+                    className="h-8 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xs"
+                    required
+                  />
+                </div>
 
-              <div className="space-y-1">
-                <Label
-                  htmlFor="m-name"
-                  className="text-xs font-semibold text-slate-700 dark:text-slate-300"
-                >
-                  Workstation Description
-                </Label>
-                <Input
-                  id="m-name"
-                  value={newMachineName}
-                  onChange={(e) => setNewMachineName(e.target.value)}
-                  placeholder="e.g. High-Speed SMT Assembly Line 03"
-                  className="h-8 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xs"
-                />
-              </div>
+                <div className="space-y-1">
+                  <Label
+                    htmlFor="m-name"
+                    className="text-xs font-semibold text-slate-700 dark:text-slate-300"
+                  >
+                    Workstation Description
+                  </Label>
+                  <Input
+                    id="m-name"
+                    value={newMachineName}
+                    onChange={(e) => setNewMachineName(e.target.value)}
+                    placeholder="e.g. High-Speed SMT Assembly Line 03"
+                    className="h-8 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xs"
+                  />
+                </div>
 
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Machine Group *
-                </Label>
-                <Select value={newGroupId} onValueChange={setNewGroupId}>
-                  <SelectTrigger className="w-full h-8 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 shadow-2xs">
-                    <SelectValue placeholder="Select group" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-md">
-                    {machineGroups.map((g) => (
-                      <SelectItem key={g.id} value={g.id} className="text-xs">
-                        {g.name} ({g.id})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Machine Group *
+                  </Label>
+                  <Select value={newGroupId} onValueChange={setNewGroupId}>
+                    <SelectTrigger className="w-full h-8 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 shadow-2xs">
+                      <SelectValue placeholder="Select group" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-md">
+                      {machineGroups.map((g) => (
+                        <SelectItem key={g.id} value={g.id} className="text-xs">
+                          {g.name} ({g.id})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <DialogFooter className="pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsAddMachineOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  size="sm"
-                  className="bg-[#1e3f2e] hover:bg-[#27533d] text-white font-medium shadow-xs border border-[#27533d]"
-                >
-                  Save Workstation
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+                <DialogFooter className="pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsAddMachineOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    className="bg-[#1e3f2e] hover:bg-[#27533d] text-white font-medium shadow-xs border border-[#27533d]"
+                  >
+                    Save Workstation
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          {/* Context Help (i) at the end */}
+          <QuickOverviewPopover
+            align="end"
+            side="bottom"
+            className="h-8 w-8 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-foreground shadow-2xs shrink-0"
+          />
+        </div>
       </div>
 
       {/* KPI Cards */}
@@ -348,18 +415,37 @@ function MachineManagementPage() {
                     </span>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setSelectedMachineForMaint(m);
-                        setIsMaintenanceOpen(true);
-                      }}
-                      className="text-[11px] h-7 px-2.5 gap-1 border-amber-500/40 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 cursor-pointer"
-                    >
-                      <Wrench className="h-3 w-3" />
-                      Plan Maintenance
-                    </Button>
+                    <div className="flex items-center justify-end gap-1.5">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedMachineForBreakdown(m);
+                          const firstAlt = machines.find(
+                            (alt) => alt.id !== m.id && alt.machineGroupId === m.machineGroupId,
+                          );
+                          setTargetMachineId(firstAlt?.id || "");
+                          setIsBreakdownOpen(true);
+                        }}
+                        className="text-[11px] h-7 px-2 gap-1 border-rose-500/40 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 cursor-pointer"
+                        title="Report machine breakdown and re-route affected operations"
+                      >
+                        <AlertTriangle className="h-3 w-3" />
+                        Breakdown
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedMachineForMaint(m);
+                          setIsMaintenanceOpen(true);
+                        }}
+                        className="text-[11px] h-7 px-2.5 gap-1 border-amber-500/40 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 cursor-pointer"
+                      >
+                        <Wrench className="h-3 w-3" />
+                        Plan Maintenance
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -418,6 +504,101 @@ function MachineManagementPage() {
                 className="bg-[#1e3f2e] hover:bg-[#27533d] text-white font-semibold shadow-xs border border-[#27533d]"
               >
                 Block Machine Dates
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Machine Breakdown & Contingency Re-route Dialog */}
+      <Dialog open={isBreakdownOpen} onOpenChange={setIsBreakdownOpen}>
+        <DialogContent className="sm:max-w-md bg-slate-900 border-slate-800 text-slate-100">
+          <DialogHeader>
+            <div className="flex items-center gap-2 text-rose-400 font-semibold text-xs">
+              <AlertTriangle className="w-4 h-4" />
+              <span>Shop Floor Contingency Re-route</span>
+            </div>
+            <DialogTitle className="text-base font-bold text-white">
+              Report Breakdown — Workstation {selectedMachineForBreakdown?.name}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-400">
+              Machine is experiencing an unscheduled outage. Re-route active and queued operations
+              to another compatible workstation in Group{" "}
+              {selectedMachineForBreakdown?.machineGroupId}.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleExecuteReroute} className="space-y-4 pt-2 text-xs">
+            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">Affected Operations:</span>
+                <span className="font-mono text-xs font-bold text-rose-400">
+                  {affectedOps.length} Work Orders
+                </span>
+              </div>
+              {affectedOps.length > 0 && (
+                <div className="max-h-24 overflow-y-auto space-y-1 pt-1 border-t border-slate-800">
+                  {affectedOps.map((op) => (
+                    <div
+                      key={op.id}
+                      className="text-[11px] text-slate-300 font-mono flex justify-between"
+                    >
+                      <span>
+                        WO #{op.orderId} (Step {op.processId})
+                      </span>
+                      <span className="text-slate-500">
+                        {op.setupTimeMin + Math.round(op.sumV2)}m
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-300">
+                Target Compatible Workstation (Group {selectedMachineForBreakdown?.machineGroupId})
+                *
+              </Label>
+              {compatibleMachines.length === 0 ? (
+                <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs">
+                  No other workstations found in Group {selectedMachineForBreakdown?.machineGroupId}
+                  .
+                </div>
+              ) : (
+                <Select value={targetMachineId} onValueChange={setTargetMachineId}>
+                  <SelectTrigger className="w-full h-9 bg-slate-950 border-slate-800 text-white font-mono text-xs">
+                    <SelectValue placeholder="Select target workstation" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-900 border-slate-800 text-white">
+                    {compatibleMachines.map((m) => (
+                      <SelectItem key={m.id} value={m.id} className="text-xs font-mono">
+                        {m.name} ({m.id})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsBreakdownOpen(false)}
+                className="border-slate-800 text-slate-300 hover:bg-slate-800 text-xs"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={compatibleMachines.length === 0 || affectedOps.length === 0}
+                className="bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs gap-1.5 cursor-pointer"
+              >
+                <AlertTriangle className="w-3.5 h-3.5" />
+                Re-route {affectedOps.length} Operations & Re-solve
               </Button>
             </DialogFooter>
           </form>

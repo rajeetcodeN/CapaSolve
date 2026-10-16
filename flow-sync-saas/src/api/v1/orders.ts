@@ -1,17 +1,36 @@
 import { Order, OrderProcess } from "@/lib/types";
+import { fetchScheduleFromSupabaseDB, syncScheduleToSupabaseDB } from "@/lib/db-service";
 
 let inMemoryOrdersStore: Order[] = [];
 let inMemoryProcessesStore: OrderProcess[] = [];
 
-export function handleGetOrdersApi(searchQuery?: string) {
-  let filtered = [...inMemoryOrdersStore];
+export async function handleGetOrdersApi(searchQuery?: string, tenantId?: string) {
+  let orders = [...inMemoryOrdersStore];
+
+  if (
+    tenantId &&
+    tenantId !== "tenant-default" &&
+    tenantId !== "tenant-demo" &&
+    process.env.NODE_ENV !== "test"
+  ) {
+    try {
+      const dbRes = await fetchScheduleFromSupabaseDB(tenantId);
+      if (dbRes.success && dbRes.data?.orders) {
+        orders = dbRes.data.orders;
+      }
+    } catch {
+      // fallback to memory
+    }
+  }
+
+  let filtered = [...orders];
   if (searchQuery) {
     const q = searchQuery.toLowerCase();
     filtered = filtered.filter(
       (o) =>
-        o.id.toLowerCase().includes(q) ||
-        o.orderId.toLowerCase().includes(q) ||
-        o.material.toLowerCase().includes(q),
+        (o.id && o.id.toLowerCase().includes(q)) ||
+        (o.orderId && o.orderId.toLowerCase().includes(q)) ||
+        (o.material && o.material.toLowerCase().includes(q)),
     );
   }
   return {
@@ -23,7 +42,10 @@ export function handleGetOrdersApi(searchQuery?: string) {
   };
 }
 
-export function handlePostOrdersApi(body: { orders: Order[]; processes?: OrderProcess[] }) {
+export async function handlePostOrdersApi(
+  body: { orders: Order[]; processes?: OrderProcess[] },
+  tenantId?: string,
+) {
   if (!body || !Array.isArray(body.orders)) {
     return {
       success: false,
@@ -56,6 +78,17 @@ export function handlePostOrdersApi(body: { orders: Order[]; processes?: OrderPr
     });
   }
 
+  if (tenantId && tenantId !== "tenant-default") {
+    try {
+      await syncScheduleToSupabaseDB(tenantId, "API Synchronized Schedule", {
+        orders: inMemoryOrdersStore,
+        processes: inMemoryProcessesStore,
+      });
+    } catch (err) {
+      console.warn("Could not sync orders to DB for tenant:", tenantId, err);
+    }
+  }
+
   return {
     success: true,
     data: {
@@ -65,7 +98,7 @@ export function handlePostOrdersApi(body: { orders: Order[]; processes?: OrderPr
   };
 }
 
-export function handleDeleteOrderApi(orderId: string) {
+export async function handleDeleteOrderApi(orderId: string, tenantId?: string) {
   if (!orderId) {
     return {
       success: false,
@@ -76,6 +109,17 @@ export function handleDeleteOrderApi(orderId: string) {
   const initialCount = inMemoryOrdersStore.length;
   inMemoryOrdersStore = inMemoryOrdersStore.filter((o) => o.id !== orderId);
   inMemoryProcessesStore = inMemoryProcessesStore.filter((p) => p.orderId !== orderId);
+
+  if (tenantId && tenantId !== "tenant-default") {
+    try {
+      await syncScheduleToSupabaseDB(tenantId, "API Synchronized Schedule", {
+        orders: inMemoryOrdersStore,
+        processes: inMemoryProcessesStore,
+      });
+    } catch (err) {
+      console.warn("Could not sync order delete to DB for tenant:", tenantId, err);
+    }
+  }
 
   return {
     success: true,

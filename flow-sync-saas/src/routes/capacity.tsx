@@ -18,6 +18,7 @@ import { SHIFT_1_START, SHIFT_1_END, SHIFT_2_END, WORKING_HOURS_PER_DAY } from "
 import { parseSOPDate } from "@/lib/scheduler";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { QuickOverviewPopover } from "@/components/QuickOverviewPopover";
 import {
   CalendarDays,
   SlidersHorizontal,
@@ -34,6 +35,12 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  Play,
+  Pause,
+  CheckCircle2,
+  Check,
+  Unlock,
+  Pin,
 } from "lucide-react";
 import {
   ComposedChart,
@@ -46,6 +53,9 @@ import {
   Legend as RechartsLegend,
   ResponsiveContainer,
 } from "recharts";
+
+import { formatDateStr, getWorkingHoursBetween } from "@/lib/dateUtils";
+import { ScheduleLegend } from "@/components/common/ScheduleLegend";
 
 export const Route = createFileRoute("/capacity")({
   head: () => ({
@@ -61,48 +71,6 @@ export const Route = createFileRoute("/capacity")({
 });
 
 const HOUR_WIDTH = 55; // wider cells for daily view
-
-function formatDateStr(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-// Counts working hours (06:00 to 20:00) between two dates mathematically in O(1) constant time
-function getWorkingHoursBetween(start: Date, end: Date): number {
-  if (start >= end) return 0;
-
-  const dStart = new Date(start.getTime());
-  const dEnd = new Date(end.getTime());
-
-  // Set to midnight to find the difference in calendar days
-  const startDay = new Date(dStart.getFullYear(), dStart.getMonth(), dStart.getDate());
-  const endDay = new Date(dEnd.getFullYear(), dEnd.getMonth(), dEnd.getDate());
-
-  const diffDays = Math.round((endDay.getTime() - startDay.getTime()) / 86400000);
-
-  if (diffDays === 0) {
-    // Same calendar day: count hours within the working range
-    const h1 = Math.max(SHIFT_1_START, Math.min(SHIFT_2_END, dStart.getHours()));
-    const h2 = Math.max(SHIFT_1_START, Math.min(SHIFT_2_END, dEnd.getHours()));
-    return Math.max(0, h2 - h1);
-  } else {
-    // Different calendar days
-    // 1. Working hours on the first day
-    const h1 = Math.max(SHIFT_1_START, Math.min(SHIFT_2_END, dStart.getHours()));
-    const firstDayHours = Math.max(0, SHIFT_2_END - h1);
-
-    // 2. Working hours on the last day
-    const h2 = Math.max(SHIFT_1_START, Math.min(SHIFT_2_END, dEnd.getHours()));
-    const lastDayHours = Math.max(0, h2 - SHIFT_1_START);
-
-    // 3. Working hours for full days in between
-    const middleDaysHours = (diffDays - 1) * WORKING_HOURS_PER_DAY;
-
-    return firstDayHours + middleDaysHours + lastDayHours;
-  }
-}
 
 function CapacityPage() {
   const store = useAppStore();
@@ -629,53 +597,62 @@ function CapacityPage() {
           </p>
         </div>
 
-        {/* Toggle selectors to display components */}
-        <div className="flex flex-wrap items-center gap-3 bg-slate-100/90 dark:bg-slate-850 border border-slate-200/90 dark:border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-semibold shadow-2xs">
-          <span className="text-muted-foreground flex items-center gap-1 uppercase tracking-wider text-[10.5px]">
-            <Clock className="h-3.5 w-3.5" /> {language === "de" ? "Ansichten:" : "Panels:"}
-          </span>
-          <label className="flex items-center gap-1.5 cursor-pointer hover:text-primary transition-all">
-            <Checkbox
-              checked={visiblePanels.includes("settings")}
-              onCheckedChange={() => togglePanel("settings")}
-            />
-            {language === "de" ? "Einstellungen" : "Settings"}
-          </label>
-          <label className="flex items-center gap-1.5 cursor-pointer hover:text-primary transition-all">
-            <Checkbox
-              checked={visiblePanels.includes("gantt")}
-              onCheckedChange={() => togglePanel("gantt")}
-            />
-            {language === "de" ? "Gantt-Diagramm" : "Gantt Chart"}
-          </label>
-          <label className="flex items-center gap-1.5 cursor-pointer hover:text-primary transition-all">
-            <Checkbox
-              checked={visiblePanels.includes("pivot")}
-              onCheckedChange={() => togglePanel("pivot")}
-            />
-            {language === "de" ? "Pivot-Tabelle" : "Pivot Table"}
-          </label>
-          <label className="flex items-center gap-1.5 cursor-pointer hover:text-primary transition-all">
-            <Checkbox
-              checked={visiblePanels.includes("chart")}
-              onCheckedChange={() => togglePanel("chart")}
-            />
-            {language === "de" ? "Auslastungsdiagramm" : "Composed Chart"}
-          </label>
-          <label className="flex items-center gap-1.5 cursor-pointer hover:text-primary transition-all">
-            <Checkbox
-              checked={visiblePanels.includes("sop")}
-              onCheckedChange={() => togglePanel("sop")}
-            />
-            {language === "de" ? "SOP-Meldungen" : "SOP Panel"}
-          </label>
-          <label className="flex items-center gap-1.5 cursor-pointer hover:text-primary transition-all">
-            <Checkbox
-              checked={visiblePanels.includes("warnings")}
-              onCheckedChange={() => togglePanel("warnings")}
-            />
-            {language === "de" ? "Warnungen" : "Warnings"}
-          </label>
+        <div className="flex items-center gap-2">
+          {/* Toggle selectors to display components */}
+          <div className="flex flex-wrap items-center gap-3 bg-slate-100/90 dark:bg-slate-850 border border-slate-200/90 dark:border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-semibold shadow-2xs">
+            <span className="text-muted-foreground flex items-center gap-1 uppercase tracking-wider text-[10.5px]">
+              <Clock className="h-3.5 w-3.5" /> {language === "de" ? "Ansichten:" : "Panels:"}
+            </span>
+            <label className="flex items-center gap-1.5 cursor-pointer hover:text-primary transition-all">
+              <Checkbox
+                checked={visiblePanels.includes("settings")}
+                onCheckedChange={() => togglePanel("settings")}
+              />
+              {language === "de" ? "Einstellungen" : "Settings"}
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer hover:text-primary transition-all">
+              <Checkbox
+                checked={visiblePanels.includes("gantt")}
+                onCheckedChange={() => togglePanel("gantt")}
+              />
+              {language === "de" ? "Gantt-Diagramm" : "Gantt Chart"}
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer hover:text-primary transition-all">
+              <Checkbox
+                checked={visiblePanels.includes("pivot")}
+                onCheckedChange={() => togglePanel("pivot")}
+              />
+              {language === "de" ? "Pivot-Tabelle" : "Pivot Table"}
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer hover:text-primary transition-all">
+              <Checkbox
+                checked={visiblePanels.includes("chart")}
+                onCheckedChange={() => togglePanel("chart")}
+              />
+              {language === "de" ? "Auslastungsdiagramm" : "Composed Chart"}
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer hover:text-primary transition-all">
+              <Checkbox
+                checked={visiblePanels.includes("sop")}
+                onCheckedChange={() => togglePanel("sop")}
+              />
+              {language === "de" ? "SOP-Meldungen" : "SOP Panel"}
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer hover:text-primary transition-all">
+              <Checkbox
+                checked={visiblePanels.includes("warnings")}
+                onCheckedChange={() => togglePanel("warnings")}
+              />
+              {language === "de" ? "Warnungen" : "Warnings"}
+            </label>
+          </div>
+
+          {/* Context Help (i) at the end */}
+          <QuickOverviewPopover
+            align="end"
+            side="bottom"
+            className="h-8 w-8 rounded-xl border border-border/70 bg-card hover:bg-muted text-slate-500 hover:text-foreground shadow-2xs shrink-0"
+          />
         </div>
       </div>
 
@@ -1141,7 +1118,7 @@ function CapacityPage() {
                   : "Drag and drop process steps across workstation lines to reschedule. R = Setup (steel blue), M = Machining (green)."}
               </CardDescription>
             </div>
-            <Legend />
+            <ScheduleLegend showManpower={false} showOverloadedOutline={false} />
           </CardHeader>
           <CardContent className="p-0 overflow-x-auto">
             <div
@@ -1908,226 +1885,422 @@ function CapacityPage() {
       )}
 
       {/* 7. Slide-over Details Drawer (just like Gantt view for manual rescheduling) */}
-      {selectedProcess && selectedOrder && (
-        <div className="fixed inset-y-0 right-0 w-[380px] bg-background border-l border-border shadow-2xl p-6 z-50 flex flex-col justify-between animate-in slide-in-from-right duration-200">
-          <div className="space-y-6">
-            <div className="flex items-center justify-between border-b border-border pb-4">
-              <div>
-                <h3 className="font-bold text-lg text-foreground">Order Process Step</h3>
-                <span className="text-xs text-muted-foreground">ID: {selectedProcess.id}</span>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSelectedProcessId(null)}
-                className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-              >
-                &times;
-              </Button>
-            </div>
+      {selectedProcess &&
+        selectedOrder &&
+        (() => {
+          const currentExecStatus =
+            selectedProcess.executionStatus ||
+            (selectedProcess.status === "SCHEDULED" ? "PLANNED" : "QUEUED");
+          const orderQty = selectedOrder.orderQty || selectedProcess.baseQty * 100 || 100;
+          const completedUnits = selectedProcess.completedQty ?? 0;
+          const completionRate = Math.min(100, Math.round((completedUnits / orderQty) * 100));
 
-            <div className="space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-4">
+          return (
+            <div className="fixed inset-y-0 right-0 w-full sm:w-[420px] bg-background border-l border-border shadow-2xl z-50 flex flex-col h-full animate-in slide-in-from-right duration-200">
+              {/* Fixed Header */}
+              <div className="p-4 sm:p-5 border-b border-border flex items-center justify-between shrink-0 bg-background/95 backdrop-blur-sm">
+                <div>
+                  <h3 className="font-bold text-base sm:text-lg text-foreground">
+                    Order Process Step
+                  </h3>
+                  <span className="text-xs text-muted-foreground font-mono">
+                    ID: {selectedProcess.id}
+                  </span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedProcessId(null)}
+                  className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  &times;
+                </Button>
+              </div>
+
+              {/* Scrollable Content Body */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 text-xs overscroll-contain">
+                {/* Order & Step Basic Info */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <span className="text-muted-foreground uppercase tracking-wider font-semibold text-[10px]">
+                      Order ID
+                    </span>
+                    <p className="font-bold text-primary text-sm mt-0.5 font-mono">
+                      {selectedOrder.orderId}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground uppercase tracking-wider font-semibold text-[10px]">
+                      Step / Vorgang
+                    </span>
+                    <p className="font-mono font-bold text-foreground text-sm mt-0.5">
+                      {selectedProcess.processId}
+                    </p>
+                  </div>
+                </div>
+
                 <div>
                   <span className="text-muted-foreground uppercase tracking-wider font-semibold text-[10px]">
-                    Order ID
+                    Material Spec
                   </span>
-                  <p className="font-bold text-primary text-sm mt-0.5">{selectedOrder.orderId}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground uppercase tracking-wider font-semibold text-[10px]">
-                    Step / Vorgang
-                  </span>
-                  <p className="font-mono font-bold text-foreground text-sm mt-0.5">
-                    {selectedProcess.processId}
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <span className="text-muted-foreground uppercase tracking-wider font-semibold text-[10px]">
-                  Material Spec
-                </span>
-                <p className="font-mono text-foreground font-semibold mt-0.5">
-                  {selectedOrder.material}
-                </p>
-              </div>
-
-              <div>
-                <span className="text-muted-foreground uppercase tracking-wider font-semibold text-[10px]">
-                  Process Text
-                </span>
-                <p className="text-foreground font-medium bg-muted/50 p-2 rounded border border-border/50 mt-0.5 leading-relaxed">
-                  {selectedProcess.processText}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2 border-t border-border pt-3">
-                <div className="text-center bg-sky-50 dark:bg-sky-950/20 p-2 rounded">
-                  <span className="text-sky-600 font-bold text-[10px]">Setup R</span>
-                  <p className="font-bold text-foreground mt-0.5">
-                    {selectedProcess.setupTimeMin ?? 0}m
-                  </p>
-                </div>
-                <div className="text-center bg-emerald-50 dark:bg-emerald-950/20 p-2 rounded">
-                  <span className="text-emerald-600 font-bold text-[10px]">
-                    Machining M (SumV2)
-                  </span>
-                  <p className="font-bold text-foreground mt-0.5">
-                    {(selectedProcess.sumV2 ?? 0).toFixed(1)}m
-                  </p>
-                </div>
-                <div className="text-center bg-orange-50 dark:bg-orange-950/20 p-2 rounded">
-                  <span className="text-orange-600 font-bold text-[10px]">Manpower (Pct)</span>
-                  <p className="font-bold text-foreground mt-0.5">
-                    {Math.round((selectedProcess.manpowerPct ?? 0) * 100)}%
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                <div className="text-center bg-purple-50 dark:bg-purple-950/20 p-2 rounded">
-                  <span className="text-purple-600 font-bold text-[10px]">Operator Util Min</span>
-                  <p className="font-bold text-foreground mt-0.5">
-                    {(selectedProcess.manpowerUtilizationMin ?? 0).toFixed(3)}m
-                  </p>
-                </div>
-                <div className="text-center bg-indigo-50 dark:bg-indigo-950/20 p-2 rounded">
-                  <span className="text-indigo-600 font-bold text-[10px]">
-                    Total Operator Min (SumV3)
-                  </span>
-                  <p className="font-bold text-foreground mt-0.5">
-                    {(selectedProcess.sumV3 ?? 0).toLocaleString(undefined, {
-                      maximumFractionDigits: 1,
-                    })}
-                    m
-                  </p>
-                </div>
-              </div>
-
-              <div className="border-t border-border pt-4 space-y-3">
-                <h4 className="font-bold text-sm text-foreground flex items-center gap-1">
-                  <SlidersHorizontal className="h-4 w-4 text-primary" />
-                  Manual Schedule Override
-                </h4>
-
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">Target Workstation / Machine</Label>
-                  <Select
-                    value={selectedProcess.machineId}
-                    onValueChange={(val) => {
-                      const startD = new Date(selectedProcess.scheduledStart!);
-                      updateSlotSchedule(
-                        selectedProcess.id,
-                        val,
-                        selectedDateStr,
-                        startD.getHours(),
-                      );
-                      toast.success("Updated assigned machine!");
-                    }}
+                  <p
+                    className="font-mono text-foreground font-semibold mt-0.5 truncate"
+                    title={selectedOrder.material}
                   >
-                    <SelectTrigger className="h-9">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {machines.map((m) => (
-                        <SelectItem key={m.id} value={m.id}>
-                          Machine {m.name} ({m.machineGroupId})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    {selectedOrder.material}
+                  </p>
+                </div>
+
+                <div>
+                  <span className="text-muted-foreground uppercase tracking-wider font-semibold text-[10px]">
+                    Process Text
+                  </span>
+                  <p className="text-foreground font-medium bg-muted/50 p-2 rounded border border-border/50 mt-0.5 leading-relaxed">
+                    {selectedProcess.processText}
+                  </p>
+                </div>
+
+                {/* Shop Floor Execution Status & 1-Click Action Controls */}
+                <div className="border border-border/80 rounded-lg p-3 bg-slate-50/70 dark:bg-slate-900/40 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs text-foreground flex items-center gap-1.5">
+                      <Activity className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                      Shop Floor Status
+                    </span>
+                    {/* Current status badge */}
+                    {currentExecStatus === "IN_PROGRESS" && (
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300">
+                        <span className="relative flex h-1.5 w-1.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                        </span>
+                        Running
+                      </span>
+                    )}
+                    {currentExecStatus === "PAUSED" && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-300 dark:bg-amber-950/40 dark:text-amber-300">
+                        <Pause className="w-3 h-3" /> On Hold
+                      </span>
+                    )}
+                    {currentExecStatus === "COMPLETED" && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Done
+                      </span>
+                    )}
+                    {currentExecStatus === "PLANNED" && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-sky-50 text-sky-700 border border-sky-300 dark:bg-sky-950/40 dark:text-sky-300">
+                        <Clock className="w-3 h-3 text-sky-600" /> Released
+                      </span>
+                    )}
+                    {(currentExecStatus === "QUEUED" || currentExecStatus === "DELAYED") && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-300 dark:bg-slate-800 dark:text-slate-300">
+                        Queued
+                      </span>
+                    )}
+                  </div>
+
+                  {/* 1-Click Status Controls */}
+                  <div className="grid grid-cols-3 gap-1.5 pt-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={currentExecStatus === "IN_PROGRESS" ? "default" : "outline"}
+                      onClick={() => {
+                        store.updateStepExecutionStatus(selectedProcess.id, "IN_PROGRESS");
+                        toast.success("Operation dispatched: RUNNING on shop floor!");
+                      }}
+                      className={cn(
+                        "cursor-pointer text-[11px] h-8 px-1.5 gap-1 font-semibold",
+                        currentExecStatus === "IN_PROGRESS"
+                          ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+                          : "text-emerald-700 border-emerald-300 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300",
+                      )}
+                    >
+                      <Play className="h-3 w-3 fill-current" />
+                      Start / Run
+                    </Button>
+
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={currentExecStatus === "PAUSED" ? "default" : "outline"}
+                      onClick={() => {
+                        store.updateStepExecutionStatus(selectedProcess.id, "PAUSED");
+                        toast.info("Operation paused: placed on HOLD.");
+                      }}
+                      className={cn(
+                        "cursor-pointer text-[11px] h-8 px-1.5 gap-1 font-semibold",
+                        currentExecStatus === "PAUSED"
+                          ? "bg-amber-600 hover:bg-amber-700 text-white shadow-xs"
+                          : "text-amber-700 border-amber-300 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300",
+                      )}
+                    >
+                      <Pause className="h-3 w-3" />
+                      Hold
+                    </Button>
+
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={currentExecStatus === "COMPLETED" ? "default" : "outline"}
+                      onClick={() => {
+                        store.updateStepExecutionStatus(selectedProcess.id, "COMPLETED", orderQty);
+                        toast.success("Operation marked DONE!");
+                      }}
+                      className={cn(
+                        "cursor-pointer text-[11px] h-8 px-1.5 gap-1 font-semibold",
+                        currentExecStatus === "COMPLETED"
+                          ? "bg-emerald-700 hover:bg-emerald-800 text-white shadow-xs"
+                          : "text-slate-700 border-slate-300 hover:bg-slate-100 dark:text-slate-300 dark:border-slate-700",
+                      )}
+                    >
+                      <Check className="h-3 w-3" />
+                      Done
+                    </Button>
+                  </div>
+
+                  {/* Secondary Status Options */}
+                  <div className="flex items-center justify-between pt-0.5">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        store.updateStepExecutionStatus(selectedProcess.id, "PLANNED", 0);
+                        toast.info("Operation reset to Released queue.");
+                      }}
+                      className={cn(
+                        "cursor-pointer text-[10px] h-6 px-2 text-slate-500 hover:text-slate-900 dark:hover:text-slate-200",
+                        currentExecStatus === "PLANNED" &&
+                          "font-bold text-sky-600 bg-sky-50 dark:bg-sky-950/40",
+                      )}
+                    >
+                      Set Released
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        store.updateStepExecutionStatus(selectedProcess.id, "QUEUED", 0);
+                        toast.info("Operation moved to Backlog queue.");
+                      }}
+                      className={cn(
+                        "cursor-pointer text-[10px] h-6 px-2 text-slate-500 hover:text-slate-900 dark:hover:text-slate-200",
+                        currentExecStatus === "QUEUED" &&
+                          "font-bold text-slate-900 dark:text-white bg-slate-200 dark:bg-slate-800",
+                      )}
+                    >
+                      Set Queued
+                    </Button>
+                  </div>
+
+                  {/* Units Progress & Quick Input */}
+                  <div className="pt-2 border-t border-border/60 space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-muted-foreground font-medium">Produced Units:</span>
+                      <span className="font-mono font-bold text-foreground">
+                        {completedUnits} / {orderQty} ({completionRate}%)
+                      </span>
+                    </div>
+                    <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                      <div
+                        className={cn(
+                          "h-full rounded-full transition-all duration-300",
+                          currentExecStatus === "COMPLETED"
+                            ? "bg-emerald-500"
+                            : currentExecStatus === "IN_PROGRESS"
+                              ? "bg-emerald-600"
+                              : currentExecStatus === "PAUSED"
+                                ? "bg-amber-500"
+                                : "bg-slate-400",
+                        )}
+                        style={{ width: `${completionRate}%` }}
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <Label className="text-[10px] text-muted-foreground shrink-0">
+                        Log Units:
+                      </Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={orderQty}
+                        value={selectedProcess.completedQty ?? 0}
+                        onChange={(e) => {
+                          const val = Math.max(
+                            0,
+                            Math.min(orderQty, parseInt(e.target.value, 10) || 0),
+                          );
+                          store.updateStepExecutionStatus(
+                            selectedProcess.id,
+                            val >= orderQty
+                              ? "COMPLETED"
+                              : selectedProcess.executionStatus || "IN_PROGRESS",
+                            val,
+                          );
+                        }}
+                        className="h-7 text-xs font-mono w-24"
+                      />
+                      <span className="text-[10px] text-muted-foreground">
+                        of {orderQty} target
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Time Metrics Grid */}
+                <div className="grid grid-cols-3 gap-2 border-t border-border pt-3">
+                  <div className="text-center bg-sky-50 dark:bg-sky-950/20 p-2 rounded">
+                    <span className="text-sky-600 font-bold text-[10px]">Setup R</span>
+                    <p className="font-bold text-foreground mt-0.5">
+                      {selectedProcess.setupTimeMin ?? 0}m
+                    </p>
+                  </div>
+                  <div className="text-center bg-emerald-50 dark:bg-emerald-950/20 p-2 rounded">
+                    <span className="text-emerald-600 font-bold text-[10px]">
+                      Machining M (SumV2)
+                    </span>
+                    <p className="font-bold text-foreground mt-0.5">
+                      {(selectedProcess.sumV2 ?? 0).toFixed(1)}m
+                    </p>
+                  </div>
+                  <div className="text-center bg-orange-50 dark:bg-orange-950/20 p-2 rounded">
+                    <span className="text-orange-600 font-bold text-[10px]">Manpower (Pct)</span>
+                    <p className="font-bold text-foreground mt-0.5">
+                      {Math.round((selectedProcess.manpowerPct ?? 0) * 100)}%
+                    </p>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-muted-foreground">Start Date</Label>
-                    <Input
-                      type="date"
-                      value={formatDateStr(new Date(selectedProcess.scheduledStart!))}
-                      onChange={(e) => {
+                  <div className="text-center bg-purple-50 dark:bg-purple-950/20 p-2 rounded">
+                    <span className="text-purple-600 font-bold text-[10px]">Operator Util Min</span>
+                    <p className="font-bold text-foreground mt-0.5">
+                      {(selectedProcess.manpowerUtilizationMin ?? 0).toFixed(3)}m
+                    </p>
+                  </div>
+                  <div className="text-center bg-indigo-50 dark:bg-indigo-950/20 p-2 rounded">
+                    <span className="text-indigo-600 font-bold text-[10px]">
+                      Total Operator Min (SumV3)
+                    </span>
+                    <p className="font-bold text-foreground mt-0.5">
+                      {(selectedProcess.sumV3 ?? 0).toLocaleString(undefined, {
+                        maximumFractionDigits: 1,
+                      })}
+                      m
+                    </p>
+                  </div>
+                </div>
+
+                {/* Manual Schedule Override */}
+                <div className="border-t border-border pt-4 space-y-3">
+                  <h4 className="font-bold text-sm text-foreground flex items-center gap-1">
+                    <SlidersHorizontal className="h-4 w-4 text-primary" />
+                    Manual Schedule Override
+                  </h4>
+
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Target Workstation / Machine</Label>
+                    <Select
+                      value={selectedProcess.machineId}
+                      onValueChange={(val) => {
                         const startD = new Date(selectedProcess.scheduledStart!);
                         updateSlotSchedule(
                           selectedProcess.id,
-                          selectedProcess.machineId,
-                          e.target.value,
+                          val,
+                          selectedDateStr,
                           startD.getHours(),
                         );
-                        toast.success("Rescheduled start date!");
+                        toast.success("Updated assigned machine!");
                       }}
-                      className="h-9"
-                    />
+                    >
+                      <SelectTrigger className="h-9 cursor-pointer">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {machines.map((m) => (
+                          <SelectItem key={m.id} value={m.id}>
+                            Machine {m.name} ({m.machineGroupId})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-muted-foreground">Start Hour (6-19)</Label>
-                    <Input
-                      type="number"
-                      min={6}
-                      max={19}
-                      value={new Date(selectedProcess.scheduledStart!).getHours()}
-                      onChange={(e) => {
-                        const startD = new Date(selectedProcess.scheduledStart!);
-                        const val = Math.max(6, Math.min(19, parseInt(e.target.value, 10) || 6));
-                        updateSlotSchedule(
-                          selectedProcess.id,
-                          selectedProcess.machineId,
-                          selectedDateStr,
-                          val,
-                        );
-                        toast.success("Rescheduled start hour!");
-                      }}
-                      className="h-9 font-mono"
-                    />
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-muted-foreground">Start Date</Label>
+                      <Input
+                        type="date"
+                        value={formatDateStr(new Date(selectedProcess.scheduledStart!))}
+                        onChange={(e) => {
+                          const startD = new Date(selectedProcess.scheduledStart!);
+                          updateSlotSchedule(
+                            selectedProcess.id,
+                            selectedProcess.machineId,
+                            e.target.value,
+                            startD.getHours(),
+                          );
+                          toast.success("Rescheduled start date!");
+                        }}
+                        className="h-9"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-muted-foreground">Start Hour (6-19)</Label>
+                      <Input
+                        type="number"
+                        min={6}
+                        max={19}
+                        value={new Date(selectedProcess.scheduledStart!).getHours()}
+                        onChange={(e) => {
+                          const startD = new Date(selectedProcess.scheduledStart!);
+                          const val = Math.max(6, Math.min(19, parseInt(e.target.value, 10) || 6));
+                          updateSlotSchedule(
+                            selectedProcess.id,
+                            selectedProcess.machineId,
+                            selectedDateStr,
+                            val,
+                          );
+                          toast.success("Rescheduled start hour!");
+                        }}
+                        className="h-9 font-mono"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
+
+              {/* Fixed Sticky Footer - Never Chopped */}
+              <div className="p-4 sm:p-5 border-t border-border bg-background/95 backdrop-blur-sm shrink-0 flex flex-col gap-2 shadow-sm">
+                {selectedProcess.isManual && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      resetProcessToAuto(selectedProcess.id);
+                      setSelectedProcessId(null);
+                      toast.success("Reset process to automatic scheduling!");
+                    }}
+                    className="w-full border-destructive/30 hover:bg-destructive/10 text-destructive text-xs font-semibold h-9 cursor-pointer"
+                  >
+                    <Unlock className="h-3.5 w-3.5 mr-1" />
+                    {language === "de" ? "Auf Automatik zurücksetzen" : "Reset to Automatic"}
+                  </Button>
+                )}
+
+                <Button
+                  onClick={() => setSelectedProcessId(null)}
+                  className="w-full bg-[#1e3f2e] hover:bg-[#27533d] text-white text-xs font-semibold h-9 cursor-pointer shadow-xs"
+                >
+                  Save & Close
+                </Button>
+              </div>
             </div>
-          </div>
-
-          {selectedProcess.isManual && (
-            <Button
-              variant="outline"
-              onClick={() => {
-                resetProcessToAuto(selectedProcess.id);
-                setSelectedProcessId(null);
-                toast.success("Reset process to automatic scheduling!");
-              }}
-              className="w-full border-destructive/30 hover:bg-destructive/10 text-destructive text-xs font-semibold mt-4"
-            >
-              {language === "de" ? "Auf Automatik zurücksetzen" : "Reset to Automatic"}
-            </Button>
-          )}
-
-          <Button
-            onClick={() => setSelectedProcessId(null)}
-            className="w-full bg-primary text-primary-foreground hover:bg-primary/90 mt-4"
-          >
-            Save & Close
-          </Button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Legend() {
-  const { columnMapping } = useAppStore();
-  const setupLabel = columnMapping?.setupTime || "Setup R";
-  const machLabel = columnMapping?.processTime || "Machining M";
-
-  const items = [
-    { label: setupLabel, bg: "bg-[#4A90D9]" },
-    { label: machLabel, bg: "bg-[#52C41A]" },
-    { label: "Overlap / Collision", bg: "bg-red-500" },
-  ];
-  return (
-    <div className="flex items-center gap-3 text-[10px] font-semibold text-muted-foreground">
-      {items.map((i) => (
-        <div key={i.label} className="flex items-center gap-1.5">
-          <span className={cn("inline-block h-2.5 w-2.5 rounded-sm shadow-sm", i.bg)} />
-          {i.label}
-        </div>
-      ))}
+          );
+        })()}
     </div>
   );
 }

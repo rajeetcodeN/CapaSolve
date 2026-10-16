@@ -19,6 +19,8 @@ import appCss from "../styles.css?url";
 import AppLayout from "@/components/AppLayout";
 import MarketingLayout from "@/components/MarketingLayout";
 import { Toaster } from "@/components/ui/sonner";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { CookieConsent } from "@/components/CookieConsent";
 
 function NotFoundComponent() {
   return (
@@ -93,6 +95,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       "/documentation",
       "/api-reference",
       "/support",
+      "/terms",
     ].includes(location.pathname);
 
     let user = useAppStore.getState().user;
@@ -112,7 +115,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       }
     }
 
-    if (!isPublic && !user) {
+    // Only redirect on client side where session storage and auth cookies can be evaluated
+    if (!isPublic && !user && typeof window !== "undefined") {
       throw redirect({
         to: "/login",
       });
@@ -204,22 +208,26 @@ function RootComponent() {
     "/documentation",
     "/api-reference",
     "/support",
+    "/terms",
   ].includes(location.pathname);
 
   return (
     <QueryClientProvider client={queryClient}>
-      {isKiosk ? (
-        <Outlet />
-      ) : isMarketing ? (
-        <MarketingLayout>
+      <ErrorBoundary>
+        {isKiosk ? (
           <Outlet />
-        </MarketingLayout>
-      ) : (
-        <AppLayout>
-          <Outlet />
-        </AppLayout>
-      )}
+        ) : isMarketing ? (
+          <MarketingLayout>
+            <Outlet />
+          </MarketingLayout>
+        ) : (
+          <AppLayout>
+            <Outlet />
+          </AppLayout>
+        )}
+      </ErrorBoundary>
       <Toaster richColors position="top-right" />
+      <CookieConsent />
     </QueryClientProvider>
   );
 }
