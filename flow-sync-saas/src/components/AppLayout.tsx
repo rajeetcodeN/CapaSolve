@@ -190,9 +190,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       <div className="min-h-screen flex bg-background text-foreground transition-colors duration-300">
         {/* 1. LEFT SIDEBAR (Desktop) */}
-        <aside className="hidden lg:flex w-[72px] border-r border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 flex-col shrink-0 min-h-screen sticky top-0 z-30 select-none shadow-2xs">
+        <aside className="hidden lg:flex w-[72px] border-r border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 flex-col shrink-0 h-screen max-h-screen sticky top-0 z-30 select-none shadow-2xs overflow-hidden">
           {/* Brand Header */}
-          <div className="h-16 border-b border-slate-200/70 dark:border-slate-800 flex flex-col items-center justify-center">
+          <div className="h-16 shrink-0 border-b border-slate-200/70 dark:border-slate-800 flex flex-col items-center justify-center">
             <Link
               to="/dashboard"
               className="h-9 w-9 rounded-xl bg-emerald-950 dark:bg-emerald-900 hover:bg-emerald-900 dark:hover:bg-emerald-850 flex items-center justify-center text-white shadow-2xs transition-all duration-200"
@@ -203,7 +203,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
 
           {/* Navigation Area */}
-          <nav className="flex-1 px-1 py-3 space-y-1 overflow-y-auto flex flex-col items-center">
+          <nav className="flex-1 px-1 py-3 space-y-1 overflow-y-auto overflow-x-hidden no-scrollbar flex flex-col items-center">
             {nav.map(({ to, labelKey, icon: Icon, customLabel }) => {
               const active = pathname === to;
               const displayLabel = customLabel || t(labelKey);
@@ -243,7 +243,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </nav>
 
           {/* Sidebar Footer (Help Guide & Role Swapper) */}
-          <div className="p-2 border-t border-slate-200/70 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex flex-col items-center justify-center gap-1.5">
+          <div className="shrink-0 p-2 border-t border-slate-200/70 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex flex-col items-center justify-center gap-1.5">
             <QuickOverviewPopover
               showLabel={true}
               align="start"

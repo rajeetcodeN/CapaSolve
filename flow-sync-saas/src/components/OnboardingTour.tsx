@@ -141,16 +141,16 @@ export function OnboardingTour() {
     <Dialog open={tourOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="max-w-md border border-border/80 p-6 shadow-2xl rounded-2xl bg-card">
         {/* Top Header */}
-        <div className="flex items-center justify-between pb-1">
+        <div className="flex items-center justify-between pb-1 pr-8">
           <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20">
             {current.stepNumber}
           </span>
           <button
             type="button"
             onClick={handleClose}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer flex items-center gap-1"
+            className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
           >
-            Skip <X className="h-3.5 w-3.5" />
+            Skip
           </button>
         </div>
 
