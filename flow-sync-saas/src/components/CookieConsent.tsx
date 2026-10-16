@@ -45,15 +45,15 @@ export function CookieConsent() {
             <Button
               size="sm"
               onClick={handleAccept}
-              className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-7 px-3"
+              className="bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs h-7 px-3.5 shadow-sm transition-colors"
             >
               Accept All
             </Button>
             <Button
               size="sm"
-              variant="outline"
+              variant="ghost"
               onClick={handleDecline}
-              className="border-slate-700 text-slate-300 hover:bg-slate-800 text-xs h-7 px-3"
+              className="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700/80 font-medium text-xs h-7 px-3.5 shadow-sm transition-colors"
             >
               Essential Only
             </Button>
