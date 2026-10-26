@@ -190,6 +190,8 @@ interface AppState {
   setTourCompleted: (completed: boolean) => void;
   tourOpen: boolean;
   setTourOpen: (open: boolean) => void;
+  dashboardZoom: number;
+  setDashboardZoom: (zoom: number) => void;
 
   // Notifications & Activity
   notifications: NotificationItem[];
@@ -384,6 +386,8 @@ export const useAppStore = create<AppState>()(
       setTourCompleted: (tourCompleted) => set({ tourCompleted }),
       tourOpen: false,
       setTourOpen: (tourOpen) => set({ tourOpen }),
+      dashboardZoom: 90,
+      setDashboardZoom: (dashboardZoom) => set({ dashboardZoom }),
 
       notifications: [
         {

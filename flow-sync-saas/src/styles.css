@@ -234,3 +234,8 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Dashboard default 90% zoom density */
+body.dashboard-zoom {
+  zoom: 0.9;
+}

@@ -132,13 +132,22 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "MFG Scheduler" },
-      { name: "description", content: "Manufacturing scheduling and planning system." },
-      { name: "author", content: "MFG Scheduler Team" },
-      { property: "og:title", content: "MFG Scheduler" },
-      { property: "og:description", content: "Manufacturing scheduling and planning system." },
+      { title: "CapaSolve — Production Scheduling & Capacity Planning SaaS" },
+      {
+        name: "description",
+        content:
+          "Full-stack Finite Capacity Scheduling, ERP Data Cleaning & Shop Floor Execution MES platform.",
+      },
+      { name: "author", content: "CapaSolve Team" },
+      { property: "og:title", content: "CapaSolve — Industrial Production Scheduling & MES" },
+      {
+        property: "og:description",
+        content:
+          "Full-stack Finite Capacity Scheduling, ERP Data Cleaning & Shop Floor Execution MES platform.",
+      },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
+      { property: "og:image", content: "/digitalbiz_Logo.jpg" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
       {

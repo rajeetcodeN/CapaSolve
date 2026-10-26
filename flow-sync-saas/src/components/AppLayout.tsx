@@ -32,6 +32,7 @@ import {
   GitBranch,
   Wrench,
   BookOpen,
+  ZoomIn,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "@/lib/translations";
@@ -111,9 +112,26 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     setUser,
     setOrganization,
     user,
+    dashboardZoom,
+    setDashboardZoom,
   } = useAppStore();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const zoomVal = (dashboardZoom || 90) / 100;
+    if (typeof document !== "undefined") {
+      (document.body.style as any).zoom = `${zoomVal}`;
+      document.body.classList.add("dashboard-zoom");
+    }
+
+    return () => {
+      if (typeof document !== "undefined") {
+        (document.body.style as any).zoom = "";
+        document.body.classList.remove("dashboard-zoom");
+      }
+    };
+  }, [dashboardZoom]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -440,6 +458,43 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <Moon className="h-4 w-4 text-slate-500" />
                 )}
               </button>
+
+              {/* Display Zoom Control */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+                    title="Dashboard Display Scale / Zoom"
+                  >
+                    <ZoomIn className="h-3.5 w-3.5 text-slate-500" />
+                    <span>{dashboardZoom || 90}%</span>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                  <DropdownMenuLabel className="text-xs font-semibold text-slate-500">
+                    Display Density
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {[80, 85, 90, 95, 100].map((zoomLevel) => (
+                    <DropdownMenuItem
+                      key={zoomLevel}
+                      onClick={() => setDashboardZoom(zoomLevel)}
+                      className={cn(
+                        "text-xs py-1.5 cursor-pointer flex items-center justify-between",
+                        (dashboardZoom || 90) === zoomLevel &&
+                          "bg-slate-100 dark:bg-slate-800 font-bold text-primary",
+                      )}
+                    >
+                      <span>
+                        {zoomLevel}% {zoomLevel === 90 && "(Default)"}
+                      </span>
+                      {(dashboardZoom || 90) === zoomLevel && (
+                        <Check className="h-3.5 w-3.5 text-primary" />
+                      )}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               {/* Quick Overview & Help Popover */}
               <QuickOverviewPopover />

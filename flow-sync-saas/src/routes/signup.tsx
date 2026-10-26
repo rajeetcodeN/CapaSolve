@@ -142,7 +142,7 @@ function SignupPage() {
           </CardTitle>
           <CardDescription className="text-xs text-slate-500">
             {language === "de"
-              ? "Erstellen Sie ein Demokonto, um die Produktionsplaner-SaaS zu testen."
+              ? "Erstellen Sie Ihr Konto, um die Produktionsplaner-SaaS zu starten."
               : "Get 30 days of free scheduling trial for your manufacturing organization."}
           </CardDescription>
         </CardHeader>
@@ -254,7 +254,7 @@ function SignupPage() {
                 htmlFor="signup-role"
                 className="text-xs font-medium text-slate-700 dark:text-slate-300"
               >
-                {language === "de" ? "Ihre Rolle im Demo-Account" : "Your Role in the Demo Account"}
+                {language === "de" ? "Ihre Rolle in der Organisation" : "Your Role in the Organization"}
               </Label>
               <select
                 id="signup-role"
@@ -280,36 +280,6 @@ function SignupPage() {
                 : language === "de"
                   ? "Registrierung abschließen"
                   : "Create Account & Start Trial"}
-            </Button>
-
-            {/* Direct Quick Access Button */}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setUser({
-                  id: "demo-test-user-id",
-                  email: "demo@factory.com",
-                  user_metadata: { full_name: "Demo Operator" },
-                });
-                setOrganization({
-                  id: "demo-test-org-id",
-                  name: "Demo Test Factory Organization",
-                  plan: "PRO",
-                });
-                setRole(signupRole);
-                toast.success(
-                  language === "de"
-                    ? `Schnellzugriff aktiv: Anmeldung als ${signupRole}...`
-                    : `Quick Access active. Signed in as ${signupRole}...`,
-                );
-                navigate({ to: "/dashboard" });
-              }}
-              className="w-full text-xs h-9 mt-2 cursor-pointer border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium"
-            >
-              {language === "de"
-                ? "Schnellzugriff (Direkt zur App)"
-                : "Quick Access (Direct to App)"}
             </Button>
           </form>
 

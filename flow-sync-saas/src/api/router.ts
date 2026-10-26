@@ -83,18 +83,20 @@ export function revokeApiKey(rawKey: string): boolean {
   return false;
 }
 
-// Seed default keys for development and demo environments with dedicated tenants
-registerApiKey("demo-api-key", "tenant-demo", "Demo Public Sandbox Key", ["read", "solve"]);
-registerApiKey("cs_test_dev_alpha_9921", "tenant-alpha", "Development Tenant Alpha", [
-  "read",
-  "write",
-  "solve",
-]);
-registerApiKey("cs_live_prod_beta_8842", "tenant-beta", "Production Tenant Beta", [
-  "read",
-  "write",
-  "solve",
-]);
+// Seed default keys exclusively for non-production development / test environments
+if (process.env.NODE_ENV !== "production") {
+  registerApiKey("demo-api-key", "tenant-demo", "Demo Public Sandbox Key", ["read", "solve"]);
+  registerApiKey("cs_test_dev_alpha_9921", "tenant-alpha", "Development Tenant Alpha", [
+    "read",
+    "write",
+    "solve",
+  ]);
+  registerApiKey("cs_live_prod_beta_8842", "tenant-beta", "Production Tenant Beta", [
+    "read",
+    "write",
+    "solve",
+  ]);
+}
 
 export function apiKeyAuthMiddleware(apiKey?: string): {
   authenticated: boolean;

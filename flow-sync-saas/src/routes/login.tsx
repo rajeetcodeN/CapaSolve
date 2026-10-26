@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useAppStore } from "@/lib/store";
 import { useTranslations } from "@/lib/translations";
 import { toast } from "sonner";
-import { Factory, Eye, EyeOff, Shield } from "lucide-react";
+import { Factory, Eye, EyeOff } from "lucide-react";
 
 import { supabase } from "@/lib/supabase";
 
@@ -26,10 +26,9 @@ function LoginPage() {
   const { language } = useTranslations();
   const { setRole, setUser, setOrganization } = useAppStore();
 
-  const [email, setEmail] = useState("admin@factory.com");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [simulatedRole, setSimulatedRole] = useState<"ADMIN" | "DEVELOPER" | "GUEST">("ADMIN");
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -211,32 +210,6 @@ function LoginPage() {
               </div>
             </div>
 
-            {/* Demo Role Selection */}
-            <div className="bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-xl p-3 space-y-2 mt-4">
-              <Label
-                htmlFor="demo-role"
-                className="text-xs flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-200"
-              >
-                <Shield className="h-3.5 w-3.5 text-slate-500" />
-                {language === "de" ? "Simulierte Rolle für Demo" : "Role to Simulate for Demo"}
-              </Label>
-              <select
-                id="demo-role"
-                value={simulatedRole}
-                onChange={(e) => setSimulatedRole(e.target.value as any)}
-                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md px-2.5 py-1 text-xs h-8 outline-none focus:ring-1 focus:ring-slate-900 cursor-pointer font-medium text-slate-800 dark:text-slate-200"
-              >
-                <option value="ADMIN">Admin (Manage team, settings & billing)</option>
-                <option value="DEVELOPER">Developer (Optimize schedules & edit data)</option>
-                <option value="GUEST">Guest (View only dashboard & schedules)</option>
-              </select>
-              <p className="text-[10.5px] text-slate-500 leading-snug">
-                {language === "de"
-                  ? "Testen Sie, wie sich verschiedene Rollenberechtigungen auf die Scheduler-Schnittstelle auswirken."
-                  : "Try out different role levels to test SaaS permissions live."}
-              </p>
-            </div>
-
             {/* Submit Button */}
             <Button
               type="submit"
@@ -250,36 +223,6 @@ function LoginPage() {
                 : language === "de"
                   ? "Anmelden"
                   : "Sign In"}
-            </Button>
-
-            {/* Direct Quick Access Button */}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setUser({
-                  id: "demo-test-user-id",
-                  email: "demo@factory.com",
-                  user_metadata: { full_name: "Demo Operator" },
-                });
-                setOrganization({
-                  id: "demo-test-org-id",
-                  name: "Demo Test Factory Organization",
-                  plan: "PRO",
-                });
-                setRole(simulatedRole);
-                toast.success(
-                  language === "de"
-                    ? `Schnellzugriff aktiv: Anmeldung als ${simulatedRole}...`
-                    : `Quick Access active. Signed in as ${simulatedRole}...`,
-                );
-                navigate({ to: "/dashboard" });
-              }}
-              className="w-full text-xs h-9 mt-2 cursor-pointer border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium"
-            >
-              {language === "de"
-                ? "Schnellzugriff (Direkt zur App)"
-                : "Quick Access (Direct to App)"}
             </Button>
           </form>
 
