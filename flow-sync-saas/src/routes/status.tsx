@@ -86,7 +86,7 @@ import { QuickOverviewPopover } from "@/components/QuickOverviewPopover";
 export const Route = createFileRoute("/status")({
   head: () => ({
     meta: [
-      { title: "Production Schedule & Shop Floor Status — MFG Scheduler" },
+      { title: "Production Schedule & Shop Floor Status — CapaSolve" },
       {
         name: "description",
         content:

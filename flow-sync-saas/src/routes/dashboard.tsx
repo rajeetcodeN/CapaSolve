@@ -66,7 +66,7 @@ import { HoldReason, ScrapReason, Order } from "@/lib/types";
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
     meta: [
-      { title: "Dashboard — MFG Scheduler" },
+      { title: "Dashboard — CapaSolve" },
       { name: "description", content: "Manufacturing scheduling overview." },
     ],
   }),

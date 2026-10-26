@@ -141,7 +141,7 @@ export function OrderPrioritySelector({
 export const Route = createFileRoute("/orders")({
   head: () => ({
     meta: [
-      { title: "Orders — MFG Scheduler" },
+      { title: "Orders — CapaSolve" },
       { name: "description", content: "Manage and import manufacturing orders." },
     ],
   }),

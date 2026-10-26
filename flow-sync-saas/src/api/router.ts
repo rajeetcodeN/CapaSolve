@@ -124,10 +124,10 @@ export function apiKeyAuthMiddleware(apiKey?: string): {
     };
   }
 
-  // Structured key validation with dedicated tenant slug:
+  // Structured key validation with dedicated tenant slug (non-production / test sandbox only):
   // Format: cs_(live|test)_<tenantSlug>_<tokenOfAtLeast8Chars>
   const structuredMatch = trimmed.match(/^cs_(live|test)_([a-zA-Z0-9_-]{3,32})_[a-zA-Z0-9_-]{8,}$/);
-  if (structuredMatch) {
+  if (structuredMatch && process.env.NODE_ENV !== "production") {
     const tenantSlug = structuredMatch[2];
     const resolvedTenantId = `tenant-${tenantSlug}`;
     registerApiKey(trimmed, resolvedTenantId, `Provisioned Key (${tenantSlug})`);

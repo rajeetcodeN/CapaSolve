@@ -31,7 +31,7 @@ import { formatDateStr } from "@/lib/dateUtils";
 export const Route = createFileRoute("/pivot")({
   head: () => ({
     meta: [
-      { title: "Pivot — MFG Scheduler" },
+      { title: "Pivot Analytics — CapaSolve" },
       { name: "description", content: "Manufacturing scheduling load pivot grid." },
     ],
   }),

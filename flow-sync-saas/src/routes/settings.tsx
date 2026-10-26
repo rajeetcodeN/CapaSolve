@@ -33,7 +33,7 @@ import { supabase } from "@/lib/supabase";
 export const Route = createFileRoute("/settings")({
   head: () => ({
     meta: [
-      { title: "Manage Organization — MFG Scheduler" },
+      { title: "Settings & Organization — CapaSolve" },
       {
         name: "description",
         content: "Manage your company profile, database synchronization, and support channels.",

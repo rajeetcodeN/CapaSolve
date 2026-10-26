@@ -44,7 +44,7 @@ import {
 export const Route = createFileRoute("/analytics")({
   head: () => ({
     meta: [
-      { title: "Analytics — MFG Scheduler" },
+      { title: "Analytics — CapaSolve" },
       { name: "description", content: "Manufacturing OEE and analytics dashboard." },
     ],
   }),

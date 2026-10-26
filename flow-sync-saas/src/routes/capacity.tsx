@@ -60,7 +60,7 @@ import { ScheduleLegend } from "@/components/common/ScheduleLegend";
 export const Route = createFileRoute("/capacity")({
   head: () => ({
     meta: [
-      { title: "Capacity Planner — MFG Scheduler" },
+      { title: "Capacity Planner — CapaSolve" },
       {
         name: "description",
         content: "Dedicated daily capacity settings and resource summary dashboard.",

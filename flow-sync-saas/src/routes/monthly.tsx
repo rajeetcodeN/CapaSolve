@@ -50,7 +50,7 @@ import { formatDateStr } from "@/lib/dateUtils";
 export const Route = createFileRoute("/monthly")({
   head: () => ({
     meta: [
-      { title: "Monthly Planner — MFG Scheduler" },
+      { title: "Monthly Planner — CapaSolve" },
       {
         name: "description",
         content: "Monthly capacity scheduler and post-optimization evaluation dashboard.",
