@@ -1079,10 +1079,10 @@ function Dashboard() {
                   variant="outline"
                   size="sm"
                   onClick={() => simulateShopFloorProgress()}
-                  className="cursor-pointer text-xs h-8 gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-800/60 font-medium"
+                  className="cursor-pointer text-xs h-8 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-800/60 font-medium"
                   title="Simulate shop floor production progress across machines"
                 >
-                  <Sparkles className="h-3.5 w-3.5" /> Simulate Progress
+                  Simulate Progress
                 </Button>
                 <Button
                   variant="outline"
@@ -1731,7 +1731,7 @@ function Dashboard() {
           <CardContent className="text-sm text-muted-foreground flex flex-col justify-between flex-grow">
             <span className="block mb-4">
               Backup and synchronize your active orders, process steps, manual overrides, and
-              planner settings directly to Supabase storage.
+              planner settings directly to Neon cloud storage.
             </span>
             <div className="flex gap-2">
               <Button

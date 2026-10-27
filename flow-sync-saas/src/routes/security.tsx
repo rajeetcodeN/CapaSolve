@@ -38,7 +38,7 @@ function SecurityPage() {
                 1. Multi-Tenant Data Isolation
               </h3>
               <p>
-                Our core database leverages PostgreSQL **Row-Level Security (RLS)** in Supabase.
+                Our core database leverages PostgreSQL **Row-Level Security (RLS)** in Neon Lakebase.
                 This ensures that every SQL query executed on behalf of a user is strictly
                 restricted to that user's active organization ID, preventing any cross-tenant data
                 leaks.
@@ -53,7 +53,7 @@ function SecurityPage() {
               <p>
                 All scheduling updates and file saves invoke TanStack Start `createServerFn`
                 endpoints. These endpoints require a verified client JWT token, validating the
-                signature against Supabase Auth before processing any backend file transfers.
+                signature against Neon Auth before processing any backend file transfers.
               </p>
             </section>
 

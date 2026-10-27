@@ -33,13 +33,13 @@ import {
   Wrench,
   BookOpen,
   ZoomIn,
+  Terminal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "@/lib/translations";
 import { useAppStore } from "@/lib/store";
-import { Button } from "./ui/button";
 import { toast } from "sonner";
-import { supabase } from "@/lib/supabase";
+import { signOutUser } from "@/lib/auth-service";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -182,12 +182,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const getRoleBadgeInfo = (currentRole: typeof role) => {
     switch (currentRole) {
-      case "ADMIN":
-        return { label: "Administrator Mode", subtitle: "Full system access", icon: Shield };
       case "DEVELOPER":
-        return { label: "Developer Mode", subtitle: "Full Developer Access", icon: Settings };
+        return {
+          label: "Dev Team (Top of Pyramid)",
+          subtitle: "Full Admin Authority & Dev Diagnostics",
+          icon: Terminal,
+        };
+      case "ADMIN":
+        return { label: "Administrator Mode", subtitle: "Full plant management", icon: Shield };
       default:
-        return { label: "Guest Mode", subtitle: "Read-only access", icon: User };
+        return { label: "Guest Mode", subtitle: "Read-only timeline view", icon: User };
     }
   };
 
@@ -271,27 +275,79 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
-                  className="w-[64px] py-1.5 px-0.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 flex flex-col items-center justify-center transition-colors focus:outline-none cursor-pointer"
+                  className={cn(
+                    "w-[64px] py-1.5 px-0.5 rounded-xl border flex flex-col items-center justify-center transition-colors focus:outline-none cursor-pointer",
+                    role === "DEVELOPER"
+                      ? "border-emerald-500/40 bg-emerald-950/20 text-emerald-400 hover:bg-emerald-950/30 dark:bg-emerald-950/40"
+                      : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500",
+                  )}
                   title={getRoleBadgeInfo(role).label}
                 >
                   {(() => {
                     const Icon = getRoleBadgeInfo(role).icon;
-                    return <Icon className="h-4 w-4 text-slate-500" />;
+                    return (
+                      <Icon
+                        className={cn(
+                          "h-4 w-4",
+                          role === "DEVELOPER" ? "text-emerald-500 dark:text-emerald-400" : "text-slate-500",
+                        )}
+                      />
+                    );
                   })()}
-                  <span className="text-[8.5px] font-semibold text-slate-500 mt-0.5 tracking-tight uppercase">
-                    {role === "ADMIN" ? "Admin" : role === "DEVELOPER" ? "Dev" : "Guest"}
+                  <span
+                    className={cn(
+                      "text-[8.5px] font-semibold mt-0.5 tracking-tight uppercase",
+                      role === "DEVELOPER"
+                        ? "text-emerald-600 dark:text-emerald-400 font-bold"
+                        : "text-slate-500",
+                    )}
+                  >
+                    {role === "DEVELOPER" ? "Dev" : role === "ADMIN" ? "Admin" : "Guest"}
                   </span>
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-56" side="right" sideOffset={8}>
-                <DropdownMenuLabel className="text-xs font-semibold text-slate-500">
-                  Switch Access Role
+                <DropdownMenuLabel className="text-xs font-semibold text-slate-500 flex items-center justify-between">
+                  <span>Access Role</span>
+                  {role === "DEVELOPER" && (
+                    <span className="text-[9px] bg-emerald-500/20 text-emerald-500 dark:text-emerald-400 px-1.5 py-0.5 rounded font-mono font-bold">
+                      TOP TIER
+                    </span>
+                  )}
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+
+                {/* 1. DEVELOPER ROLE: Top of pyramid, visible ONLY to Developer users */}
+                {role === "DEVELOPER" && (
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setRole("DEVELOPER");
+                      toast.success("Developer Mode: Full Top-Tier Admin Authority");
+                    }}
+                    className={cn(
+                      "text-xs py-2 cursor-pointer bg-emerald-950/10 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-semibold mb-1 border border-emerald-800/30 rounded-lg",
+                    )}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center gap-2">
+                        <Terminal className="h-3.5 w-3.5 text-emerald-500" />
+                        <div className="flex flex-col">
+                          <span className="font-bold">Dev Team (Top Tier)</span>
+                          <span className="text-[9px] text-emerald-600/80 dark:text-emerald-400/80">
+                            Superadmin + Dev access
+                          </span>
+                        </div>
+                      </div>
+                      <Check className="h-3.5 w-3.5 text-emerald-500" />
+                    </div>
+                  </DropdownMenuItem>
+                )}
+
+                {/* 2. ADMINISTRATOR ROLE */}
                 <DropdownMenuItem
                   onClick={() => {
                     setRole("ADMIN");
-                    toast.success("Access role updated: Admin Mode");
+                    toast.success("Access role: Admin Mode");
                   }}
                   className={cn(
                     "text-xs py-2 cursor-pointer",
@@ -304,7 +360,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       <div className="flex flex-col">
                         <span>Administrator</span>
                         <span className="text-[9px] text-slate-400">
-                          Full controls & team access
+                          Full plant & team access
                         </span>
                       </div>
                     </div>
@@ -313,35 +369,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     )}
                   </div>
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    setRole("DEVELOPER");
-                    toast.success("Access role updated: Developer Mode");
-                  }}
-                  className={cn(
-                    "text-xs py-2 cursor-pointer",
-                    role === "DEVELOPER" && "bg-slate-100 dark:bg-slate-800 font-semibold",
-                  )}
-                >
-                  <div className="flex items-center justify-between w-full">
-                    <div className="flex items-center gap-2">
-                      <Settings className="h-3.5 w-3.5 text-slate-600" />
-                      <div className="flex flex-col">
-                        <span>Developer</span>
-                        <span className="text-[9px] text-slate-400">
-                          Seeding, solves & cloud save
-                        </span>
-                      </div>
-                    </div>
-                    {role === "DEVELOPER" && (
-                      <Check className="h-3.5 w-3.5 text-slate-900 dark:text-white" />
-                    )}
-                  </div>
-                </DropdownMenuItem>
+
+                {/* 3. GUEST ROLE */}
                 <DropdownMenuItem
                   onClick={() => {
                     setRole("GUEST");
-                    toast.success("Access role updated: Guest Mode");
+                    toast.success("Access role: Guest Mode");
                   }}
                   className={cn(
                     "text-xs py-2 cursor-pointer",
@@ -361,6 +394,28 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     )}
                   </div>
                 </DropdownMenuItem>
+
+                {/* Hidden Dev Team Passcode entry for dev team members */}
+                {role !== "DEVELOPER" && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => {
+                        const pass = window.prompt("Enter Dev Team Passcode:");
+                        if (pass === "capasolve-dev" || pass === "dev2026") {
+                          setRole("DEVELOPER");
+                          toast.success("🔓 Dev Team access unlocked! Top-tier Admin authority active.");
+                        } else if (pass !== null) {
+                          toast.error("Invalid Dev Team passcode.");
+                        }
+                      }}
+                      className="text-[10px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer py-1 flex items-center gap-1.5 opacity-50 hover:opacity-100 transition-opacity"
+                    >
+                      <Terminal className="h-3 w-3" />
+                      <span>Dev Team Login</span>
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -639,7 +694,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={async () => {
-                      await supabase.auth.signOut();
+                      await signOutUser();
                       setUser(null);
                       setOrganization(null);
                       setRole("GUEST");

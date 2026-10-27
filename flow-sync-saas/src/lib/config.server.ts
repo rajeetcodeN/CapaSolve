@@ -1,39 +1,17 @@
 import process from "node:process";
 
-// Server-only config. The .server.ts suffix prevents Vite from bundling
-// this file into the client — values here never reach the browser.
-//
-// On Cloudflare Workers, env binds at REQUEST time. Module-scope reads
-// (e.g. `const x = process.env.X`) resolve to undefined — always read
-// process.env INSIDE a function or handler.
-//
-// When to use which env-access pattern:
-//   - .server.ts module (this file): server-only helpers reused across
-//     handlers. Wrap reads in a function so they run per-request.
-//   - inline process.env inside a createServerFn handler: one-off reads
-//     not reused elsewhere.
-//   - import.meta.env.VITE_FOO: PUBLIC config readable from both client
-//     and server (analytics IDs, public URLs). Define in .env with the
-//     VITE_ prefix. Never put secrets here — they ship to the browser.
-
+// Server-only config for Neon cloud primitives.
 export function getServerConfig() {
-  const projectId = process.env.SUPABASE_PROJECT_ID || process.env.VITE_SUPABASE_PROJECT_ID;
-  const anonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
-  const bucketName = process.env.SUPABASE_BUCKET_NAME || "scheduler";
-
-  if (!projectId || !anonKey) {
-    const missing: string[] = [];
-    if (!projectId) missing.push("SUPABASE_PROJECT_ID");
-    if (!anonKey) missing.push("SUPABASE_ANON_KEY");
-    throw new Error(
-      `Server configuration error: Missing required Supabase environment variable(s): ${missing.join(", ")}.`,
-    );
-  }
+  const databaseUrl = process.env.DATABASE_URL || process.env.DATABASE_URL_UNPOOLED || "";
+  const s3Endpoint = process.env.AWS_ENDPOINT_URL_S3 || "";
+  const bucketName = process.env.NEON_BUCKET_NAME || "assets";
+  const authBaseUrl = process.env.NEON_AUTH_BASE_URL || "";
 
   return {
     nodeEnv: process.env.NODE_ENV,
-    supabaseProjectId: projectId,
-    supabaseAnonKey: anonKey,
-    supabaseBucketName: bucketName,
+    databaseUrl,
+    s3Endpoint,
+    bucketName,
+    authBaseUrl,
   };
 }

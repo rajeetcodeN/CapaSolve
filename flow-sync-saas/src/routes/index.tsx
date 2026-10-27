@@ -83,7 +83,7 @@ function LandingPage() {
         "Track setup vs machining times. Identify workstation bottlenecks before they stall production.",
       featCap: "Daily Capacity Planner",
       featCapDesc: "Set hourly limits on operator availability. Automatically load-balance shifts.",
-      featCloud: "Supabase Cloud Sync",
+      featCloud: "Neon Cloud Sync",
       featCloudDesc:
         "Safeguard scheduling states. Save, load, and share production plans across workstations.",
       featAccess: "Role-Based Access Control",

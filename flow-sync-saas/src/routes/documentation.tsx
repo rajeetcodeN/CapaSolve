@@ -56,7 +56,7 @@ function DocumentationPage() {
           >
             <BookOpen className="h-3 w-3" /> System Documentation
           </Badge>
-          <span className="text-xs text-muted-foreground font-mono">v4.2 Enterprise</span>
+          <span className="text-xs text-muted-foreground font-mono">v0.1 Beta</span>
         </div>
         <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">
           CapaSolve Manufacturing Scheduling Documentation

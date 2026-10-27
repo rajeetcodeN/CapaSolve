@@ -137,7 +137,7 @@ export function CommandPalette() {
             }}
           >
             <CloudUpload className="mr-2 h-4 w-4 text-sky-500" />
-            <span>Save State to Supabase Cloud</span>
+            <span>Save State to Neon Cloud</span>
           </CommandItem>
 
           <CommandItem
@@ -151,7 +151,7 @@ export function CommandPalette() {
             }}
           >
             <CloudDownload className="mr-2 h-4 w-4 text-indigo-500" />
-            <span>Load State from Supabase Cloud</span>
+            <span>Load State from Neon Cloud</span>
           </CommandItem>
         </CommandGroup>
 

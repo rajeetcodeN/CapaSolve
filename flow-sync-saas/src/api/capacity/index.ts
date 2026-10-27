@@ -1,5 +1,5 @@
 import { authenticateRequest } from "@/lib/api/auth";
-import { supabase } from "@/lib/supabase";
+import { neonClient } from "@/lib/neon-client";
 
 export async function GET(request: Request) {
   try {
@@ -11,7 +11,7 @@ export async function GET(request: Request) {
       });
     }
 
-    const { data: profile, error: profileErr } = await supabase
+    const { data: profile, error: profileErr } = await neonClient
       .from("capacity_profiles")
       .select("*")
       .eq("org_id", auth.ctx.orgId)
@@ -28,7 +28,7 @@ export async function GET(request: Request) {
 
     let overrides: any[] = [];
     if (profile) {
-      const { data: overData, error: overErr } = await supabase
+      const { data: overData, error: overErr } = await neonClient
         .from("daily_capacity_overrides")
         .select("*")
         .eq("profile_id", profile.id);
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
       });
     }
 
-    const { data: override, error } = await supabase
+    const { data: override, error } = await neonClient
       .from("daily_capacity_overrides")
       .upsert(
         {

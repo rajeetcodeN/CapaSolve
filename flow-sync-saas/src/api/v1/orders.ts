@@ -1,5 +1,5 @@
 import { Order, OrderProcess } from "@/lib/types";
-import { fetchScheduleFromSupabaseDB, syncScheduleToSupabaseDB } from "@/lib/db-service";
+import { fetchScheduleFromNeonDB, syncScheduleToNeonDB } from "@/lib/db-service";
 
 let inMemoryOrdersStore: Order[] = [];
 let inMemoryProcessesStore: OrderProcess[] = [];
@@ -14,7 +14,7 @@ export async function handleGetOrdersApi(searchQuery?: string, tenantId?: string
     process.env.NODE_ENV !== "test"
   ) {
     try {
-      const dbRes = await fetchScheduleFromSupabaseDB(tenantId);
+      const dbRes = await fetchScheduleFromNeonDB(tenantId);
       if (dbRes.success && dbRes.data?.orders) {
         orders = dbRes.data.orders;
       }
@@ -80,7 +80,7 @@ export async function handlePostOrdersApi(
 
   if (tenantId && tenantId !== "tenant-default") {
     try {
-      await syncScheduleToSupabaseDB(tenantId, "API Synchronized Schedule", {
+      await syncScheduleToNeonDB(tenantId, "API Synchronized Schedule", {
         orders: inMemoryOrdersStore,
         processes: inMemoryProcessesStore,
       });
@@ -112,7 +112,7 @@ export async function handleDeleteOrderApi(orderId: string, tenantId?: string) {
 
   if (tenantId && tenantId !== "tenant-default") {
     try {
-      await syncScheduleToSupabaseDB(tenantId, "API Synchronized Schedule", {
+      await syncScheduleToNeonDB(tenantId, "API Synchronized Schedule", {
         orders: inMemoryOrdersStore,
         processes: inMemoryProcessesStore,
       });

@@ -1,5 +1,5 @@
 import { useAppStore } from "./store";
-import { supabase } from "./supabase";
+import { neonAuth } from "./neon-auth";
 
 export async function checkAuthSession() {
   if (typeof window === "undefined") return { authenticated: true, user: null };
@@ -7,7 +7,7 @@ export async function checkAuthSession() {
   try {
     const {
       data: { session },
-    } = await supabase.auth.getSession();
+    } = await neonAuth.getSession();
     if (session?.user) {
       return { authenticated: true, user: session.user };
     }

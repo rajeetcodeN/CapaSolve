@@ -9,7 +9,8 @@ import { useTranslations } from "@/lib/translations";
 import { toast } from "sonner";
 import { Factory, Eye, EyeOff } from "lucide-react";
 
-import { supabase } from "@/lib/supabase";
+import { neonAuth } from "@/lib/neon-auth";
+import { neonDb } from "@/lib/neon";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -40,81 +41,23 @@ function LoginPage() {
 
     setLoading(true);
     try {
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { data: authData, error: authError } = await neonAuth.signIn(email, password);
 
-      if (authError) {
-        toast.error(authError.message);
+      if (authError || !authData.user) {
+        toast.error(authError?.message || "Authentication failed. Invalid email or password.");
         return;
       }
 
-      if (!authData.user) {
-        toast.error("Authentication failed.");
-        return;
-      }
+      setUser(authData.user as any);
 
-      // Fetch organization membership details
-      const { data: initialMemberData, error: memberError } = await supabase
-        .from("organization_members")
-        .select("org_id, role, organizations(name, plan)")
-        .eq("user_id", authData.user.id)
-        .maybeSingle();
-      let memberData = initialMemberData;
-
-      if (memberError) {
-        console.error("Failed to load membership details:", memberError);
-      }
-
-      // Self-healing: if user has metadata for organization but no DB rows exist (e.g. verified email signups), create them now
-      if (!memberData && authData.user.user_metadata?.company_name) {
-        try {
-          const compName = authData.user.user_metadata.company_name;
-          const signupRole = authData.user.user_metadata.signup_role || "ADMIN";
-          const slug = compName
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, "-")
-            .replace(/(^-|-$)+/g, "");
-
-          const { data: orgData, error: orgError } = await supabase
-            .from("organizations")
-            .insert({ name: compName, slug, plan: "FREE" })
-            .select()
-            .single();
-
-          if (orgData) {
-            const { error: memError } = await supabase.from("organization_members").insert({
-              org_id: orgData.id,
-              user_id: authData.user.id,
-              role: signupRole,
-            });
-
-            if (!memError) {
-              // Re-fetch or manually construct
-              memberData = {
-                org_id: orgData.id,
-                role: signupRole,
-                organizations: {
-                  name: orgData.name,
-                  plan: orgData.plan,
-                } as any,
-              };
-            }
-          }
-        } catch (healErr) {
-          console.error("Self-healing organization creation failed:", healErr);
-        }
-      }
-
-      setUser(authData.user);
+      // Fetch organization membership details from Neon Postgres
+      const memberData = await neonDb.getUserOrganization(authData.user.id);
 
       if (memberData) {
-        const orgInfo = memberData.organizations as any;
         setOrganization({
-          id: memberData.org_id,
-          name: orgInfo?.name || "Company",
-          plan: orgInfo?.plan || "FREE",
+          id: memberData.org.id,
+          name: memberData.org.name || "Company",
+          plan: memberData.org.plan || "FREE",
         });
         setRole(memberData.role as any);
       } else {

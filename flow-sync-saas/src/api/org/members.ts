@@ -1,5 +1,5 @@
 import { authenticateRequest } from "@/lib/api/auth";
-import { supabase } from "@/lib/supabase";
+import { neonClient } from "@/lib/neon-client";
 
 export async function GET(request: Request) {
   try {
@@ -11,7 +11,7 @@ export async function GET(request: Request) {
       });
     }
 
-    const { data: members, error } = await supabase
+    const { data: members, error } = await neonClient
       .from("organization_members")
       .select("id, user_id, role, created_at, profiles(full_name, avatar_url, job_title)")
       .eq("org_id", auth.ctx.orgId);
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
     const token = "inv_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-    const { data: invitation, error } = await supabase
+    const { data: invitation, error } = await neonClient
       .from("invitations")
       .insert({
         org_id: auth.ctx.orgId,

@@ -68,7 +68,7 @@ function PrivacyPage() {
               </h3>
               <p>
                 All imported CSV sheets, workstation configs, and schedules are stored securely
-                inside Supabase PostgreSQL database tables and S3-compatible cloud storage buckets.
+                inside Neon PostgreSQL database tables and S3-compatible cloud storage buckets.
                 We utilize Row-Level Security (RLS) policies to ensure that your factory data is
                 strictly isolated and can only be accessed by authenticated users within your
                 organization tenant.

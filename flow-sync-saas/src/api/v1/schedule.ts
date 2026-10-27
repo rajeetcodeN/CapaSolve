@@ -1,5 +1,5 @@
 import { generateSchedule } from "@/lib/scheduler";
-import { SupabaseScheduleData } from "@/lib/db-service";
+import { NeonScheduleData } from "@/lib/db-service";
 
 export interface SolveApiRequest {
   orders: any[];

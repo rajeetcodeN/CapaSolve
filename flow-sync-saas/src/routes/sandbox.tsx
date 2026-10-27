@@ -1776,7 +1776,7 @@ function SandboxPage() {
               <div className="p-3 bg-slate-50 dark:bg-slate-850 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="font-semibold text-slate-900 dark:text-white text-xs">
-                    CapaSolve Core v4.2
+                    CapaSolve Core v0.1 Beta
                   </span>
                   <span className="font-mono text-[10.5px] text-slate-500">Predictive Engine</span>
                 </div>

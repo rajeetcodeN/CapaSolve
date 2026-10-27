@@ -175,7 +175,7 @@ class TelemetryService {
           breadcrumbs: this.breadcrumbs.slice(-20),
           app: "CapaSolve",
           environment: import.meta.env.MODE || "production",
-          version: "1.0.0-beta",
+          version: "0.1.0-beta",
         });
 
         if (navigator.sendBeacon) {

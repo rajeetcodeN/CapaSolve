@@ -76,7 +76,7 @@ export const translations = {
     "common.loadFromCloud": "Load from Cloud",
     "common.savingToCloud": "Saving...",
     "common.loadingFromCloud": "Loading...",
-    "common.cloudSaveSuccess": "Successfully saved schedule to Supabase cloud storage!",
+    "common.cloudSaveSuccess": "Successfully saved schedule to Neon cloud storage!",
     "common.cloudSaveFailed": "Failed to save schedule to cloud storage.",
     "common.cloudLoadSuccess": "Successfully loaded schedule from cloud storage!",
     "common.cloudLoadFailed": "Failed to load schedule from cloud storage or no saved state found.",

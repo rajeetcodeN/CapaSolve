@@ -263,7 +263,7 @@ function PricingPage() {
                 <td className="p-4 text-foreground">Custom constraints</td>
               </tr>
               <tr>
-                <td className="p-4 font-semibold">Supabase cloud sync</td>
+                <td className="p-4 font-semibold">Neon cloud sync</td>
                 <td className="p-4 text-muted-foreground">No</td>
                 <td className="p-4 text-foreground">Yes</td>
               </tr>

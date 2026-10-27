@@ -13,7 +13,7 @@ import {
 import { useAppStore } from "@/lib/store";
 import { setupAuthListener } from "@/lib/auth-service";
 
-import { supabase } from "@/lib/supabase";
+import { neonAuth } from "@/lib/neon-auth";
 
 import appCss from "../styles.css?url";
 import AppLayout from "@/components/AppLayout";
@@ -88,6 +88,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       "/signup",
       "/forgot-password",
       "/reset-password",
+      "/auth/callback",
       "/about",
       "/contact",
       "/privacy",
@@ -105,7 +106,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       try {
         const {
           data: { session },
-        } = await supabase.auth.getSession();
+        } = await neonAuth.getSession();
         if (session?.user) {
           user = session.user;
           useAppStore.getState().setUser(user);

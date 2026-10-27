@@ -29,7 +29,6 @@ import {
   CheckCircle2,
   Trash2,
   SlidersHorizontal,
-  Sparkles,
   ShieldCheck,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -397,7 +396,6 @@ function AnalyticsDashboard() {
             className="h-8 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 shadow-2xs"
             onClick={() => simulateShopFloorProgress()}
           >
-            <Sparkles className="h-3.5 w-3.5 mr-1 text-emerald-500" />
             Simulate Floor Progress
           </Button>
           <Button

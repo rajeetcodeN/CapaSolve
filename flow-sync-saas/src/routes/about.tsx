@@ -131,7 +131,7 @@ function AboutPage() {
                 </div>
                 <h4 className="font-bold text-sm text-foreground">Multi-Tenant Security</h4>
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  Built on top of Supabase Row-Level Security (RLS) to guarantee complete data
+                  Built on top of Neon Row-Level Security (RLS) to guarantee complete data
                   isolation and JWT verification on every save.
                 </p>
               </CardContent>

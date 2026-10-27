@@ -1,5 +1,5 @@
 import { authenticateRequest } from "@/lib/api/auth";
-import { supabase } from "@/lib/supabase";
+import { neonClient } from "@/lib/neon-client";
 
 export async function GET(request: Request) {
   try {
@@ -11,7 +11,7 @@ export async function GET(request: Request) {
       });
     }
 
-    const { data: schedules, error } = await supabase
+    const { data: schedules, error } = await neonClient
       .from("schedules")
       .select("id, name, created_at, updated_at, created_by")
       .eq("org_id", auth.ctx.orgId)
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { name = "New Production Schedule", data = {} } = body;
 
-    const { data: newSchedule, error: schedErr } = await supabase
+    const { data: newSchedule, error: schedErr } = await neonClient
       .from("schedules")
       .insert({
         org_id: auth.ctx.orgId,
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
       );
     }
 
-    await supabase.from("schedule_data").insert({
+    await neonClient.from("schedule_data").insert({
       schedule_id: newSchedule.id,
       data,
     });

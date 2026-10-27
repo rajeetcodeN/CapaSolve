@@ -38,3 +38,5 @@ jobs:
           NODE_ENV: production
           VITE_SUPABASE_PROJECT_ID: ymvdbaexgtxjjrpodiwf
           VITE_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy_anon_key
+          DATABASE_URL: "postgresql://neondb_owner:dummy@ep-hidden-fog-b4pl0nab-pooler.c-6.us-east-2.aws.neon.tech/neondb?sslmode=require"
+          VITE_DATABASE_URL: "postgresql://neondb_owner:dummy@ep-hidden-fog-b4pl0nab-pooler.c-6.us-east-2.aws.neon.tech/neondb?sslmode=require"

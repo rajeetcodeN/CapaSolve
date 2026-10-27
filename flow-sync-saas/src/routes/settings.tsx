@@ -28,7 +28,8 @@ import {
   Upload,
 } from "lucide-react";
 import { SetupMatrixConfig } from "@/components/SetupMatrixConfig";
-import { supabase } from "@/lib/supabase";
+import { sql } from "@/lib/neon";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -163,15 +164,13 @@ function ManagePage() {
       });
 
       try {
-        await supabase.auth.updateUser({
-          data: { full_name: userName },
-        });
-        await supabase
-          .from("profiles")
-          .update({ full_name: userName, updated_at: new Date().toISOString() })
-          .eq("id", user.id);
+        await sql`
+          UPDATE public.profiles
+          SET full_name = ${userName}, updated_at = timezone('utc'::text, now())
+          WHERE id = ${user.id};
+        `;
       } catch (err) {
-        console.warn("Could not sync profile to backend:", err);
+        console.warn("Could not sync profile to Neon backend:", err);
       }
 
       toast.success(
@@ -255,7 +254,7 @@ function ManagePage() {
               </Label>
               <Input
                 id="profile-email"
-                value={user?.email || "demo@factory.com"}
+                value={user?.email || "user@factory.com"}
                 className="text-xs bg-muted/40 h-9 rounded-xl border-border text-muted-foreground"
                 disabled
               />
@@ -263,12 +262,23 @@ function ManagePage() {
 
             <div className="space-y-1.5">
               <Label htmlFor="profile-role" className="text-xs font-semibold text-muted-foreground">
-                System Role
+                System Role & Authority Tier
               </Label>
               <Input
                 id="profile-role"
-                value={role === "DEVELOPER" ? "Developer" : role}
-                className="text-xs bg-muted/40 h-9 rounded-xl border-border text-muted-foreground font-semibold uppercase"
+                value={
+                  role === "DEVELOPER"
+                    ? "Developer (Dev Team — Top Tier)"
+                    : role === "ADMIN"
+                      ? "Administrator (Full Plant Access)"
+                      : "Guest (View Only)"
+                }
+                className={cn(
+                  "text-xs h-9 rounded-xl border font-semibold",
+                  role === "DEVELOPER"
+                    ? "bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border-emerald-800/40"
+                    : "bg-muted/40 text-muted-foreground border-border",
+                )}
                 disabled
               />
             </div>
@@ -326,8 +336,8 @@ function ManagePage() {
                 <span>{language === "de" ? "Cloud-Synchronisation" : "Cloud Sync Option"}</span>
                 <span className="text-[11px] font-normal text-slate-500">
                   {language === "de"
-                    ? "Sichern Sie Planungsdaten in der Supabase-Cloud."
-                    : "Backup and restore planning schedules to Supabase secure database."}
+                    ? "Sichern Sie Planungsdaten in der Neon-Cloud."
+                    : "Backup and restore planning schedules to Neon secure database."}
                 </span>
               </div>
             </div>

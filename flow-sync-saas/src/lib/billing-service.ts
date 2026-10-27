@@ -1,4 +1,3 @@
-import { supabase } from "./supabase";
 import { logger } from "./error-tracking";
 
 export type SubscriptionTier = "STARTER" | "PRO" | "ENTERPRISE";

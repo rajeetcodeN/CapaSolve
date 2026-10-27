@@ -383,13 +383,13 @@ describe("CapaSolve Zustand Application State Store", () => {
     expect(exported).toBeTruthy();
 
     const parsed = JSON.parse(exported);
-    expect(parsed.version).toBe("1.0");
+    expect(parsed.version).toBe("0.1-beta");
     expect(parsed.exportedAt).toBeTruthy();
     expect(Array.isArray(parsed.orders)).toBe(true);
     expect(Array.isArray(parsed.processes)).toBe(true);
 
     const testBackup = JSON.stringify({
-      version: "1.0",
+      version: "0.1-beta",
       exportedAt: new Date().toISOString(),
       orders: [
         {

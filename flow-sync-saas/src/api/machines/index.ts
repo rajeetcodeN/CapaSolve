@@ -1,5 +1,5 @@
 import { authenticateRequest } from "@/lib/api/auth";
-import { supabase } from "@/lib/supabase";
+import { neonClient } from "@/lib/neon-client";
 
 export async function GET(request: Request) {
   try {
@@ -11,7 +11,7 @@ export async function GET(request: Request) {
       });
     }
 
-    const { data: groups, error: groupErr } = await supabase
+    const { data: groups, error: groupErr } = await neonClient
       .from("machine_groups")
       .select("id, code, name, created_at")
       .eq("org_id", auth.ctx.orgId)
@@ -24,7 +24,7 @@ export async function GET(request: Request) {
       });
     }
 
-    const { data: machines, error: machErr } = await supabase
+    const { data: machines, error: machErr } = await neonClient
       .from("machines")
       .select("id, machine_group_id, code, name, is_active, created_at")
       .eq("org_id", auth.ctx.orgId)
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { data: machine, error } = await supabase
+    const { data: machine, error } = await neonClient
       .from("machines")
       .insert({
         org_id: auth.ctx.orgId,

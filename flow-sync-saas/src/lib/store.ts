@@ -7,7 +7,7 @@
  * - High-speed Web Worker background schedule solving
  * - Shop floor MES execution state (Queue, In-Progress, Hold, Scrap)
  * - Material inventory readiness checks
- * - Real-time optimistic updates & Supabase Cloud persistence
+ * - Real-time optimistic updates & Neon Lakebase Cloud persistence
  * ==============================================================================
  */
 
@@ -32,15 +32,15 @@ import {
 import { generateSchedule, parseSOPDate } from "./scheduler";
 import { ColumnMapping } from "./dataCleaner";
 import { createServerFn } from "@tanstack/react-start";
-import { saveStateToSupabase, loadStateFromSupabase } from "./supabase.server";
+import { saveStateToCloud, loadStateFromCloud } from "./sync.server";
 import { toast } from "sonner";
-import { supabase } from "./supabase";
+import { neonAuth } from "./neon-auth";
 import { runOptimizeScheduleServer } from "./api/schedules.server";
 import {
-  syncScheduleToSupabaseDB,
-  fetchScheduleFromSupabaseDB,
-  fetchMachinesFromSupabaseDB,
-  saveMachineToSupabaseDB,
+  syncScheduleToNeonDB,
+  fetchScheduleFromNeonDB,
+  fetchMachinesFromNeonDB,
+  saveMachineToNeonDB,
 } from "./db-service";
 
 import { DEFAULT_CSV_CONTENT } from "./default-csv";
@@ -1092,14 +1092,14 @@ export const useAppStore = create<AppState>()(
           };
         });
 
-        // Check if an active Supabase session is present
+        // Check if an active Neon session is present
         let slots: ScheduleSlot[] = [];
         let warnings: string[] = [];
 
         try {
           const {
             data: { session },
-          } = await supabase.auth.getSession();
+          } = await neonAuth.getSession();
           if (session?.access_token) {
             const serverRes = await runOptimizeScheduleServer({
               data: {
@@ -1357,8 +1357,8 @@ export const useAppStore = create<AppState>()(
             dailyCapacities,
           };
 
-          // 1. Sync to Supabase Database Tables (schedules + schedule_data + scheduler_configs)
-          const dbRes = await syncScheduleToSupabaseDB(
+          // 1. Sync to Neon Database Tables (schedules + schedule_data + scheduler_configs)
+          const dbRes = await syncScheduleToNeonDB(
             organization.id,
             "Primary Production Plan",
             payload,
@@ -1367,21 +1367,21 @@ export const useAppStore = create<AppState>()(
           // 2. Storage backup fallback
           const {
             data: { session },
-          } = await supabase.auth.getSession();
-          const token = session?.access_token || "";
-          await saveStateToSupabase({
+          } = await neonAuth.getSession();
+          const token = session?.user?.id || "";
+          await saveStateToCloud({
             data: { orgId: organization.id, stateJson: JSON.stringify(payload), token },
           });
 
           if (dbRes.success) {
-            toast.success("Successfully saved schedule to Supabase Database!");
+            toast.success("Successfully saved schedule to Neon Database!");
           } else {
-            console.error("Supabase DB Save Warning:", dbRes.error);
-            toast.success("Saved schedule to cloud storage!");
+            console.error("Neon DB Save Warning:", dbRes.error);
+            toast.success("Saved schedule to Neon storage!");
           }
         } catch (err) {
           console.error("Cloud save exception:", err);
-          toast.error("An error occurred while saving to Supabase.");
+          toast.error("An error occurred while saving to Neon.");
         } finally {
           set({ isCloudSaving: false });
         }
@@ -1396,17 +1396,17 @@ export const useAppStore = create<AppState>()(
 
         set({ isCloudLoading: true });
         try {
-          // 1. First attempt to load from Supabase Database Tables
-          const dbRes = await fetchScheduleFromSupabaseDB(organization.id);
+          // 1. First attempt to load from Neon Database Tables
+          const dbRes = await fetchScheduleFromNeonDB(organization.id);
           let state = dbRes.data;
 
           // 2. Fallback to Storage JSON if DB data not found
           if (!state) {
             const {
               data: { session },
-            } = await supabase.auth.getSession();
-            const token = session?.access_token || "";
-            const res = await loadStateFromSupabase({ data: { orgId: organization.id, token } });
+            } = await neonAuth.getSession();
+            const token = session?.user?.id || "";
+            const res = await loadStateFromCloud({ data: { orgId: organization.id, token } });
             if (res.success && res.data) {
               state = JSON.parse(res.data);
             }
@@ -1429,13 +1429,13 @@ export const useAppStore = create<AppState>()(
             });
 
             get().runScheduler();
-            toast.success("Successfully loaded schedule from Supabase Database!");
+            toast.success("Successfully loaded schedule from Neon Database!");
           } else {
-            toast.info("No saved schedule found in Supabase.");
+            toast.info("No saved schedule found in Neon.");
           }
         } catch (err) {
           console.error("Cloud load exception:", err);
-          toast.error("An error occurred while loading from Supabase.");
+          toast.error("An error occurred while loading from Neon.");
         } finally {
           set({ isCloudLoading: false });
         }
@@ -1444,7 +1444,7 @@ export const useAppStore = create<AppState>()(
       exportSystemBackup: () => {
         const s = get();
         const payload = {
-          version: "1.0",
+          version: "0.1-beta",
           exportedAt: new Date().toISOString(),
           metadata: {
             totalOrders: s.orders.length,

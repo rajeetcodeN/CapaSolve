@@ -23,7 +23,7 @@
 - **Styling**: [Tailwind CSS v4](https://tailwindcss.com/)
 - **UI Components**: [Radix UI Primitives](https://www.radix-ui.com/), [Lucide React](https://lucide.dev/), [Sonner Toasts](https://sonner.emilkowal.ski/)
 - **State Management**: [Zustand](https://github.com/pmndrs/zustand)
-- **Database & Auth**: [Supabase](https://supabase.com/) (PostgreSQL + RLS + Storage)
+- **Database & Auth**: [Neon](https://neon.tech/) (Lakebase Serverless PostgreSQL + Auth + S3-Compatible Object Storage)
 - **Deployment & SSR**: [Vite 7](https://vitejs.dev/) + [Nitro](https://nitro.unjs.io/) (Vercel Serverless Output)
 
 ---
@@ -46,12 +46,21 @@
 Create a `.env` file in this directory:
 
 ```ini
-# Supabase Client & Server Credentials
-VITE_SUPABASE_PROJECT_ID=your-project-id
-VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
-SUPABASE_PROJECT_ID=your-project-id
-SUPABASE_ANON_KEY=your-supabase-anon-key
-SUPABASE_BUCKET_NAME=scheduler
+# Neon Lakebase Database & Serverless Driver
+DATABASE_URL="postgresql://user:pass@ep-hidden-fog.c-6.us-east-2.aws.neon.tech/neondb?sslmode=require"
+DATABASE_URL_UNPOOLED="postgresql://user:pass@ep-hidden-fog.c-6.us-east-2.aws.neon.tech/neondb?sslmode=require"
+NEON_BRANCH=production
+
+# Neon Auth
+NEON_AUTH_BASE_URL=https://ep-hidden-fog.neonauth.c-6.us-east-2.aws.neon.tech/neondb/auth
+NEON_AUTH_JWKS_URL=https://ep-hidden-fog.neonauth.c-6.us-east-2.aws.neon.tech/neondb/auth/.well-known/jwks.json
+
+# Neon S3-Compatible Storage
+AWS_ACCESS_KEY_ID=your-neon-storage-key
+AWS_SECRET_ACCESS_KEY=your-neon-storage-secret
+AWS_ENDPOINT_URL_S3=https://br-solitary-bonus.storage.c-6.us-east-2.aws.neon.tech
+AWS_REGION=us-east-2
+NEON_BUCKET_NAME=assets
 
 # Mistral AI (Kept secure on server)
 MISTRAL_API_KEY=your-mistral-api-key

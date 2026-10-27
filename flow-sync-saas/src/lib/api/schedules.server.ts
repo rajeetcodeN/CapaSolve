@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { supabase } from "../supabase";
+import { neonClient } from "../neon-client";
 import { authenticateRequest } from "./auth";
 import { validateOptimizationPayload } from "../plan-limits";
 import { generateSchedule } from "../scheduler";
@@ -83,14 +83,14 @@ export const runOptimizeScheduleServer = createServerFn({ method: "POST" })
           updatedAt: new Date().toISOString(),
         };
 
-        await supabase.from("schedule_data").upsert({
+        await neonClient.from("schedule_data").upsert({
           schedule_id: data.scheduleId,
           data: fullPayload,
           updated_at: new Date().toISOString(),
         });
 
         // Log execution to schedule_execution_logs table
-        await supabase.from("schedule_execution_logs").insert({
+        await neonClient.from("schedule_execution_logs").insert({
           schedule_id: data.scheduleId,
           org_id: orgId,
           triggered_by: userId === "system-api-key" ? null : userId,
@@ -129,7 +129,7 @@ export const fetchSchedulesServer = createServerFn({ method: "POST" })
         return { success: false, error: auth.error };
       }
 
-      const { data: schedules, error } = await supabase
+      const { data: schedules, error } = await neonClient
         .from("schedules")
         .select("id, name, created_at, updated_at, created_by")
         .eq("org_id", auth.ctx.orgId)

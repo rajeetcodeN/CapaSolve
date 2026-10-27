@@ -9,7 +9,8 @@ import { useTranslations } from "@/lib/translations";
 import { toast } from "sonner";
 import { Factory, Rocket } from "lucide-react";
 
-import { supabase } from "@/lib/supabase";
+import { neonAuth } from "@/lib/neon-auth";
+import { neonDb, sql } from "@/lib/neon";
 
 export const Route = createFileRoute("/signup")({
   head: () => ({
@@ -46,81 +47,59 @@ function SignupPage() {
 
     setLoading(true);
     try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: name,
-            company_name: company,
-            signup_role: signupRole,
-          },
-        },
+      const { data: authData, error: authError } = await neonAuth.signUp(email, password, {
+        full_name: name,
+        company_name: company,
+        signup_role: signupRole,
       });
 
-      if (authError) {
-        toast.error(authError.message);
+      if (authError || !authData.user) {
+        toast.error(authError?.message || "Signup failed.");
         return;
       }
 
-      if (!authData.user) {
-        toast.error("Signup failed.");
-        return;
-      }
+      setUser(authData.user as any);
 
-      setUser(authData.user);
+      // Provision or ensure organization records in Neon Postgres
+      try {
+        const baseSlug =
+          company
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/(^-|-$)+/g, "") || "factory";
+        const slug = `${baseSlug}-${authData.user.id.substring(0, 6)}`;
 
-      // If session is active (email verification disabled in Supabase dashboard)
-      if (authData.session) {
-        try {
-          const baseSlug =
-            company
-              .toLowerCase()
-              .replace(/[^a-z0-9]+/g, "-")
-              .replace(/(^-|-$)+/g, "") || "factory";
-          const slug = `${baseSlug}-${authData.user.id.substring(0, 6)}`;
-          const { data: orgData, error: orgError } = await supabase
-            .from("organizations")
-            .insert({ name: company, slug, plan: "FREE" })
-            .select()
-            .single();
+        const orgRows = await sql`
+          INSERT INTO public.organizations (name, slug, plan)
+          VALUES (${company}, ${slug}, 'FREE')
+          ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
+          RETURNING id, name, plan;
+        `;
 
-          if (orgError) throw orgError;
+        if (orgRows.length > 0) {
+          await sql`
+            INSERT INTO public.organization_members (org_id, user_id, role)
+            VALUES (${orgRows[0].id}, ${authData.user.id}, ${signupRole})
+            ON CONFLICT (org_id, user_id) DO UPDATE SET role = EXCLUDED.role;
+          `;
 
-          if (orgData) {
-            const { error: memError } = await supabase.from("organization_members").insert({
-              org_id: orgData.id,
-              user_id: authData.user.id,
-              role: signupRole,
-            });
-
-            if (memError) throw memError;
-
-            setOrganization({
-              id: orgData.id,
-              name: orgData.name,
-              plan: orgData.plan as any,
-            });
-            setRole(signupRole);
-          }
-        } catch (dbErr: any) {
-          console.error("Error creating organization records:", dbErr);
+          setOrganization({
+            id: orgRows[0].id,
+            name: orgRows[0].name,
+            plan: orgRows[0].plan as any,
+          });
+          setRole(signupRole);
         }
-
-        toast.success(
-          language === "de"
-            ? `Konto für ${company} erstellt! Sie wurden als ${signupRole === "DEVELOPER" ? "Entwickler" : signupRole} angemeldet.`
-            : `Account created for ${company}! Signed in as ${signupRole === "DEVELOPER" ? "Developer" : signupRole}.`,
-        );
-        navigate({ to: "/dashboard" });
-      } else {
-        toast.success(
-          language === "de"
-            ? "Registrierung erfolgreich! Bitte überprüfen Sie Ihre E-Mail zur Bestätigung."
-            : "Registration successful! Please check your email to confirm your account.",
-        );
-        navigate({ to: "/login" });
+      } catch (dbErr: any) {
+        console.error("Error creating Neon organization records:", dbErr);
       }
+
+      toast.success(
+        language === "de"
+          ? `Konto für ${company} erstellt! Sie wurden als ${signupRole === "DEVELOPER" ? "Entwickler" : signupRole} angemeldet.`
+          : `Account created for ${company}! Signed in as ${signupRole === "DEVELOPER" ? "Developer" : signupRole}.`,
+      );
+      navigate({ to: "/dashboard" });
     } catch (err: any) {
       toast.error(err.message || "An error occurred during registration.");
     } finally {

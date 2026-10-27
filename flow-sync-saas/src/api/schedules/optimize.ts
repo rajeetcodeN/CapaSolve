@@ -1,7 +1,7 @@
 import { authenticateRequest } from "@/lib/api/auth";
 import { validateOptimizationPayload } from "@/lib/plan-limits";
 import { generateSchedule } from "@/lib/scheduler";
-import { supabase } from "@/lib/supabase";
+import { neonClient } from "@/lib/neon-client";
 import { Machine, Order, OrderProcess, OptimizationMode } from "@/lib/types";
 
 export async function POST(request: Request) {
@@ -73,13 +73,13 @@ export async function POST(request: Request) {
         updatedAt: new Date().toISOString(),
       };
 
-      await supabase.from("schedule_data").upsert({
+      await neonClient.from("schedule_data").upsert({
         schedule_id: scheduleId,
         data: fullPayload,
         updated_at: new Date().toISOString(),
       });
 
-      await supabase.from("schedule_execution_logs").insert({
+      await neonClient.from("schedule_execution_logs").insert({
         schedule_id: scheduleId,
         org_id: orgId,
         triggered_by: userId === "system-api-key" ? null : userId,

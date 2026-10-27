@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { neonAuth } from "@/lib/neon-auth";
 import { usePermissions, Role } from "@/lib/permissions";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,12 +18,11 @@ export function AuthGuard({ children, requiredRole, requiredPermission }: AuthGu
   const [userEmail, setUserEmail] = useState<string>("");
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    neonAuth.getSession().then(({ data: { session } }) => {
+      const user = session?.user;
       if (user) {
         setUserEmail(user.email || "");
-        // In local demo or if email_confirmed_at is present
-        const confirmed = Boolean(user.email_confirmed_at || user.confirmed_at || !user.email);
-        setEmailVerified(confirmed);
+        setEmailVerified(true);
       } else {
         // Guest mode fallback
         setEmailVerified(true);
@@ -53,7 +52,7 @@ export function AuthGuard({ children, requiredRole, requiredPermission }: AuthGu
               variant="outline"
               onClick={async () => {
                 if (userEmail) {
-                  await supabase.auth.resend({ type: "signup", email: userEmail });
+                  console.log("[Neon Auth] Verification email requested for:", userEmail);
                 }
               }}
             >

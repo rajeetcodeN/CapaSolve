@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { neonClient } from "./neon-client";
 import { logger } from "./error-tracking";
 
 export type RealtimeUpdateCallback = (payload: {
@@ -25,7 +25,7 @@ export function subscribeToFloorUpdates(
   const channelName = `org-floor-sync-${orgId}`;
 
   try {
-    const channel = supabase
+    const channel = neonClient
       .channel(channelName)
       .on(
         "postgres_changes",
@@ -75,10 +75,10 @@ export function subscribeToFloorUpdates(
       });
 
     return () => {
-      supabase.removeChannel(channel);
+      neonClient.removeChannel(channel);
     };
   } catch (err) {
-    logger.error("Failed to initialize Supabase Realtime channel", err as Error);
+    logger.error("Failed to initialize Neon Realtime channel", err as Error);
     return () => {};
   }
 }
