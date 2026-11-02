@@ -83,12 +83,89 @@ function getCorsHeaders(request: Request): Record<string, string> {
   return headers;
 }
 
+async function handleNeonAuthProxy(request: Request, url: URL): Promise<Response> {
+  const targetBase =
+    process.env.NEON_AUTH_BASE_URL ||
+    "https://ep-hidden-fog-b4pl0nab.neonauth.c-6.us-east-2.aws.neon.tech/neondb/auth";
+
+  // e.g. /api/auth/sign-in/social -> /sign-in/social
+  const subPath = url.pathname.replace(/^\/api\/auth/, "");
+  const targetUrl = `${targetBase.replace(/\/+$/, "")}${subPath}${url.search}`;
+
+  const forwardHeaders = new Headers();
+  request.headers.forEach((value, key) => {
+    const lowerKey = key.toLowerCase();
+    if (lowerKey !== "host") {
+      forwardHeaders.set(key, value);
+    }
+  });
+
+  const origin = request.headers.get("origin") || url.origin;
+  forwardHeaders.set("origin", origin);
+
+  const reqInit: RequestInit = {
+    method: request.method,
+    headers: forwardHeaders,
+    redirect: "manual",
+  };
+
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    reqInit.body = await request.arrayBuffer();
+  }
+
+  try {
+    const upstreamRes = await fetch(targetUrl, reqInit);
+
+    const responseHeaders = new Headers();
+    upstreamRes.headers.forEach((value, key) => {
+      const lower = key.toLowerCase();
+      if (lower === "set-cookie") {
+        const clean = value.replace(/Domain=[^;]+;?/gi, "");
+        responseHeaders.append("set-cookie", clean);
+      } else {
+        responseHeaders.set(key, value);
+      }
+    });
+
+    if (typeof (upstreamRes.headers as any).getSetCookie === "function") {
+      const setCookies = (upstreamRes.headers as any).getSetCookie();
+      if (Array.isArray(setCookies) && setCookies.length > 0) {
+        responseHeaders.delete("set-cookie");
+        for (const cookie of setCookies) {
+          const clean = cookie.replace(/Domain=[^;]+;?/gi, "");
+          responseHeaders.append("set-cookie", clean);
+        }
+      }
+    }
+
+    responseHeaders.set("Access-Control-Allow-Origin", origin);
+    responseHeaders.set("Access-Control-Allow-Credentials", "true");
+    responseHeaders.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    responseHeaders.set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-API-Key, x-api-key");
+
+    return new Response(upstreamRes.body, {
+      status: upstreamRes.status,
+      statusText: upstreamRes.statusText,
+      headers: responseHeaders,
+    });
+  } catch (err: any) {
+    console.error("[NeonAuthProxy] Error forwarding request to Neon Auth:", err);
+    return new Response(
+      JSON.stringify({ error: "Failed to connect to Neon Auth service: " + err.message }),
+      {
+        status: 502,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  }
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
       const url = new URL(request.url);
 
-      // 1. CORS Preflight for REST API
+      // 1. CORS Preflight for REST API and Auth
       if (url.pathname.startsWith("/api/") && request.method === "OPTIONS") {
         return new Response(null, {
           status: 204,
@@ -96,8 +173,13 @@ export default {
         });
       }
 
-      // 2. REST API Endpoints Routing
-      if (url.pathname.startsWith("/api/")) {
+      // 2. Neon Auth Proxy (forward /api/auth/* directly to Neon Auth in both dev & Vercel prod)
+      if (url.pathname.startsWith("/api/auth")) {
+        return await handleNeonAuthProxy(request, url);
+      }
+
+      // 3. REST API Endpoints Routing (for external ERP integration e.g. /api/v1/*)
+      if (url.pathname.startsWith("/api/v1/")) {
         const method = request.method.toUpperCase();
         const headers: Record<string, string> = {};
         request.headers.forEach((val, key) => {

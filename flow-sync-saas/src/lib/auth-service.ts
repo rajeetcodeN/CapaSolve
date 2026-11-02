@@ -309,7 +309,16 @@ export async function signInWithOAuthProvider(provider: "google", inviteToken?: 
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || "Failed to initialize Google authentication.");
+      if (
+        err.code === "INVALID_CALLBACKURL" ||
+        err.error === "Invalid callbackURL" ||
+        res.status === 403
+      ) {
+        throw new Error(
+          `Domain "${origin}" is not authorized by Neon Auth. Please add "${origin}" to your Neon Console under Auth -> Domains.`,
+        );
+      }
+      throw new Error(err.message || err.error || "Failed to initialize Google authentication.");
     }
 
     const data = await res.json();
