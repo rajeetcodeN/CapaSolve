@@ -93,9 +93,21 @@ async function handleNeonAuthProxy(request: Request, url: URL): Promise<Response
   const targetUrl = `${targetBase.replace(/\/+$/, "")}${subPath}${url.search}`;
 
   const forwardHeaders = new Headers();
+  const DISALLOWED_PROXY_HEADERS = new Set([
+    "host",
+    "x-forwarded-host",
+    "x-forwarded-proto",
+    "x-forwarded-port",
+    "x-forwarded-for",
+    "x-vercel-id",
+    "x-vercel-cache",
+    "connection",
+    "keep-alive",
+  ]);
+
   request.headers.forEach((value, key) => {
     const lowerKey = key.toLowerCase();
-    if (lowerKey !== "host") {
+    if (!DISALLOWED_PROXY_HEADERS.has(lowerKey)) {
       forwardHeaders.set(key, value);
     }
   });
