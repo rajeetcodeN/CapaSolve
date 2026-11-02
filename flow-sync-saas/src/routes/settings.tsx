@@ -28,6 +28,7 @@ import {
   Upload,
 } from "lucide-react";
 import { SetupMatrixConfig } from "@/components/SetupMatrixConfig";
+import { TeamManagement } from "@/components/TeamManagement";
 import { sql } from "@/lib/neon";
 import { cn } from "@/lib/utils";
 
@@ -327,7 +328,10 @@ function ManagePage() {
           </form>
         </div>
 
-        {/* Block 2: Cloud Sync Option */}
+        {/* Block 2: Team Members & Plant Access Management */}
+        <TeamManagement />
+
+        {/* Block 3: Cloud Sync Option */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xs space-y-4">
           <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
             <div className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-white">

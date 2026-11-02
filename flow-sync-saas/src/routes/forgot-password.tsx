@@ -24,6 +24,7 @@ function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [devResetUrl, setDevResetUrl] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,8 +39,11 @@ function ForgotPasswordPage() {
 
     setLoading(true);
     try {
-      await sendPasswordResetEmail(email);
+      const res = await sendPasswordResetEmail(email);
       setSubmitted(true);
+      if (res?.resetUrl) {
+        setDevResetUrl(res.resetUrl);
+      }
       toast.success(
         language === "de"
           ? "Passwort-Zurücksetzungs-Link gesendet! Prüfen Sie Ihren Posteingang."
@@ -76,7 +80,7 @@ function ForgotPasswordPage() {
 
         <CardContent className="space-y-6">
           {submitted ? (
-            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-6 text-center space-y-3">
+            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-6 text-center space-y-4">
               <CheckCircle2 className="h-10 w-10 text-emerald-500 mx-auto" />
               <h3 className="text-sm font-semibold text-foreground">
                 {language === "de" ? "Wiederherstellungs-E-Mail gesendet!" : "Recovery Email Sent!"}
@@ -86,6 +90,23 @@ function ForgotPasswordPage() {
                   ? `Wir haben Anweisungen zum Zurücksetzen des Passworts an ${email} gesendet.`
                   : `We have sent password reset instructions to ${email}. Please check your inbox and spam folder.`}
               </p>
+
+              {devResetUrl && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 rounded-lg text-left text-xs space-y-2">
+                  <p className="font-semibold text-blue-900 dark:text-blue-200">
+                    Direct Reset Link (Local Testing):
+                  </p>
+                  <p className="text-[11px] text-blue-700 dark:text-blue-300 break-all">
+                    {devResetUrl}
+                  </p>
+                  <Button asChild size="sm" className="w-full h-8 text-xs bg-blue-600 hover:bg-blue-700 text-white">
+                    <Link to="/reset-password" search={{ token: devResetUrl.split("token=")[1]?.split("&")[0] || "" }}>
+                      Open Reset Password Page
+                    </Link>
+                  </Button>
+                </div>
+              )}
+
               <div className="pt-2">
                 <Link
                   to="/login"

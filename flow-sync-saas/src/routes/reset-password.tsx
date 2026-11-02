@@ -10,6 +10,10 @@ import { toast } from "sonner";
 import { ShieldCheck, Eye, EyeOff } from "lucide-react";
 
 export const Route = createFileRoute("/reset-password")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    token: typeof search.token === "string" ? search.token : "",
+    email: typeof search.email === "string" ? search.email : "",
+  }),
   head: () => ({
     meta: [
       { title: "Set New Password — CapaSolve" },
@@ -21,6 +25,13 @@ export const Route = createFileRoute("/reset-password")({
 
 function ResetPasswordPage() {
   const navigate = useNavigate();
+  const search = Route.useSearch();
+  const token =
+    search?.token ||
+    (typeof window !== "undefined"
+      ? new URL(window.location.href).searchParams.get("token") || ""
+      : "");
+
   const { language } = useTranslations();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -54,7 +65,7 @@ function ResetPasswordPage() {
 
     setLoading(true);
     try {
-      await updateUserPassword(password);
+      await updateUserPassword(password, token);
       toast.success(
         language === "de"
           ? "Passwort erfolgreich aktualisiert! Bitte melden Sie sich an."
@@ -91,6 +102,23 @@ function ResetPasswordPage() {
         </CardHeader>
 
         <CardContent className="space-y-6">
+          {!token && (
+            <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 rounded-lg text-xs text-amber-800 dark:text-amber-200">
+              <p>
+                {language === "de"
+                  ? "Kein Wiederherstellungs-Token gefunden. Wenn Sie Ihr Passwort vergessen haben, fordern Sie bitte zuerst einen Link an."
+                  : "No recovery token detected in this link. If you forgot your password, please request a fresh reset link first."}
+              </p>
+              <div className="pt-2">
+                <Button asChild size="sm" variant="outline" className="h-7 text-xs">
+                  <Link to="/forgot-password">
+                    {language === "de" ? "Wiederherstellungslink anfordern" : "Request Reset Link"}
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          )}
+
           <form onSubmit={handleReset} className="space-y-4">
             <div className="space-y-1">
               <Label htmlFor="password" className="text-xs">

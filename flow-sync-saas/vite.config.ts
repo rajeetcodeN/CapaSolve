@@ -43,4 +43,15 @@ export default defineConfig(({ command }) => ({
       : []),
     react(),
   ],
+  server: {
+    proxy: {
+      "/api/auth": {
+        target: "https://ep-hidden-fog-b4pl0nab.neonauth.c-6.us-east-2.aws.neon.tech/neondb/auth",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/auth/, ""),
+        secure: true,
+        cookieDomainRewrite: "",
+      },
+    },
+  },
 }));

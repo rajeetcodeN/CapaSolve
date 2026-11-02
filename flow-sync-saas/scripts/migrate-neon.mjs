@@ -33,6 +33,67 @@ async function runMigration() {
       $$ LANGUAGE sql STABLE;
     `;
 
+    // Ensure neon_auth.user triggers sync into auth.users if neon_auth exists
+    await sql`
+      DO $$
+      BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'neon_auth' AND table_name = 'user') THEN
+          CREATE OR REPLACE FUNCTION public.sync_neon_auth_user_to_auth_users()
+          RETURNS TRIGGER AS $func$
+          BEGIN
+            IF EXISTS (SELECT 1 FROM auth.users WHERE email = NEW.email) THEN
+              UPDATE auth.users
+              SET id = NEW.id::uuid,
+                  raw_user_meta_data = COALESCE(auth.users.raw_user_meta_data, '{}'::jsonb) || jsonb_build_object(
+                    'full_name', NEW.name,
+                    'avatar_url', NEW.image,
+                    'email_verified', NEW."emailVerified"
+                  ),
+                  updated_at = NEW."updatedAt"
+              WHERE email = NEW.email;
+            ELSE
+              INSERT INTO auth.users (id, email, raw_user_meta_data, created_at, updated_at)
+              VALUES (
+                NEW.id::uuid,
+                NEW.email,
+                jsonb_build_object(
+                  'full_name', NEW.name,
+                  'avatar_url', NEW.image,
+                  'email_verified', NEW."emailVerified"
+                ),
+                NEW."createdAt",
+                NEW."updatedAt"
+              )
+              ON CONFLICT (id) DO UPDATE
+              SET email = EXCLUDED.email,
+                  raw_user_meta_data = COALESCE(auth.users.raw_user_meta_data, '{}'::jsonb) || EXCLUDED.raw_user_meta_data,
+                  updated_at = EXCLUDED.updated_at;
+            END IF;
+            RETURN NEW;
+          END;
+          $func$ LANGUAGE plpgsql SECURITY DEFINER;
+
+          DROP TRIGGER IF EXISTS trg_sync_neon_auth_user ON neon_auth.user;
+          CREATE TRIGGER trg_sync_neon_auth_user
+          AFTER INSERT OR UPDATE ON neon_auth.user
+          FOR EACH ROW EXECUTE FUNCTION public.sync_neon_auth_user_to_auth_users();
+
+          INSERT INTO auth.users (id, email, raw_user_meta_data, created_at, updated_at)
+          SELECT 
+            u.id::uuid,
+            u.email,
+            jsonb_build_object('full_name', u.name, 'avatar_url', u.image, 'email_verified', u."emailVerified"),
+            u."createdAt",
+            u."updatedAt"
+          FROM neon_auth.user u
+          ON CONFLICT (id) DO UPDATE
+          SET email = EXCLUDED.email,
+              raw_user_meta_data = EXCLUDED.raw_user_meta_data,
+              updated_at = EXCLUDED.updated_at;
+        END IF;
+      END $$;
+    `;
+
     // 1. Organizations
     console.log("1. Creating organizations & members...");
     await sql`
@@ -54,6 +115,17 @@ async function runMigration() {
         role TEXT NOT NULL CHECK (role IN ('ADMIN', 'DEVELOPER', 'GUEST')),
         created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
         CONSTRAINT unq_org_members_org_user UNIQUE (org_id, user_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS public.invitations (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        org_id UUID REFERENCES public.organizations(id) ON DELETE CASCADE NOT NULL,
+        email TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'GUEST' CHECK (role IN ('ADMIN', 'DEVELOPER', 'GUEST')),
+        token TEXT NOT NULL UNIQUE,
+        expires_at TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
+        accepted_at TIMESTAMPTZ
       );
     `;
 

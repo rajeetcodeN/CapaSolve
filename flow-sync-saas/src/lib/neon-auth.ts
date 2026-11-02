@@ -2,9 +2,12 @@ import { sql } from "./neon";
 
 const isBrowser = typeof window !== "undefined";
 
-export const NEON_AUTH_BASE_URL = isBrowser
-  ? import.meta.env.VITE_NEON_AUTH_BASE_URL
-  : process.env.NEON_AUTH_BASE_URL || import.meta.env.VITE_NEON_AUTH_BASE_URL;
+export const REMOTE_NEON_AUTH_URL =
+  (typeof process !== "undefined" ? process.env?.NEON_AUTH_BASE_URL : undefined) ||
+  import.meta.env?.VITE_NEON_AUTH_BASE_URL ||
+  "https://ep-hidden-fog-b4pl0nab.neonauth.c-6.us-east-2.aws.neon.tech/neondb/auth";
+
+export const NEON_AUTH_BASE_URL = isBrowser ? "/api/auth" : REMOTE_NEON_AUTH_URL;
 
 export interface NeonAuthUser {
   id: string;
@@ -26,20 +29,67 @@ const STORAGE_KEY = "capasolve_neon_session";
  * Neon Auth (Managed Better Auth / Lakebase Auth) Client
  */
 export const neonAuth = {
-  async getSession(): Promise<{ data: { session: NeonAuthSession | null }; error: Error | null }> {
+  async getSession(
+    forceRefresh = false,
+  ): Promise<{ data: { session: NeonAuthSession | null }; error: Error | null }> {
     if (!isBrowser) return { data: { session: null }, error: null };
 
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return { data: { session: null }, error: null };
-
-      const session: NeonAuthSession = JSON.parse(raw);
-      if (session.expires_at && session.expires_at < Date.now()) {
-        localStorage.removeItem(STORAGE_KEY);
-        return { data: { session: null }, error: null };
+      if (!forceRefresh) {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const session: NeonAuthSession = JSON.parse(raw);
+          if (!session.expires_at || session.expires_at >= Date.now()) {
+            return { data: { session }, error: null };
+          }
+          localStorage.removeItem(STORAGE_KEY);
+        }
       }
 
-      return { data: { session }, error: null };
+      // Check Neon Auth backend session (try remote direct first so cross-domain cookies are transmitted, then local proxy)
+      const urlsToCheck = Array.from(new Set([REMOTE_NEON_AUTH_URL, NEON_AUTH_BASE_URL])).filter(Boolean);
+      for (const baseUrl of urlsToCheck) {
+        try {
+          const res = await fetch(`${baseUrl}/get-session`, {
+            credentials: "include",
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.user) {
+              const session: NeonAuthSession = {
+                user: {
+                  id: data.user.id,
+                  email: data.user.email,
+                  user_metadata: {
+                    full_name: data.user.name || data.user.email?.split("@")[0],
+                    avatar_url: data.user.image,
+                  },
+                },
+                token: data.session?.token || data.user.id,
+                access_token: data.session?.token || data.user.id,
+                expires_at: data.session?.expiresAt
+                  ? new Date(data.session.expiresAt).getTime()
+                  : Date.now() + 7 * 24 * 60 * 60 * 1000,
+              };
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+              return { data: { session }, error: null };
+            }
+          }
+        } catch {
+          // Ignore network errors and continue to next fallback
+        }
+      }
+
+      // If forceRefresh was specified and backend had no session, fallback to local storage
+      const fallbackRaw = localStorage.getItem(STORAGE_KEY);
+      if (fallbackRaw) {
+        const session: NeonAuthSession = JSON.parse(fallbackRaw);
+        if (!session.expires_at || session.expires_at >= Date.now()) {
+          return { data: { session }, error: null };
+        }
+      }
+
+      return { data: { session: null }, error: null };
     } catch (err: any) {
       return { data: { session: null }, error: err };
     }
@@ -57,23 +107,26 @@ export const neonAuth = {
       };
 
       // Insert directly into Lakebase Postgres auth.users
-      await sql`
+      const rows = await sql`
         INSERT INTO auth.users (id, email, raw_user_meta_data)
         VALUES (${userId}, ${email}, ${JSON.stringify(userMeta)})
         ON CONFLICT (email) DO UPDATE
-        SET raw_user_meta_data = EXCLUDED.raw_user_meta_data, updated_at = timezone('utc'::text, now());
+        SET raw_user_meta_data = EXCLUDED.raw_user_meta_data, updated_at = timezone('utc'::text, now())
+        RETURNING id;
       `;
 
+      const actualUserId = rows[0]?.id || userId;
+
       const user: NeonAuthUser = {
-        id: userId,
+        id: actualUserId,
         email,
         user_metadata: userMeta,
       };
 
       const session: NeonAuthSession = {
         user,
-        token: userId,
-        access_token: userId,
+        token: actualUserId,
+        access_token: actualUserId,
         expires_at: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
       };
 

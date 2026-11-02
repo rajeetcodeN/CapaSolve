@@ -131,4 +131,158 @@ export const neonDb = {
       VALUES (${orgId}, ${userId || null}, ${action}, ${details || null});
     `;
   },
+
+  async getOrganizationMembers(orgId: string): Promise<
+    Array<{
+      id: string;
+      user_id: string;
+      role: string;
+      email: string;
+      full_name: string;
+      created_at: string;
+    }>
+  > {
+    try {
+      const rows = await sql`
+        SELECT 
+          om.id, om.user_id, om.role, om.created_at,
+          COALESCE(u.email, 'member@plant.com') as email,
+          COALESCE(p.full_name, split_part(u.email, '@', 1), 'Team Member') as full_name
+        FROM public.organization_members om
+        LEFT JOIN auth.users u ON om.user_id = u.id
+        LEFT JOIN public.profiles p ON om.user_id = p.id
+        WHERE om.org_id = ${orgId}
+        ORDER BY om.created_at ASC;
+      `;
+      return rows as any;
+    } catch (err) {
+      console.error("[Neon] Error fetching organization members:", err);
+      return [];
+    }
+  },
+
+  async getOrganizationInvitations(orgId: string): Promise<
+    Array<{
+      id: string;
+      org_id: string;
+      email: string;
+      role: string;
+      token: string;
+      expires_at: string;
+      created_at: string;
+      accepted_at: string | null;
+    }>
+  > {
+    try {
+      const rows = await sql`
+        SELECT id, org_id, email, role, token, expires_at, created_at, accepted_at
+        FROM public.invitations
+        WHERE org_id = ${orgId} AND accepted_at IS NULL AND expires_at > timezone('utc'::text, now())
+        ORDER BY created_at DESC;
+      `;
+      return rows as any;
+    } catch (err) {
+      console.error("[Neon] Error fetching organization invitations:", err);
+      return [];
+    }
+  },
+
+  async createInvitation(
+    orgId: string,
+    email: string,
+    role: string = "GUEST",
+  ): Promise<{ id: string; token: string; inviteLink: string }> {
+    const token = "inv_" + crypto.randomUUID().replace(/-/g, "");
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const rows = await sql`
+      INSERT INTO public.invitations (org_id, email, role, token, expires_at)
+      VALUES (${orgId}, ${email}, ${role}, ${token}, ${expiresAt}::timestamptz)
+      RETURNING id, token;
+    `;
+    const origin =
+      typeof window !== "undefined" ? window.location.origin : "http://localhost:5173";
+    return {
+      id: rows[0].id,
+      token: rows[0].token,
+      inviteLink: `${origin}/signup?invite=${rows[0].token}`,
+    };
+  },
+
+  async getInvitationByToken(token: string): Promise<{
+    invitation: { id: string; org_id: string; email: string; role: string; expires_at: string };
+    orgName: string;
+  } | null> {
+    try {
+      const rows = await sql`
+        SELECT 
+          i.id, i.org_id, i.email, i.role, i.expires_at,
+          o.name as org_name
+        FROM public.invitations i
+        JOIN public.organizations o ON i.org_id = o.id
+        WHERE i.token = ${token} AND i.accepted_at IS NULL AND i.expires_at > timezone('utc'::text, now())
+        LIMIT 1;
+      `;
+      if (!rows.length) return null;
+      return {
+        invitation: {
+          id: rows[0].id,
+          org_id: rows[0].org_id,
+          email: rows[0].email,
+          role: rows[0].role,
+          expires_at: rows[0].expires_at,
+        },
+        orgName: rows[0].org_name,
+      };
+    } catch (err) {
+      console.error("[Neon] Error querying invitation:", err);
+      return null;
+    }
+  },
+
+  async acceptInvitation(
+    token: string,
+    userId: string,
+  ): Promise<{ success: boolean; orgId: string; role: string; orgName: string } | null> {
+    try {
+      const inviteData = await neonDb.getInvitationByToken(token);
+      if (!inviteData) return null;
+
+      const { org_id, role, id: inviteId } = inviteData.invitation;
+
+      // 1. Insert into organization_members
+      await sql`
+        INSERT INTO public.organization_members (org_id, user_id, role)
+        VALUES (${org_id}, ${userId}, ${role})
+        ON CONFLICT (org_id, user_id) DO UPDATE SET role = EXCLUDED.role;
+      `;
+
+      // 2. Mark invitation accepted
+      await sql`
+        UPDATE public.invitations
+        SET accepted_at = timezone('utc'::text, now())
+        WHERE id = ${inviteId};
+      `;
+
+      return { success: true, orgId: org_id, role, orgName: inviteData.orgName };
+    } catch (err) {
+      console.error("[Neon] Error accepting invitation:", err);
+      return null;
+    }
+  },
+
+  async removeMember(orgId: string, memberId: string): Promise<boolean> {
+    await sql`
+      DELETE FROM public.organization_members
+      WHERE org_id = ${orgId} AND (id = ${memberId} OR user_id = ${memberId});
+    `;
+    return true;
+  },
+
+  async revokeInvitation(invitationId: string): Promise<boolean> {
+    await sql`
+      DELETE FROM public.invitations
+      WHERE id = ${invitationId};
+    `;
+    return true;
+  },
 };
