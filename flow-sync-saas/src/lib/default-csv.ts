@@ -1,4 +1,4 @@
-export const DEFAULT_CSV_CONTENT = `Order,Order Process ID,Material,Machine,Maschine-Group,Process Text,SOP Start Date,Order QTY,Base-Qty each process,Set up Time (Not related to any qty),Unit,Process time (related to qty),Unit,Summe V2/Sum total process time,Manpwer Utilization,Unit,"Summe V3
+export const DEFAULT_CSV_CONTENT = `Order,Order Process ID,Material,Machine,Maschine-Group,Process Text,SOP Start Date,Order QTY,Base-Qty each process,Set up Time (Not related to any qty),Setup Unit,Process time (related to qty),Process Unit,Summe V2/Sum total process time,Manpwer Utilization,Manpower Unit,"Summe V3
  SUM total Manpower utilization process",Manpower Utilization in %,SOP Start time
 1023811,40,100-024-830.01-00,603011,M2,"FRÄSEN: -Höhe 14,3",01-06-2026,104,3,60,MIN,6.5,MIN,225.3333333,1.95,MIN,608.4,30%,9:49:45
 1022324,20,100-008-517.01-00,603012,M1,KOMPLETTBEARBEITUNG:,01 July 2026,180,1,240,MIN,5,MIN,900,2.5,MIN,450,50%,9:22:58

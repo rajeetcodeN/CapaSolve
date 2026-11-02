@@ -1,4 +1,7 @@
-import { neon } from "@neondatabase/serverless";
+import { neon, neonConfig } from "@neondatabase/serverless";
+
+// Suppress direct browser SQL warning banner in console (safe execution via RLS and server functions)
+neonConfig.disableWarningInBrowsers = true;
 
 const isBrowser = typeof window !== "undefined";
 
