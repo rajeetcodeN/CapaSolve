@@ -1,4 +1,4 @@
-# FlowSync CapaSolve — Industrial Production Scheduling and Capacity Planning SaaS
+# CapaSolve — Industrial Production Scheduling and Capacity Planning SaaS
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue.svg?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19.2-61dafb.svg?style=flat-square&logo=react)](https://react.dev/)
@@ -7,7 +7,7 @@
 [![Neon Database](https://img.shields.io/badge/Neon-Serverless_PostgreSQL_%26_Auth-00E599.svg?style=flat-square&logo=postgresql)](https://neon.tech/)
 [![Vitest](https://img.shields.io/badge/Vitest-59%2F59_Passing-brightgreen.svg?style=flat-square&logo=vitest)](https://vitest.dev/)
 
-FlowSync CapaSolve is an advanced, full-stack Manufacturing Execution and Finite Capacity Scheduling SaaS platform. It enables discrete manufacturers, machine shops, CNC centers, and industrial plants to ingest ERP work orders, clean dirty production data, simulate bottleneck scenarios, optimize machine schedules, and dispatch shop-floor operations with sub-minute precision.
+CapaSolve is an advanced, full-stack Manufacturing Execution and Finite Capacity Scheduling SaaS platform. It enables discrete manufacturers, machine shops, CNC centers, and industrial plants to ingest ERP work orders, clean dirty production data, simulate bottleneck scenarios, optimize machine schedules, and dispatch shop-floor operations with sub-minute precision.
 
 ---
 
@@ -101,7 +101,7 @@ graph TD
 CapaSolve/
 ├── docs/
 │   └── code_architecture.md                           # Comprehensive scheduler & system architecture guide
-├── flow-sync-saas/                                    # Main Fullstack Web Application Workspace
+├── capasolve/                                         # Main Fullstack Web Application Workspace
 │   ├── datasets/                                      # Realistic discrete manufacturing CSV sample datasets
 │   ├── scripts/
 │   │   ├── migrate-neon.mjs                           # Automated DB migration and trigger runner
@@ -163,7 +163,7 @@ CapaSolve/
 ### 1. Clone the Repository
 ```bash
 git clone https://github.com/rajeetcodeN/CapaSolve.git
-cd CapaSolve/flow-sync-saas
+cd CapaSolve/capasolve
 ```
 
 ### 2. Install Dependencies
@@ -193,7 +193,7 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ## Environment Configuration
 
-Create `.env` in `flow-sync-saas/`:
+Create `.env` in `capasolve/`:
 
 ```ini
 # Neon Database Connection
@@ -282,7 +282,7 @@ Builds client assets and Nitro serverless output under `.vercel/output`.
 
 ### Deploying to Vercel
 1. Push changes to GitHub.
-2. Import project in **Vercel** with Root Directory set to `flow-sync-saas`.
+2. Import project in **Vercel** with Root Directory set to `capasolve`.
 3. Configure environment variables matching `.env`.
 4. Add your production domain in **Neon Console -> Auth -> Domains**.
 

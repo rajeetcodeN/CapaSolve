@@ -1,4 +1,4 @@
-# robots.txt for CapaSolve / FlowSync SaaS Production
+# robots.txt for CapaSolve SaaS Production
 
 User-agent: *
 Allow: /

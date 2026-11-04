@@ -1,7 +1,7 @@
 {
-  "name": "flow-sync-capasolve",
+  "name": "capasolve",
   "version": "0.1.0-beta",
-  "description": "FlowSync CapaSolve — Industrial Production Scheduling and Capacity Planning SaaS",
+  "description": "CapaSolve — Industrial Production Scheduling and Capacity Planning SaaS",
   "private": true,
   "sideEffects": false,
   "type": "module",

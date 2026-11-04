@@ -1,4 +1,4 @@
-# FlowSync CapaSolve — Code Architecture Deep-Dive
+# CapaSolve — Code Architecture Deep-Dive
 
 How every part of the scheduler, optimizer, capacity planner, and charts actually works at the code level.
 
@@ -74,7 +74,7 @@ flowchart TD
 
 ## 1. CSV Parsing Pipeline
 
-**File:** [store.ts:63-198](file:///d:/schedulersaas/flow-sync-saas/src/lib/store.ts#L63-L198) — `parseCSVData()`
+**File:** [store.ts:63-198](file:///d:/schedulersaas/capasolve/src/lib/store.ts#L63-L198) — `parseCSVData()`
 
 ```mermaid
 flowchart LR
@@ -93,10 +93,10 @@ flowchart LR
 
 | Field          | Formula                                       | Code Location                                                                 |
 | -------------- | --------------------------------------------- | ----------------------------------------------------------------------------- |
-| `sumV2`        | `(orderQty / baseQty) × processTimeMin`       | [store.ts:171](file:///d:/schedulersaas/flow-sync-saas/src/lib/store.ts#L171) |
-| `sumV3`        | `manpowerUtilizationMin × baseQty × orderQty` | [store.ts:172](file:///d:/schedulersaas/flow-sync-saas/src/lib/store.ts#L172) |
-| `manpowerPct`  | `manpowerUtilizationMin / processTimeMin`     | [store.ts:173](file:///d:/schedulersaas/flow-sync-saas/src/lib/store.ts#L173) |
-| `totalTimeMin` | `setupTimeMin + sumV2`                        | [store.ts:174](file:///d:/schedulersaas/flow-sync-saas/src/lib/store.ts#L174) |
+| `sumV2`        | `(orderQty / baseQty) × processTimeMin`       | [store.ts:171](file:///d:/schedulersaas/capasolve/src/lib/store.ts#L171) |
+| `sumV3`        | `manpowerUtilizationMin × baseQty × orderQty` | [store.ts:172](file:///d:/schedulersaas/capasolve/src/lib/store.ts#L172) |
+| `manpowerPct`  | `manpowerUtilizationMin / processTimeMin`     | [store.ts:173](file:///d:/schedulersaas/capasolve/src/lib/store.ts#L173) |
+| `totalTimeMin` | `setupTimeMin + sumV2`                        | [store.ts:174](file:///d:/schedulersaas/capasolve/src/lib/store.ts#L174) |
 
 ### Example:
 
@@ -113,7 +113,7 @@ manpowerPct = 1.95/5 = 0.39 ← 39% operator load during machining
 
 ## 2. The Scheduler Engine — How It Actually Works
 
-**File:** [scheduler.ts:91-665](file:///d:/schedulersaas/flow-sync-saas/src/lib/scheduler.ts#L91-L665) — `generateSchedule()`
+**File:** [scheduler.ts:91-665](file:///d:/schedulersaas/capasolve/src/lib/scheduler.ts#L91-L665) — `generateSchedule()`
 
 ### Input Parameters
 
@@ -204,15 +204,15 @@ flowchart TD
     style C4 fill:#3b82f6,color:white
 ```
 
-**Code location:** [scheduler.ts:379-458](file:///d:/schedulersaas/flow-sync-saas/src/lib/scheduler.ts#L379-L458)
+**Code location:** [scheduler.ts:379-458](file:///d:/schedulersaas/capasolve/src/lib/scheduler.ts#L379-L458)
 
 ### The 3 Optimization Modes — What Each Actually Does
 
 | Mode              | Machine Check | Group Check                        | Operator Capacity Check | Machine Reassignment        | Code Path                                                                                                         |
 | ----------------- | ------------- | ---------------------------------- | ----------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| **`pre`**         | ❌            | ❌                                 | ❌                      | ❌                          | [L498-500](file:///d:/schedulersaas/flow-sync-saas/src/lib/scheduler.ts#L498-L500) — just `alignToWorkingHours()` |
-| **`workstation`** | ✅ Layer 1    | ✅ Layer 2 (if groupSerialization) | ❌                      | ❌                          | [L494-497](file:///d:/schedulersaas/flow-sync-saas/src/lib/scheduler.ts#L494-L497)                                |
-| **`full`**        | ✅ Layer 1    | ✅ Layer 2 (always)                | ✅ Layer 4              | ✅ (if maxUtilizeResources) | [L475-497](file:///d:/schedulersaas/flow-sync-saas/src/lib/scheduler.ts#L475-L497)                                |
+| **`pre`**         | ❌            | ❌                                 | ❌                      | ❌                          | [L498-500](file:///d:/schedulersaas/capasolve/src/lib/scheduler.ts#L498-L500) — just `alignToWorkingHours()` |
+| **`workstation`** | ✅ Layer 1    | ✅ Layer 2 (if groupSerialization) | ❌                      | ❌                          | [L494-497](file:///d:/schedulersaas/capasolve/src/lib/scheduler.ts#L494-L497)                                |
+| **`full`**        | ✅ Layer 1    | ✅ Layer 2 (always)                | ✅ Layer 4              | ✅ (if maxUtilizeResources) | [L475-497](file:///d:/schedulersaas/capasolve/src/lib/scheduler.ts#L475-L497)                                |
 
 ### `full` + `maxUtilizeResources` — Machine Reassignment Logic
 
@@ -244,7 +244,7 @@ if (optimizeMode === "full" && maxUtilizeResources && mGroupId) {
 
 ## 3. Slot Allocation — How Time Gets Filled
 
-**File:** [scheduler.ts:189-304](file:///d:/schedulersaas/flow-sync-saas/src/lib/scheduler.ts#L189-L304) — `allocateSlotsForProcess()`
+**File:** [scheduler.ts:189-304](file:///d:/schedulersaas/capasolve/src/lib/scheduler.ts#L189-L304) — `allocateSlotsForProcess()`
 
 ```mermaid
 flowchart TD
@@ -318,7 +318,7 @@ processCapMin = (dayCap.process / 100) × 60
               = (200 / 100) × 60 = 120 operator-min/hour
 ```
 
-**Code:** [scheduler.ts:420-452](file:///d:/schedulersaas/flow-sync-saas/src/lib/scheduler.ts#L420-L452)
+**Code:** [scheduler.ts:420-452](file:///d:/schedulersaas/capasolve/src/lib/scheduler.ts#L420-L452)
 
 If `existingSetup + newSetup > 60 min` → conflict, try next hour.  
 If `existingOpMin + (machMins × manpowerPct) > 120 min` → conflict, try next hour.
@@ -327,7 +327,7 @@ If `existingOpMin + (machMins × manpowerPct) > 120 min` → conflict, try next 
 
 ## 5. The Store — How It Orchestrates Everything
 
-**File:** [store.ts:557-633](file:///d:/schedulersaas/flow-sync-saas/src/lib/store.ts#L557-L633) — `runScheduler()`
+**File:** [store.ts:557-633](file:///d:/schedulersaas/capasolve/src/lib/store.ts#L557-L633) — `runScheduler()`
 
 ```mermaid
 sequenceDiagram
@@ -372,7 +372,7 @@ Every state change that affects scheduling automatically re-runs it:
 
 ## 6. Gantt Chart — How It Renders
 
-**File:** [gantt.tsx](file:///d:/schedulersaas/flow-sync-saas/src/routes/gantt.tsx) — 2006 lines
+**File:** [gantt.tsx](file:///d:/schedulersaas/capasolve/src/routes/gantt.tsx) — 2006 lines
 
 ### Data Pipeline:
 
@@ -420,7 +420,7 @@ Each slot becomes a colored <div>:
 
 ## 7. Capacity Chart — How It Builds Data
 
-**File:** [capacity.tsx:322-389](file:///d:/schedulersaas/flow-sync-saas/src/routes/capacity.tsx#L322-L389) — `hourlyChartData` (useMemo)
+**File:** [capacity.tsx:322-389](file:///d:/schedulersaas/capasolve/src/routes/capacity.tsx#L322-L389) — `hourlyChartData` (useMemo)
 
 ```mermaid
 flowchart TD
@@ -459,7 +459,7 @@ flowchart TD
 
 ## 8. Capacity Planner Day View — Pivot Table
 
-**File:** [capacity.tsx:392-454](file:///d:/schedulersaas/flow-sync-saas/src/routes/capacity.tsx#L392-L454) — `dayPivotMatrix`
+**File:** [capacity.tsx:392-454](file:///d:/schedulersaas/capasolve/src/routes/capacity.tsx#L392-L454) — `dayPivotMatrix`
 
 ```
 Structure: Record<machineId, Record<hour, {r, m, p}>>
@@ -482,7 +482,7 @@ Also provides:
 
 ## 9. Monthly Planner — How It Works
 
-**File:** [monthly.tsx](file:///d:/schedulersaas/flow-sync-saas/src/routes/monthly.tsx) — 1716 lines
+**File:** [monthly.tsx](file:///d:/schedulersaas/capasolve/src/routes/monthly.tsx) — 1716 lines
 
 ```mermaid
 flowchart LR
@@ -508,7 +508,7 @@ Key features:
 
 ## 10. Pivot Table — Three Views
 
-**File:** [pivot.tsx](file:///d:/schedulersaas/flow-sync-saas/src/routes/pivot.tsx) — 1258 lines
+**File:** [pivot.tsx](file:///d:/schedulersaas/capasolve/src/routes/pivot.tsx) — 1258 lines
 
 | Tab             | What It Shows                                                                                    | Data Source                              |
 | --------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------- |
@@ -520,7 +520,7 @@ Key features:
 
 ## 11. Analytics / OEE Dashboard
 
-**File:** [analytics.tsx](file:///d:/schedulersaas/flow-sync-saas/src/routes/analytics.tsx) — 477 lines
+**File:** [analytics.tsx](file:///d:/schedulersaas/capasolve/src/routes/analytics.tsx) — 477 lines
 
 ```mermaid
 flowchart TD
@@ -546,7 +546,7 @@ flowchart TD
 
 ## 12. Warning & Overload Detection
 
-**File:** [scheduler.ts:505-651](file:///d:/schedulersaas/flow-sync-saas/src/lib/scheduler.ts#L505-L651)
+**File:** [scheduler.ts:505-651](file:///d:/schedulersaas/capasolve/src/lib/scheduler.ts#L505-L651)
 
 After all slots are allocated, 3 types of warnings are generated:
 
@@ -567,7 +567,7 @@ flowchart TD
 
 ## 13. Manual Override & Drag-Drop System
 
-**File:** [store.ts:635-722](file:///d:/schedulersaas/flow-sync-saas/src/lib/store.ts#L635-L722)
+**File:** [store.ts:635-722](file:///d:/schedulersaas/capasolve/src/lib/store.ts#L635-L722)
 
 ```mermaid
 sequenceDiagram
@@ -599,15 +599,15 @@ sequenceDiagram
 
 | File                                                                                              | Role                          | Lines | Key Function                                                   |
 | ------------------------------------------------------------------------------------------------- | ----------------------------- | ----- | -------------------------------------------------------------- |
-| [types.ts](file:///d:/schedulersaas/flow-sync-saas/src/lib/types.ts)                              | Data model definitions        | 70    | Type interfaces + shift constants                              |
-| [store.ts](file:///d:/schedulersaas/flow-sync-saas/src/lib/store.ts)                              | Central state + orchestration | 845   | `runScheduler()`, `parseCSVData()`, cloud sync                 |
-| [scheduler.ts](file:///d:/schedulersaas/flow-sync-saas/src/lib/scheduler.ts)                      | Constraint solver engine      | 665   | `generateSchedule()`, `allocateSlotsForProcess()`              |
-| [dataCleaner.ts](file:///d:/schedulersaas/flow-sync-saas/src/lib/dataCleaner.ts)                  | CSV validation & cleaning     | 719   | `validateCSVData()`, `cleanCSVData()`, `detectColumnMapping()` |
-| [gantt.tsx](file:///d:/schedulersaas/flow-sync-saas/src/routes/gantt.tsx)                         | Interactive Gantt timeline    | 2,006 | Drag-drop scheduling, multi-zoom, machine rows                 |
-| [capacity.tsx](file:///d:/schedulersaas/flow-sync-saas/src/routes/capacity.tsx)                   | Day-level capacity planner    | 1,692 | Calendar, capacity config, stacked bar chart, pivot            |
-| [monthly.tsx](file:///d:/schedulersaas/flow-sync-saas/src/routes/monthly.tsx)                     | Month calendar planner        | 1,716 | Calendar grid, order blocks, holiday management                |
-| [pivot.tsx](file:///d:/schedulersaas/flow-sync-saas/src/routes/pivot.tsx)                         | Tabular data views            | 1,258 | Raw/Grouped/Load Matrix tabs                                   |
-| [analytics.tsx](file:///d:/schedulersaas/flow-sync-saas/src/routes/analytics.tsx)                 | OEE/utilization dashboard     | 477   | Machine util, setup ratio, operator load charts                |
-| [DataCleaningHub.tsx](file:///d:/schedulersaas/flow-sync-saas/src/components/DataCleaningHub.tsx) | CSV cleaning wizard UI        | 1,357 | 4-step workflow: Upload → Validate → Clean → Import            |
-| [default-csv.ts](file:///d:/schedulersaas/flow-sync-saas/src/lib/default-csv.ts)                  | Built-in sample dataset       | 23KB  | Hardcoded CSV for demo                                         |
-| [translations.ts](file:///d:/schedulersaas/flow-sync-saas/src/lib/translations.ts)                | i18n dictionary               | 13KB  | EN + DE translations                                           |
+| [types.ts](file:///d:/schedulersaas/capasolve/src/lib/types.ts)                              | Data model definitions        | 70    | Type interfaces + shift constants                              |
+| [store.ts](file:///d:/schedulersaas/capasolve/src/lib/store.ts)                              | Central state + orchestration | 845   | `runScheduler()`, `parseCSVData()`, cloud sync                 |
+| [scheduler.ts](file:///d:/schedulersaas/capasolve/src/lib/scheduler.ts)                      | Constraint solver engine      | 665   | `generateSchedule()`, `allocateSlotsForProcess()`              |
+| [dataCleaner.ts](file:///d:/schedulersaas/capasolve/src/lib/dataCleaner.ts)                  | CSV validation & cleaning     | 719   | `validateCSVData()`, `cleanCSVData()`, `detectColumnMapping()` |
+| [gantt.tsx](file:///d:/schedulersaas/capasolve/src/routes/gantt.tsx)                         | Interactive Gantt timeline    | 2,006 | Drag-drop scheduling, multi-zoom, machine rows                 |
+| [capacity.tsx](file:///d:/schedulersaas/capasolve/src/routes/capacity.tsx)                   | Day-level capacity planner    | 1,692 | Calendar, capacity config, stacked bar chart, pivot            |
+| [monthly.tsx](file:///d:/schedulersaas/capasolve/src/routes/monthly.tsx)                     | Month calendar planner        | 1,716 | Calendar grid, order blocks, holiday management                |
+| [pivot.tsx](file:///d:/schedulersaas/capasolve/src/routes/pivot.tsx)                         | Tabular data views            | 1,258 | Raw/Grouped/Load Matrix tabs                                   |
+| [analytics.tsx](file:///d:/schedulersaas/capasolve/src/routes/analytics.tsx)                 | OEE/utilization dashboard     | 477   | Machine util, setup ratio, operator load charts                |
+| [DataCleaningHub.tsx](file:///d:/schedulersaas/capasolve/src/components/DataCleaningHub.tsx) | CSV cleaning wizard UI        | 1,357 | 4-step workflow: Upload → Validate → Clean → Import            |
+| [default-csv.ts](file:///d:/schedulersaas/capasolve/src/lib/default-csv.ts)                  | Built-in sample dataset       | 23KB  | Hardcoded CSV for demo                                         |
+| [translations.ts](file:///d:/schedulersaas/capasolve/src/lib/translations.ts)                | i18n dictionary               | 13KB  | EN + DE translations                                           |

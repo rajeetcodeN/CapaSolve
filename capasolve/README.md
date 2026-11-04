@@ -1,4 +1,4 @@
-# FlowSync CapaSolve — Industrial Production Scheduling Engine
+# CapaSolve — Industrial Production Scheduling Engine
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8.3-blue.svg?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19.2.0-61dafb.svg?style=flat-square&logo=react)](https://react.dev/)
@@ -7,7 +7,7 @@
 [![Neon Database](https://img.shields.io/badge/Neon-Serverless_PostgreSQL-00E599.svg?style=flat-square&logo=postgresql)](https://neon.tech/)
 [![Vitest](https://img.shields.io/badge/Vitest-59%2F59_Passing-brightgreen.svg?style=flat-square&logo=vitest)](https://vitest.dev/)
 
-FlowSync CapaSolve is an enterprise-grade Manufacturing Execution System (MES) and Finite Capacity Scheduling SaaS platform. Designed specifically for discrete manufacturing plants, machine shops, CNC centers, stamping, injection molding, and assembly facilities, FlowSync CapaSolve eliminates manual scheduling bottlenecks by providing sub-minute timeline dispatching, sequence-dependent setup time optimization, what-if simulations, and automated ERP CSV data reconciliation.
+CapaSolve is an enterprise-grade Manufacturing Execution System (MES) and Finite Capacity Scheduling SaaS platform. Designed specifically for discrete manufacturing plants, machine shops, CNC centers, stamping, injection molding, and assembly facilities, CapaSolve eliminates manual scheduling bottlenecks by providing sub-minute timeline dispatching, sequence-dependent setup time optimization, what-if simulations, and automated ERP CSV data reconciliation.
 
 ---
 
@@ -74,37 +74,37 @@ graph TD
 | **Database & Cloud** | [Neon Lakebase Postgres](https://neon.tech/), [`@neondatabase/serverless`](https://github.com/neondatabase/serverless) | Instant branching, serverless autoscaling, sub-10ms query times over WebSockets. |
 | **Authentication** | [Neon Auth](https://neon.tech/docs/guides/neon-auth) / [Better Auth](https://www.better-auth.com/) | Google OAuth, secure session cookies (`HttpOnly`, `SameSite`), JWT validation. |
 | **Object Storage** | [Neon S3-Compatible Storage](https://neon.tech/) (`@aws-sdk/client-s3`) | Storing full schedule snapshots, backups, and audit logs. |
-| **Background Solver** | Web Worker ([`solver.worker.ts`](file:///d:/schedulersaas/flow-sync-saas/src/lib/solver.worker.ts)) | Offloads 10,000+ operation heuristics off the main thread. |
+| **Background Solver** | Web Worker ([`solver.worker.ts`](file:///d:/schedulersaas/capasolve/src/lib/solver.worker.ts)) | Offloads 10,000+ operation heuristics off the main thread. |
 | **Testing Engine** | [Vitest 4.1](https://vitest.dev/), [Testing Library](https://testing-library.com/) | 59 unit tests covering schedulers, API routers, webhooks, and state stores. |
 
 ---
 
 ## Core Operational Modules
 
-### 1. Interactive Gantt Timeline and Master Dispatch ([`/dashboard`](file:///d:/schedulersaas/flow-sync-saas/src/routes/dashboard.tsx))
+### 1. Interactive Gantt Timeline and Master Dispatch ([`/dashboard`](file:///d:/schedulersaas/capasolve/src/routes/dashboard.tsx))
 - **Drag-and-Drop Dispatching**: Reschedule operations directly on the Gantt canvas with automatic collision detection and snapping.
 - **Visual Distinction**: Blue run-time blocks versus amber tool setup blocks allow planners to immediately spot changeover overheads.
 - **Timeline Zoom Levels**: Seamless toggles between Day, Week, and Month granularities.
 - **Machine Group Collapsing**: Group machines by production cells (such as CNC Milling, 5-Axis Turning, Injection Molding, or Manual Assembly).
 
-### 2. Finite Capacity and Workcenter Controls ([`/capacity`](file:///d:/schedulersaas/flow-sync-saas/src/routes/capacity.tsx))
+### 2. Finite Capacity and Workcenter Controls ([`/capacity`](file:///d:/schedulersaas/capasolve/src/routes/capacity.tsx))
 - **Daily Capacity Ceilings**: Set operational hours per day (for example, 16h double shift versus 24h continuous).
 - **Technician vs. Operator Staffing**: Configure maximum concurrent setup technicians to prevent scheduling more tool changes than available plant staff can handle.
 - **Overtime and Shift Overrides**: Apply temporary extra shifts to specific workstations to eliminate delivery bottlenecks.
 
-### 3. Sequence-Dependent Setup Matrix ([`/settings`](file:///d:/schedulersaas/flow-sync-saas/src/routes/settings.tsx))
+### 3. Sequence-Dependent Setup Matrix ([`/settings`](file:///d:/schedulersaas/capasolve/src/routes/settings.tsx))
 - **Changeover Rules**: Specify transition penalties when switching between materials (for example, Steel 316 to Aluminum 6061 requires 45 min cleanout; Steel 316 to Steel 304 requires only 10 min).
 - **Wildcard Matching**: Default fallbacks (`*` to `*`) ensure deterministic setup estimations for novel parts.
 - **Batching Heuristics**: The scheduler automatically arranges work orders in queue to minimize total setup downtime.
 
-### 4. What-If Scenario Lab ([`/sandbox`](file:///d:/schedulersaas/flow-sync-saas/src/routes/sandbox.tsx))
+### 4. What-If Scenario Lab ([`/sandbox`](file:///d:/schedulersaas/capasolve/src/routes/sandbox.tsx))
 - **Zero-Risk Simulation**: An isolated clone of the master schedule allowing planners to stress-test scenarios before committing to production:
   - Machine Breakdown: Select a machine and downtime window; observe the engine rerouting operations to secondary machines.
   - Staffing Shortage: Reduce setter availability and observe the impact on completion dates.
   - Rush Order Insertion: Fast-track VIP customer work orders and inspect the pre-emption penalty on standard orders.
 - **One-Click Commit**: Apply the simulated schedule directly to master production if the results meet plant targets.
 
-### 5. ERP Data Cleaning Hub ([`/orders`](file:///d:/schedulersaas/flow-sync-saas/src/routes/orders.tsx))
+### 5. ERP Data Cleaning Hub ([`/orders`](file:///d:/schedulersaas/capasolve/src/routes/orders.tsx))
 - **Auto-Column Mapping**: Automatically maps headers like Auftrag, Fertigungsauftrag, Work Order, Machine, Maschine, Dauer, and Setup Time.
 - **Anomaly Detection**: Highlights negative cycle times, missing material references, invalid date formats, and duplicate operation sequences.
 - **One-Click Corrections**: Batch fix dirty datasets before submitting them to the scheduling solver.
@@ -159,7 +159,7 @@ CapaSolve features a multi-tenant authentication and team invitation architectur
 - In local development (`localhost:5173`) and custom production domains, third-party cookies from remote auth providers can be blocked by browser privacy policies.
 - CapaSolve resolves this with:
   1. **Vite Same-Origin Proxy**: `/api/auth` proxies directly to the Neon Auth server with `changeOrigin: true` and `cookieDomainRewrite: ""`.
-  2. **Server-Side Session Fallback** ([`auth.server.ts`](file:///d:/schedulersaas/flow-sync-saas/src/lib/auth.server.ts)): If browser cookies are suppressed, `verifyOAuthCallbackServerFn` verifies the freshly created session directly from `neon_auth.session` in Postgres and reconciles it immediately.
+  2. **Server-Side Session Fallback** ([`auth.server.ts`](file:///d:/schedulersaas/capasolve/src/lib/auth.server.ts)): If browser cookies are suppressed, `verifyOAuthCallbackServerFn` verifies the freshly created session directly from `neon_auth.session` in Postgres and reconciles it immediately.
 
 ---
 
@@ -173,7 +173,7 @@ CapaSolve features a multi-tenant authentication and team invitation architectur
 ### 2. Clone and Install
 ```bash
 git clone https://github.com/rajeetcodeN/CapaSolve.git
-cd CapaSolve/flow-sync-saas
+cd CapaSolve/capasolve
 npm install
 ```
 
@@ -287,13 +287,13 @@ CapaSolve maintains strict quality controls with 100% test pass rates and zero T
 
 ## Production Deployment Guide
 
-CapaSolve is optimized for serverless deployment on **Vercel** via the Nitro Vercel preset (`preset: "vercel"` in [`vite.config.ts`](file:///d:/schedulersaas/flow-sync-saas/vite.config.ts)).
+CapaSolve is optimized for serverless deployment on **Vercel** via the Nitro Vercel preset (`preset: "vercel"` in [`vite.config.ts`](file:///d:/schedulersaas/capasolve/vite.config.ts)).
 
 ### Deploying to Vercel
 1. Push your code to GitHub.
 2. Log in to [Vercel](https://vercel.com) and click **Add New Project**.
 3. Import your CapaSolve repository.
-4. Set **Root Directory** to `flow-sync-saas`.
+4. Set **Root Directory** to `capasolve`.
 5. Under **Environment Variables**, paste all production values from your `.env` file.
 6. Click **Deploy**. Vercel will run `vite build`, producing serverless functions in `.vercel/output`.
 
@@ -310,7 +310,7 @@ CapaSolve is optimized for serverless deployment on **Vercel** via the Nitro Ver
 ## Troubleshooting and Operational FAQ
 
 ### Q: Why did Google sign-in fail with "Unable to verify an active user session"?
-**A**: Ensure your origin is whitelisted in the Neon Console under **Auth -> Domains** (such as `http://localhost:5173`). CapaSolve also includes `verifyOAuthCallbackServerFn` in [`auth.server.ts`](file:///d:/schedulersaas/flow-sync-saas/src/lib/auth.server.ts) to automatically reconcile the session directly from Neon Postgres if third-party cookies are partitioned by your browser.
+**A**: Ensure your origin is whitelisted in the Neon Console under **Auth -> Domains** (such as `http://localhost:5173`). CapaSolve also includes `verifyOAuthCallbackServerFn` in [`auth.server.ts`](file:///d:/schedulersaas/capasolve/src/lib/auth.server.ts) to automatically reconcile the session directly from Neon Postgres if third-party cookies are partitioned by your browser.
 
 ### Q: How do I invite a colleague who does not have an account yet?
 **A**: Go to **Settings -> Team Members & Plant Access**, enter their email, choose a role (`DEVELOPER` or `GUEST`), and click **Create Invite**. Send them the generated invite link. When they sign up, their account automatically binds to your plant organization without creating a separate company.
