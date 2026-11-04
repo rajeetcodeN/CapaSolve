@@ -44,7 +44,7 @@ import {
   Zap,
   Check,
   ChevronDown,
-  Sparkles,
+  Database,
   Printer,
 } from "lucide-react";
 import { parseSOPDate } from "@/lib/scheduler";
@@ -739,7 +739,7 @@ function OrdersPage() {
                                 }}
                                 className="h-8 text-xs bg-blue-600 hover:bg-blue-700 text-white shadow-sm cursor-pointer"
                               >
-                                <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+                                <Database className="w-3.5 h-3.5 mr-1.5" />
                                 Load SAP Demo Data
                               </Button>
                               <Button

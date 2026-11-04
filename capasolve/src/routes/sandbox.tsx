@@ -26,7 +26,6 @@ import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import {
   GitBranch,
-  Sparkles,
   TrendingUp,
   Clock,
   AlertTriangle,
@@ -315,7 +314,7 @@ function SandboxPage() {
 
     const newBranch: ScenarioBranch = {
       id: `scen-divert-${Date.now()}`,
-      name: `🔀 AI Divert: ${sourceName} → ${targetName}`,
+      name: `Machine Divert: ${sourceName} → ${targetName}`,
       description: `AI Countermeasure: Automatically re-routed active work order operations from broken ${sourceName} to alternate ${targetName} in the same group line.`,
       createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       config,
@@ -345,7 +344,7 @@ function SandboxPage() {
       machineId: sourceMachineId,
       downtimeHours: downtimeHours || 16,
       shiftedOrdersCount: simRes.shiftedOrders.length,
-      branchName: `🔀 AI Divert: ${sourceName} → ${targetName}`,
+      branchName: `Machine Divert: ${sourceName} → ${targetName}`,
     });
   };
 
@@ -1221,7 +1220,7 @@ function SandboxPage() {
                   variant="outline"
                   className="h-8.5 px-3.5 text-xs font-medium gap-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 hover:bg-emerald-50/60 dark:hover:bg-emerald-950/40 hover:border-emerald-300 hover:text-emerald-950 cursor-pointer shadow-2xs"
                 >
-                  <Sparkles
+                  <Cpu
                     className={`h-4 w-4 text-emerald-700 dark:text-emerald-400 ${isAiAnalyzing ? "animate-spin" : ""}`}
                   />
                   {isAiAnalyzing ? "Analyzing AI Constraints..." : "Run AI Scenario Solver"}
@@ -1458,7 +1457,7 @@ function SandboxPage() {
                     inspectedBranch.aiAdaptationAdvice.length > 0 && (
                       <div className="p-3.5 bg-slate-50 dark:bg-slate-850 rounded-xl border border-slate-200 dark:border-slate-800 text-xs space-y-1.5">
                         <span className="font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
-                          <Sparkles className="h-3.5 w-3.5 text-slate-500" />
+                          <Sliders className="h-3.5 w-3.5 text-slate-500" />
                           System Adaptation & Mitigation Strategy:
                         </span>
                         <ul className="list-disc list-inside space-y-1 text-slate-600 dark:text-slate-400 pl-1 text-[11.5px]">
@@ -1815,7 +1814,7 @@ function SandboxPage() {
             <CardHeader className="pb-3 border-b border-slate-200 dark:border-slate-800">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-slate-500" />
+                  <Zap className="h-4 w-4 text-slate-500" />
                   <CardTitle className="text-sm font-bold text-slate-900 dark:text-white">
                     AI Recommendations
                   </CardTitle>

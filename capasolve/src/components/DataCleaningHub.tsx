@@ -4,7 +4,8 @@ import { toast } from "sonner";
 import Papa from "papaparse";
 import {
   Upload,
-  Sparkles,
+  Sliders,
+  Loader2,
   CheckCircle,
   AlertTriangle,
   Info,
@@ -636,7 +637,7 @@ export function DataCleaningHub({
       <div className="flex flex-wrap items-end justify-between gap-4 border-b border-border/80 pb-5">
         <div className="space-y-1">
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2 text-foreground">
-            <Sparkles className="h-8 w-8 text-primary animate-pulse" />
+            <FileSpreadsheet className="h-8 w-8 text-primary" />
             CSV Data Upload & Cleaning Hub
           </h1>
           <p className="text-sm text-muted-foreground max-w-2xl">
@@ -806,7 +807,7 @@ export function DataCleaningHub({
                   <div className="space-y-2 pt-2 border-t border-border/40">
                     <div className="flex items-center justify-between">
                       <Label className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                        <Sparkles className="h-3 w-3 text-amber-500" />
+                        <Layers className="h-3 w-3 text-primary" />
                         One-Click Sample Industry Datasets
                       </Label>
                       <span className="text-[9px] text-muted-foreground">
@@ -1394,8 +1395,8 @@ export function DataCleaningHub({
                 <CardHeader className="pb-3 border-b border-border/40">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg flex items-center gap-1.5 text-foreground">
-                      <Sparkles className="h-5 w-5 text-indigo-500 animate-pulse" />
-                      AI Data Cleaning Assistant
+                      <Sliders className="h-5 w-5 text-indigo-500" />
+                      Data Cleaning Engine
                     </CardTitle>
                     <span className="text-[9px] bg-indigo-500/10 text-indigo-600 border border-indigo-500/20 px-2.5 py-0.5 rounded-full font-bold">
                       Simulation Engine Ready
@@ -1490,11 +1491,11 @@ export function DataCleaningHub({
                         className="bg-indigo-600 hover:bg-indigo-500 text-white shrink-0 text-xs px-3 transition-colors border border-indigo-500/20 font-semibold"
                       >
                         {aiIsThinking ? (
-                          <span className="animate-spin mr-1">⌛</span>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
                         ) : (
-                          <Sparkles className="h-3.5 w-3.5 mr-1" />
+                          <Zap className="h-3.5 w-3.5 mr-1" />
                         )}
-                        Run AI Fix
+                        Run Data Fix
                       </Button>
                     </div>
 

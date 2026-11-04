@@ -20,7 +20,6 @@ import {
   ChevronRight,
   AlertTriangle,
   Radio,
-  Sparkles,
 } from "lucide-react";
 import { HoldReasonModal } from "@/components/modals/HoldReasonModal";
 import { LogScrapModal } from "@/components/modals/LogScrapModal";

@@ -16,7 +16,6 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
   Zap,
 } from "lucide-react";
 

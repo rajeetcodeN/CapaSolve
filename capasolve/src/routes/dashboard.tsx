@@ -29,7 +29,7 @@ import {
   FileSpreadsheet,
   Download,
   Info,
-  Sparkles,
+  Database,
   Layers,
   FileCheck,
   Check,
@@ -634,7 +634,7 @@ function Dashboard() {
               size="lg"
               className="border-primary/40 text-primary hover:bg-primary/10 font-bold px-5 shadow-sm cursor-pointer text-xs gap-1.5"
             >
-              <Sparkles className="h-4 w-4" />
+              <Database className="h-4 w-4" />
               Load Factory Example Datasets
             </Button>
             <Button
@@ -790,7 +790,7 @@ function Dashboard() {
           <CardHeader className="pb-3 border-b border-border/50 flex flex-row items-center justify-between">
             <div>
               <CardTitle className="text-base font-bold flex items-center gap-2 text-foreground">
-                <Sparkles className="h-4 w-4 text-amber-500" />
+                <Database className="h-4 w-4 text-primary" />
                 Pre-Filled Industry Sample Datasets
               </CardTitle>
               <p className="text-xs text-muted-foreground">

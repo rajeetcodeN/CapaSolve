@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrapReason } from "@/lib/types";
-import { Trash2, AlertOctagon, Disc, Sparkles, Box, Hammer, HelpCircle } from "lucide-react";
+import { Trash2, AlertOctagon, Disc, Activity, Box, Hammer, HelpCircle } from "lucide-react";
 
 interface LogScrapModalProps {
   open: boolean;
@@ -49,7 +49,7 @@ const SCRAP_REASONS: {
     id: "SURFACE_FLAW",
     label: "Surface Chatter / Roughness",
     description: "Ra roughness limit exceeded, chatter marks, burrs",
-    icon: Sparkles,
+    icon: Activity,
     color: "text-purple-400 border-purple-500/30 bg-purple-500/10",
   },
   {

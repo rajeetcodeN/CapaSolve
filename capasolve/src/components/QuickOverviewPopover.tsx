@@ -13,7 +13,7 @@ import {
   TrendingUp,
   SlidersHorizontal,
   ArrowRight,
-  Sparkles,
+  Zap,
   Lightbulb,
   BookOpen,
 } from "lucide-react";
@@ -257,7 +257,7 @@ const CONTEXT_GUIDES: Record<string, ContextGuide> = {
     docAnchor: "sandbox",
     points: [
       {
-        icon: Sparkles,
+        icon: Zap,
         title: "Rush Order Insertion",
         description:
           "Insert high-priority orders to observe the displacement impact on lower-priority production jobs.",

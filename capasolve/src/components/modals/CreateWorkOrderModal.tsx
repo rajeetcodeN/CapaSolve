@@ -291,10 +291,10 @@ export const CreateWorkOrderModal: React.FC<CreateWorkOrderModalProps> = ({ isOp
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Urgent">🔴 Urgent (Expedited)</SelectItem>
-                        <SelectItem value="High">🟠 High Priority</SelectItem>
-                        <SelectItem value="Med">🟡 Medium Priority</SelectItem>
-                        <SelectItem value="Low">⚪ Low Priority</SelectItem>
+                        <SelectItem value="Urgent">Urgent (Expedited)</SelectItem>
+                        <SelectItem value="High">High Priority</SelectItem>
+                        <SelectItem value="Med">Medium Priority</SelectItem>
+                        <SelectItem value="Low">Low Priority</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

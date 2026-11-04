@@ -43,7 +43,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   Activity,
-  Sparkles,
   Plus,
   Play,
   CheckCircle2,

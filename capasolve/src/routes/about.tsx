@@ -9,7 +9,6 @@ import {
   MapPin,
   Phone,
   Users,
-  Sparkles,
   Cpu,
   Globe,
 } from "lucide-react";

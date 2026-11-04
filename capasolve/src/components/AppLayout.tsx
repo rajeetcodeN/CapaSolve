@@ -413,7 +413,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                           const pass = window.prompt("Enter Dev Team Passcode:");
                           if (pass === "capasolve-dev" || pass === "dev2026") {
                             setRole("DEVELOPER");
-                            toast.success("🔓 Dev Team access unlocked! Top-tier Admin authority active.");
+                            toast.success("Dev Team access unlocked! Top-tier Admin authority active.");
                           } else if (pass !== null) {
                             toast.error("Invalid Dev Team passcode.");
                           }

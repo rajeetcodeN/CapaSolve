@@ -14,7 +14,6 @@ import {
   Clock,
   BookOpen,
   ArrowRight,
-  Sparkles,
   Sliders,
   ShieldCheck,
   ChevronRight,

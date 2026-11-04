@@ -17,7 +17,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAppStore } from "@/lib/store";
 import { toast } from "sonner";
-import { Factory, Sparkles, Zap, Layers, CheckCircle2, ArrowRight } from "lucide-react";
+import { Factory, Database, Zap, Layers, CheckCircle2, ArrowRight } from "lucide-react";
 import { DEFAULT_CSV_CONTENT } from "@/lib/default-csv";
 
 interface ExampleDatasetsModalProps {
@@ -110,7 +110,7 @@ export function ExampleDatasetsModal({ open, onOpenChange }: ExampleDatasetsModa
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle className="text-lg font-bold flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
+            <Database className="h-5 w-5 text-primary" />
             Factory Seed Datasets & Scenario Presets
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
