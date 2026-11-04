@@ -1,4 +1,4 @@
-# CapaSolve — Actual Code Architecture Deep-Dive
+# FlowSync CapaSolve — Code Architecture Deep-Dive
 
 How every part of the scheduler, optimizer, capacity planner, and charts actually works at the code level.
 

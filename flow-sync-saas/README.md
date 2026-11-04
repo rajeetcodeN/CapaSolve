@@ -1,4 +1,4 @@
-# CapaSolve — FlowSync SaaS Engine
+# FlowSync CapaSolve — Industrial Production Scheduling Engine
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8.3-blue.svg?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19.2.0-61dafb.svg?style=flat-square&logo=react)](https://react.dev/)
@@ -7,7 +7,7 @@
 [![Neon Database](https://img.shields.io/badge/Neon-Serverless_PostgreSQL-00E599.svg?style=flat-square&logo=postgresql)](https://neon.tech/)
 [![Vitest](https://img.shields.io/badge/Vitest-59%2F59_Passing-brightgreen.svg?style=flat-square&logo=vitest)](https://vitest.dev/)
 
-CapaSolve (flow-sync-saas) is an enterprise-grade Manufacturing Execution System (MES) and Finite Capacity Scheduling SaaS platform. Designed specifically for discrete manufacturing plants, machine shops, CNC centers, stamping, injection molding, and assembly facilities, CapaSolve eliminates manual scheduling bottlenecks by providing sub-minute timeline dispatching, sequence-dependent setup time optimization, what-if simulations, and automated ERP CSV data reconciliation.
+FlowSync CapaSolve is an enterprise-grade Manufacturing Execution System (MES) and Finite Capacity Scheduling SaaS platform. Designed specifically for discrete manufacturing plants, machine shops, CNC centers, stamping, injection molding, and assembly facilities, FlowSync CapaSolve eliminates manual scheduling bottlenecks by providing sub-minute timeline dispatching, sequence-dependent setup time optimization, what-if simulations, and automated ERP CSV data reconciliation.
 
 ---
 
@@ -43,24 +43,24 @@ Discrete manufacturing plants often face operational losses from uncoordinated t
 
 ```mermaid
 graph TD
-    User([Plant Planner / Operator]) -->|HTTPS / Browser| WebApp[TanStack Start SSR / React 19 Frontend]
+    User(["Plant Planner / Operator"]) -->|"HTTPS / Browser"| WebApp["TanStack Start SSR / React 19 Frontend"]
     
     subgraph Client Runtime
-        WebApp -->|Offloaded Worker| SolverWorker[Web Worker Heuristic Solver (60 FPS)]
-        WebApp -->|Zustand State| Store[Client State Cache & Optimistic UI]
+        WebApp -->|"Offloaded Worker"| SolverWorker["Web Worker Heuristic Solver (60 FPS)"]
+        WebApp -->|"Zustand State"| Store["Client State Cache & Optimistic UI"]
     end
 
     subgraph Serverless Edge Backend
-        WebApp -->|Server Functions / Nitro| ServerFn[TanStack Server Functions]
-        ServerFn -->|REST API v1| APIRouter[/api/v1/* Router with API Keys]
-        ServerFn -->|Mistral Client| MistralAI[Mistral AI Bottleneck Diagnostics]
+        WebApp -->|"Server Functions / Nitro"| ServerFn["TanStack Server Functions"]
+        ServerFn -->|"REST API v1"| APIRouter["API Router /api/v1/* with API Keys"]
+        ServerFn -->|"Mistral Client"| MistralAI["Mistral AI Bottleneck Diagnostics"]
     end
 
     subgraph Neon Cloud Infrastructure
-        ServerFn -->|SQL Connection Pool| NeonDB[(Neon Serverless Postgres 16)]
-        ServerFn -->|S3 Protocol| NeonS3[Neon S3 Object Storage]
-        WebApp -->|Same-Origin Proxy /api/auth| NeonAuth[Neon Auth / Managed Better Auth]
-        NeonAuth -.->|Trg Sync Trigger| NeonDB
+        ServerFn -->|"SQL Connection Pool"| NeonDB[("Neon Serverless Postgres 16")]
+        ServerFn -->|"S3 Protocol"| NeonS3["Neon S3 Object Storage"]
+        WebApp -->|"Same-Origin Proxy /api/auth"| NeonAuth["Neon Auth / Managed Better Auth"]
+        NeonAuth -.->|"Trg Sync Trigger"| NeonDB
     end
 ```
 
@@ -220,7 +220,8 @@ NODE_ENV=development
 ### 4. Run Database Migrations
 Synchronize all required tables, triggers, and foreign keys into Neon Postgres:
 ```bash
-node --env-file=.env scripts/migrate-neon.mjs
+npm run db:migrate
+# Or directly: node --env-file=.env scripts/migrate-neon.mjs
 ```
 
 ### 5. Launch Development Server
@@ -241,7 +242,8 @@ CapaSolve runs on a multi-schema Neon PostgreSQL architecture:
 ### Running Schema Updates
 To run or re-apply schema migrations:
 ```bash
-node --env-file=.env scripts/migrate-neon.mjs
+npm run db:migrate
+# Or directly: node --env-file=.env scripts/migrate-neon.mjs
 ```
 
 ---

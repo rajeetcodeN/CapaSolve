@@ -1,4 +1,4 @@
-# CapaSolve — Industrial Production Scheduling and Capacity Planning SaaS
+# FlowSync CapaSolve — Industrial Production Scheduling and Capacity Planning SaaS
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue.svg?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19.2-61dafb.svg?style=flat-square&logo=react)](https://react.dev/)
@@ -7,7 +7,7 @@
 [![Neon Database](https://img.shields.io/badge/Neon-Serverless_PostgreSQL_%26_Auth-00E599.svg?style=flat-square&logo=postgresql)](https://neon.tech/)
 [![Vitest](https://img.shields.io/badge/Vitest-59%2F59_Passing-brightgreen.svg?style=flat-square&logo=vitest)](https://vitest.dev/)
 
-CapaSolve is an advanced, full-stack Manufacturing Execution and Finite Capacity Scheduling SaaS platform. It enables discrete manufacturers, machine shops, CNC centers, and industrial plants to ingest ERP work orders, clean dirty production data, simulate bottleneck scenarios, optimize machine schedules, and dispatch shop-floor operations with sub-minute precision.
+FlowSync CapaSolve is an advanced, full-stack Manufacturing Execution and Finite Capacity Scheduling SaaS platform. It enables discrete manufacturers, machine shops, CNC centers, and industrial plants to ingest ERP work orders, clean dirty production data, simulate bottleneck scenarios, optimize machine schedules, and dispatch shop-floor operations with sub-minute precision.
 
 ---
 
@@ -22,6 +22,7 @@ CapaSolve is an advanced, full-stack Manufacturing Execution and Finite Capacity
 - [Database Schema and Migrations](#database-schema-and-migrations)
 - [Team Management and Invitations](#team-management-and-invitations)
 - [REST API Reference](#rest-api-reference)
+- [Architecture Deep-Dive](docs/code_architecture.md)
 - [Production Deployment](#production-deployment)
 - [Security Architecture](#security-architecture)
 
@@ -67,14 +68,14 @@ CapaSolve is an advanced, full-stack Manufacturing Execution and Finite Capacity
 
 ```mermaid
 graph TD
-    User([Factory Planner / Operator]) -->|HTTPS / Browser| WebApp[TanStack Start SSR Frontend]
-    WebApp -->|Zustand & WebWorker| LocalSolver[Client Heuristic Scheduler (60 FPS)]
-    WebApp -->|Server Functions| ServerAPI[Nitro Serverless Backend]
-    ServerAPI -->|Secure Server AI| MistralAI[Mistral AI API]
-    ServerAPI -->|S3 Protocol| NeonS3[Neon S3 Object Storage]
-    ServerAPI -->|Multi-Tenant Postgres| NeonDB[(Neon Serverless PostgreSQL)]
-    WebApp -->|Proxy /api/auth| NeonAuth[Neon Auth / Better Auth]
-    ExternalERP[External ERP / MES] -->|REST API v1| APIRouter[API Router /api/v1/*]
+    User(["Factory Planner / Operator"]) -->|"HTTPS / Browser"| WebApp["TanStack Start SSR Frontend"]
+    WebApp -->|"Zustand & WebWorker"| LocalSolver["Client Heuristic Scheduler (60 FPS)"]
+    WebApp -->|"Server Functions"| ServerAPI["Nitro Serverless Backend"]
+    ServerAPI -->|"Secure Server AI"| MistralAI["Mistral AI API"]
+    ServerAPI -->|"S3 Protocol"| NeonS3["Neon S3 Object Storage"]
+    ServerAPI -->|"Multi-Tenant Postgres"| NeonDB[("Neon Serverless PostgreSQL")]
+    WebApp -->|"Proxy /api/auth"| NeonAuth["Neon Auth / Better Auth"]
+    ExternalERP["External ERP / MES"] -->|"REST API v1"| APIRouter["API Router /api/v1/*"]
     APIRouter --> NeonDB
 ```
 
@@ -97,24 +98,23 @@ graph TD
 ## Repository Structure
 
 ```
-schedulersaas/
-├── neon/
-│   └── migrations/                                    # Neon PostgreSQL migrations
-│       ├── 20260723000000_init_schema.sql             # Base tables and initial schema
-│       ├── 20260727_master_schema.sql                 # Multi-tenant tables, schedules, machines
-│       ├── 20260802_next_level_features.sql           # Execution logs, matrix rules, audit
-│       └── 20260929_rls_and_multi_tenant.sql          # RLS policies and tenant isolation
-├── flow-sync-saas/                                    # Main Web Application Workspace
+CapaSolve/
+├── docs/
+│   └── code_architecture.md                           # Comprehensive scheduler & system architecture guide
+├── flow-sync-saas/                                    # Main Fullstack Web Application Workspace
+│   ├── datasets/                                      # Realistic discrete manufacturing CSV sample datasets
 │   ├── scripts/
-│   │   └── migrate-neon.mjs                           # Automated DB migration and trigger runner
+│   │   ├── migrate-neon.mjs                           # Automated DB migration and trigger runner
+│   │   ├── deep-functional-tests.mjs                  # Deep functional integration test suite
+│   │   └── test-neon-services.mjs                     # Neon Cloud service verification
 │   ├── src/
 │   │   ├── api/                                       # REST API endpoints (/api/v1/*)
 │   │   │   ├── capacity/                              # Workstation capacity APIs
 │   │   │   ├── machines/                              # Machine group registry APIs
 │   │   │   ├── schedules/                             # Solve and dispatch APIs
 │   │   │   └── router.ts                              # API key middleware and rate limiter
-│   │   ├── components/                                # Reusable UI and Modal components
-│   │   │   ├── modals/                                # Work order and simulation modals
+│   │   ├── components/                                # Reusable UI, Gantt, and Modal components
+│   │   │   ├── modals/                                # Work order, scrap, and simulation modals
 │   │   │   ├── ui/                                    # Radix UI component primitives
 │   │   │   ├── AppLayout.tsx                          # Dashboard navigation shell
 │   │   │   ├── TeamManagement.tsx                     # Team members and invitation interface
@@ -180,7 +180,7 @@ Populate your Neon connection string, Neon Auth URL, and Mistral API key (see [E
 
 ### 4. Run Database Migrations
 ```bash
-node --env-file=.env scripts/migrate-neon.mjs
+npm run db:migrate
 ```
 
 ### 5. Run Development Server
@@ -238,7 +238,8 @@ CapaSolve runs on Neon Serverless Postgres with automatic foreign key cascades a
 
 Run all migrations with:
 ```bash
-node --env-file=.env scripts/migrate-neon.mjs
+npm run db:migrate
+# Or directly: node --env-file=.env scripts/migrate-neon.mjs
 ```
 
 ---

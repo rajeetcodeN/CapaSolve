@@ -133,14 +133,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "CapaSolve — Production Scheduling & Capacity Planning SaaS" },
+      { title: "FlowSync CapaSolve — Production Scheduling & Capacity Planning SaaS" },
       {
         name: "description",
         content:
           "Full-stack Finite Capacity Scheduling, ERP Data Cleaning & Shop Floor Execution MES platform.",
       },
-      { name: "author", content: "CapaSolve Team" },
-      { property: "og:title", content: "CapaSolve — Industrial Production Scheduling & MES" },
+      { name: "author", content: "FlowSync CapaSolve Team" },
+      { property: "og:title", content: "FlowSync CapaSolve — Industrial Production Scheduling & MES" },
       {
         property: "og:description",
         content:
